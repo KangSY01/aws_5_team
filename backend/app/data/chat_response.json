@@ -1,0 +1,29 @@
+{
+  "session_id": "sess-1",
+  "plan_id": "plan-1",
+  "answer": "午後は雨の予報のため、海雲台海水浴場を屋内の新世界百貨店センタムシティに変更しました。",
+  "language": "ja",
+  "sources": [
+    { "tool": "get_weather", "id": "busan-2026-11-21", "title": "부산 단기예보" },
+    { "tool": "search_places", "id": "shinsegae-centum-city", "title": "新世界百貨店センタムシティ" }
+  ],
+  "plan_changes": [
+    {
+      "stop_id": "s4",
+      "before": {
+        "stop_id": "s4",
+        "place_id": "haeundae-beach",
+        "start": "2026-11-21T15:30:00+09:00",
+        "end": "2026-11-21T17:00:00+09:00",
+        "locked": false
+      },
+      "after": {
+        "stop_id": "s4",
+        "place_id": "shinsegae-centum-city",
+        "start": "2026-11-21T15:30:00+09:00",
+        "end": "2026-11-21T17:00:00+09:00",
+        "locked": false
+      }
+    }
+  ]
+}
