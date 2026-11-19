@@ -104,7 +104,7 @@ CURRENT_PLAN: {plan_json}
 ```
 
 ## 구현할 때 정할 것 (에이전트 담당과 합의)
-- **작은 모델 ID**: 지금 설정은 `MODEL_ID` 하나뿐입니다. 판단용 모델을 따로 쓰려면 `config.py`와 `backend/.env.example`에 변수(예: `ROUTER_MODEL_ID`)를 추가해야 합니다. 같은 모델로 시작해도 됩니다.
+- **작은 모델 ID**: 지금 설정은 환경 변수 `BEDROCK_MODEL_ID`(코드에서는 `config.MODEL_ID`) 하나뿐입니다. 판단용 모델을 따로 쓰려면 `config.py`와 `backend/.env.example`에 변수(예: `BEDROCK_ROUTER_MODEL_ID`)를 추가해야 합니다. 같은 모델로 시작해도 됩니다.
 - **구조화 출력 방법**: 노션 초안은 Converse API의 도구 강제 호출(`toolChoice`)을 제안했습니다. Strands의 구조화 출력 기능을 쓸지, boto3 Converse를 직접 쓸지는 MCP `strands`·`aws-docs`로 공식 문서를 확인한 뒤 정합니다.
 - **도구 반복 상한**: 판단 호출은 도구 반복 5회에 세지 않습니다.
 - **chat-agent 스펙 반영**: 합의되면 `requirements.md`(판단 단계 요구사항), `design.md`(구성도·프롬프트), `tasks.md`(작업 추가)를 고칩니다.
