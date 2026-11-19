@@ -30,12 +30,22 @@ const itineraryActions = {
   "zh-Hant": ["收合行程", "關閉行程"],
 };
 
+const profileCopy = {
+  ko: ["프로필", "게스트로 이용 중", "계정 관리", "현재 로그인과 계정 관리 기능을 제공하지 않습니다."],
+  en: ["Profile", "Browsing as a guest", "Account management", "Sign-in and account management are currently unavailable."],
+  ja: ["プロフィール", "ゲストとして利用中", "アカウント管理", "現在、ログインとアカウント管理は利用できません。"],
+  "zh-Hans": ["个人资料", "正在以访客身份浏览", "账号管理", "目前无法登录或管理账号。"],
+  "zh-Hant": ["個人資料", "正在以訪客身分瀏覽", "帳號管理", "目前無法登入或管理帳號。"],
+};
+
 export function getTravelCopy(language) {
   const [intro, prompt, example, submit, title, edit, itinerary, map, schematic, locked, languageLabel, night, loading, empty, network, timeout, http, invalidResponse, retry] = copy[language];
   const [ask, send, close, expand, reduce, ready, messageLabel, sampleTitle, home, chat, navigation] = chatCopy[language];
   const [greeting, placeholder, collapse, suggestions] = starterCopy[language];
   const [collapseItinerary, closeItinerary] = itineraryActions[language];
+  const [profile, guest, account, accountUnavailable] = profileCopy[language];
   return {
+    profile, guest, account, accountUnavailable,
     collapseItinerary, closeItinerary,
     greeting, placeholder, collapse, suggestions,
     ask, send, close, expand, reduce, ready, messageLabel, sampleTitle, home, chat, navigation,

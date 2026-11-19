@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { getTravelCopy, languages } from "../constants/travelCopy.js";
+import koreanFlag from "../assets/flags/kr.svg";
+import englishFlag from "../assets/flags/gb.svg";
+import japaneseFlag from "../assets/flags/jp.svg";
+import simplifiedChineseFlag from "../assets/flags/cn.svg";
+import traditionalChineseFlag from "../assets/flags/tw.svg";
 import EmptyState from "./EmptyState.jsx";
 import samplePlan from "../mocks/sample_plan.json";
 import samplePlaces from "../mocks/places.json";
@@ -7,10 +12,19 @@ import BusanMap from "./BusanMap.jsx";
 import PlanList from "./PlanList.jsx";
 import "./travel-preview.css";
 
+const localeFlags = {
+  ko: koreanFlag,
+  en: englishFlag,
+  ja: japaneseFlag,
+  "zh-Hans": simplifiedChineseFlag,
+  "zh-Hant": traditionalChineseFlag,
+};
+
 const tabIcons = {
   home: "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z",
   itinerary: "M7 3v4m10-4v4M4 9h16M5 5h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm3 8h3m2 0h3m-8 4h3",
   chat: "M20 11.5a8 8 0 0 1-8 8 9 9 0 0 1-3.4-.7L4 20l1.2-4A8 8 0 1 1 20 11.5zM8.5 11.5h7",
+  profile: "M16 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2",
 };
 function LanguageTrigger({ className, label }) {
   return (
@@ -25,6 +39,69 @@ function LanguageTrigger({ className, label }) {
   );
 }
 
+const languageStorageKey = "busannow.language";
+
+function getSavedLanguage() {
+  try {
+    const saved = window.localStorage.getItem(languageStorageKey);
+    if (Object.hasOwn(languages, saved)) return saved;
+  } catch {
+    // Storage can be unavailable in private or restricted contexts.
+  }
+  return "en";
+}
+
+function LanguageOptions({ language, onSelect }) {
+  return Object.entries(languages).map(([code, name]) => (
+    <button key={code} type="button" lang={code} aria-pressed={language === code} onClick={() => onSelect(code)}>
+      <img className="travel-language-flag" src={localeFlags[code]} alt="" width="16" height="16" />
+      <span className="travel-language-name">{name}</span>
+      {language === code && (
+        <svg className="travel-language-check" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="m5 12 4 4L19 6" />
+        </svg>
+      )}
+    </button>
+  ));
+}
+
+function ProfilePage({ copy, language, onLanguageChange }) {
+  const [languageOpen, setLanguageOpen] = useState(false);
+  const heading = useRef(null);
+  useEffect(() => { heading.current?.focus({ preventScroll: true }); }, []);
+
+  return (
+    <section id="travel-profile" className="travel-profile" aria-labelledby="profile-heading">
+      <div className="profile-content">
+        <header>
+          <h1 id="profile-heading" ref={heading} tabIndex={-1}>{copy.profile}</h1>
+          <p>{copy.guest}</p>
+        </header>
+        <div className="profile-settings">
+          <button type="button" className="profile-language-row" aria-expanded={languageOpen}
+            aria-controls="profile-languages" onClick={() => setLanguageOpen(!languageOpen)}>
+            <span>{copy.languageLabel}</span>
+            <span className="profile-language-value" lang={language}>{languages[language]}</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
+              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+          <div id="profile-languages" className="profile-language-options" hidden={!languageOpen}
+            role="group" aria-label={copy.languageLabel}>
+            <LanguageOptions language={language} onSelect={onLanguageChange} />
+          </div>
+          <section className="profile-account">
+            <h2>{copy.account}</h2>
+            <p>{copy.accountUnavailable}</p>
+          </section>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function formatDate(date, language) {
   if (!date) return null;
   const day = new Date(date + "T00:00:00Z");
@@ -34,7 +111,8 @@ function formatDate(date, language) {
 }
 
 export default function TravelPreview({ night = false } = {}) {
-  const [language, setLanguage] = useState("en");
+  const [language, setLanguage] = useState(getSavedLanguage);
+  const [profile, setProfile] = useState(() => window.location.hash === "#profile");
   const [open, setOpen] = useState(false);
   const [panel, setPanel] = useState("chat");
   const [expanded, setExpanded] = useState(false);
@@ -54,11 +132,11 @@ export default function TravelPreview({ night = false } = {}) {
   const plan = samplePlan;
   const stops = plan.stops;
   const selected = Math.max(0, stops.findIndex((stop) => stop.stop_id === selectedId));
-  const tab = open ? panel : "home";
+  const tab = profile ? "profile" : open ? panel : "home";
   const showChat = panel === "chat";
   const collapseLabel = showChat ? copy.collapse : copy.collapseItinerary;
   const closeLabel = showChat ? copy.close : copy.closeItinerary;
-  const labels = { home: copy.home, itinerary: copy.itinerary, chat: copy.chat };
+  const labels = { home: copy.home, itinerary: copy.itinerary, chat: copy.chat, profile: copy.profile };
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -76,6 +154,39 @@ export default function TravelPreview({ night = false } = {}) {
   useEffect(() => {
     if (open) chatHeading.current?.focus();
   }, [open, tab]);
+
+  useEffect(() => {
+    function syncPage() {
+      const next = window.location.hash === "#profile";
+      setProfile(next);
+      if (next) {
+        setOpen(false);
+        setExpanded(false);
+      }
+    }
+    window.addEventListener("popstate", syncPage);
+    window.addEventListener("hashchange", syncPage);
+    return () => {
+      window.removeEventListener("popstate", syncPage);
+      window.removeEventListener("hashchange", syncPage);
+    };
+  }, []);
+
+  function changeLanguage(code) {
+    setLanguage(code);
+    try {
+      window.localStorage.setItem(languageStorageKey, code);
+    } catch {
+      // The selected language still applies for the current session.
+    }
+  }
+
+  function navigateProfile(next) {
+    if (profile === next) return;
+    const { pathname, search } = window.location;
+    window.history.pushState(null, "", pathname + search + (next ? "#profile" : ""));
+    setProfile(next);
+  }
 
   function close() {
     setOpen(false);
@@ -110,8 +221,8 @@ export default function TravelPreview({ night = false } = {}) {
   }
 
   return (
-    <main ref={root} className="travel-preview" data-night={night} data-sheet={open ? "open" : "closed"} data-expanded={expanded} lang={language}>
-      <div className="travel-shell">
+    <main ref={root} className="travel-preview" data-night={night} data-page={profile ? "profile" : "map"} data-sheet={open ? "open" : "closed"} data-expanded={expanded} lang={language}>
+      <div className="travel-shell" inert={profile} aria-hidden={profile}>
         <BusanMap plan={plan} places={samplePlaces} language={language} label={copy.map}
           selectedId={selectedId} onSelect={setSelectedId} focusRequest={mapFocus} />
         <header className="travel-header">
@@ -119,19 +230,14 @@ export default function TravelPreview({ night = false } = {}) {
           <LanguageTrigger className="travel-language-trigger" label={languageLabel} />
           <div id="travel-language-menu" className="travel-language-menu" ref={languageMenu}
             popover="auto" role="group" aria-label={copy.languageLabel}>
-            {Object.entries(languages).map(([code, name]) => (
-              <button key={code} type="button" lang={code} aria-pressed={language === code}
-                onClick={() => {
-                  setLanguage(code);
-                  languageMenu.current.hidePopover();
-                }}>
-                {name}
-                {language === code && <span aria-hidden="true">✓</span>}
-              </button>
-            ))}
+            <LanguageOptions language={language} onSelect={(code) => {
+              changeLanguage(code);
+              languageMenu.current.hidePopover();
+            }} />
           </div>
         </header>
       </div>
+      {profile && <ProfilePage copy={copy} language={language} onLanguageChange={changeLanguage} />}
       <aside id="travel-chat" className="travel-chat" hidden={!open} inert={!open} aria-hidden={!open} aria-labelledby="travel-panel-title"
         onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
         <div className="chat-grab" aria-hidden="true"
@@ -193,9 +299,16 @@ export default function TravelPreview({ night = false } = {}) {
           <button key={name} data-tab={name}
             type="button" aria-label={labels[name]} title={labels[name]}
             aria-current={tab === name ? "page" : undefined}
-            aria-controls={name === "home" ? undefined : "travel-chat"}
-            aria-expanded={name !== "home" ? tab === name : undefined}
+            aria-controls={name === "chat" || name === "itinerary" ? "travel-chat" : undefined}
+            aria-expanded={name === "chat" || name === "itinerary" ? tab === name : undefined}
             onClick={() => {
+              if (name === "profile") {
+                setOpen(false);
+                setExpanded(false);
+                navigateProfile(true);
+                return;
+              }
+              navigateProfile(false);
               if (name === "home") {
                 setOpen(false);
                 setExpanded(false);
@@ -212,7 +325,6 @@ export default function TravelPreview({ night = false } = {}) {
             </svg>
           </button>
         ))}
-        <LanguageTrigger className="travel-language-mobile" label={languageLabel} />
       </nav>
     </main>
   );

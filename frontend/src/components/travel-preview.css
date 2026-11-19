@@ -351,6 +351,15 @@
 }
 .travel-language-menu button[aria-pressed="true"] { background: var(--color-selected); }
 .travel-language-menu button:focus-visible { outline-offset: -2px; }
+.travel-language-flag {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px var(--color-border);
+}
+.travel-language-name { white-space: nowrap; }
+.travel-language-check { width: 14px; height: 14px; justify-self: end; }
 
 @media (prefers-reduced-motion: reduce) {
   .travel-tab-indicator,
@@ -398,15 +407,69 @@
   color: #fff;
 }
 .busan-map-pin:focus-visible { outline: 2px solid #171717; }
+.travel-preview[data-page="profile"] .travel-shell { visibility: hidden; }
+.travel-profile {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: auto;
+  background: var(--color-bg);
+  color: var(--color-text);
+  padding: calc(24px + env(safe-area-inset-top)) 20px
+    calc(var(--nav-bottom) + var(--mobile-nav-height) + 24px);
+}
+.profile-content { max-width: 520px; margin-inline: auto; }
+.profile-content h1 { margin: 0; font-size: 1.8rem; letter-spacing: -.025em; }
+.profile-content h1:focus { outline: none; }
+.profile-content header p { margin: 4px 0 0; color: var(--color-muted); }
+.profile-settings {
+  margin-top: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-bg);
+}
+.profile-language-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 54px;
+  padding: 10px 14px;
+  background: transparent;
+  border: 0;
+  border-radius: 15px;
+  color: inherit;
+  text-align: start;
+}
+.profile-language-value { color: var(--color-muted); }
+.profile-language-row svg { width: 18px; height: 18px; }
+.profile-language-row[aria-expanded="true"] svg { transform: rotate(180deg); }
+.profile-language-options { padding: 0 6px 6px; }
+.profile-language-options button {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) 14px;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+  padding: 4px 8px;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  text-align: start;
+}
+.profile-language-options button[aria-pressed="true"] { background: var(--color-selected); }
+.profile-account { border-top: 1px solid var(--color-border); padding: 14px; }
+.profile-account h2 { margin: 0; font-size: 1rem; }
+.profile-account p { margin: 4px 0 0; color: var(--color-muted); font-size: .875rem; }
+
 @media (min-width: 900px) {
-  .travel-tabs .travel-language-mobile { display: none; }
+  .travel-preview:not([data-page="profile"]) .travel-tabs [data-tab="profile"],
+  .travel-language-menu .travel-language-flag { display: none; }
+  .travel-language-menu .travel-language-name { margin-inline-end: auto; }
 }
 @media (max-width: 899px) {
   .travel-header .travel-language-trigger { display: none; }
-  .travel-tabs .travel-language-mobile { display: grid; }
-  .travel-language-menu {
-    inset: auto calc((100% - var(--capsule-width)) / 2 + 1px)
-      calc(var(--nav-bottom) + var(--mobile-nav-height) + 8px) auto;
-    max-height: calc(100dvh - var(--nav-bottom) - var(--mobile-nav-height) - 16px);
-  }
+  .travel-tabs[data-active-tab="profile"] { --tab-slide: 300%; }
 }
