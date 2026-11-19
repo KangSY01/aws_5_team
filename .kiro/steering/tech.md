@@ -1,5 +1,6 @@
 ---
-inclusion: always
+inclusion: fileMatch
+fileMatchPattern: ["backend/**", "frontend/package.json"]
 ---
 
 # 기술 규칙

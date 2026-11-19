@@ -1,5 +1,6 @@
 ---
-inclusion: always
+inclusion: fileMatch
+fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/app/data/**", "backend/app/storage/**", "backend/tests/**"]
 ---
 
 # 데이터 사용 규칙
