@@ -33,3 +33,32 @@ npm test         # 테스트 실행 (vitest --run)
 ```
 VITE_API_BASE_URL=http://127.0.0.1:8000
 ```
+
+## 샘플 mock 데이터 (`src/mocks/`)
+
+테스트와 화면 확인에 쓰는 mock 은 백엔드 샘플 데이터를 그대로 복사한 것이다.
+
+| 복사본 | 원본 |
+| --- | --- |
+| `frontend/src/mocks/sample_plan.json` | `backend/app/data/sample_plan.json` |
+| `frontend/src/mocks/places.json` | `backend/app/data/places.json` |
+
+동기화 규칙:
+
+- 원본(`backend/app/data/`)이 바뀌면 같은 PR 에서 복사본도 똑같이 맞춘다.
+- 복사본은 읽기 전용으로 취급한다. 내용을 직접 고치지 않고, 항상 원본을 먼저 고친 뒤 다시 복사한다.
+- 원본 파일은 프론트엔드 작업에서 수정하지 않는다.
+
+복사 방법 (저장소 루트에서 실행):
+
+```bash
+# macOS / Linux / Git Bash
+cp backend/app/data/sample_plan.json frontend/src/mocks/sample_plan.json
+cp backend/app/data/places.json frontend/src/mocks/places.json
+```
+
+```bat
+:: Windows cmd
+copy /Y backend\app\data\sample_plan.json frontend\src\mocks\sample_plan.json
+copy /Y backend\app\data\places.json frontend\src\mocks\places.json
+```

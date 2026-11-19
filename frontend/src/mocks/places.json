@@ -1,0 +1,92 @@
+[
+  {
+    "place_id": "haeundae-beach",
+    "names": { "en": "Haeundae Beach", "ja": "海雲台海水浴場", "zh-Hans": "海云台海水浴场", "zh-Hant": "海雲臺海水浴場" },
+    "lat": 35.1587,
+    "lng": 129.1604,
+    "category": "beach",
+    "indoor": false,
+    "nearest_station": "Haeundae"
+  },
+  {
+    "place_id": "gwangalli-beach",
+    "names": { "en": "Gwangalli Beach", "ja": "広安里海水浴場", "zh-Hans": "广安里海水浴场", "zh-Hant": "廣安里海水浴場" },
+    "lat": 35.1532,
+    "lng": 129.1186,
+    "category": "beach",
+    "indoor": false,
+    "nearest_station": "Gwangan"
+  },
+  {
+    "place_id": "gamcheon-village",
+    "names": { "en": "Gamcheon Culture Village", "ja": "甘川文化村", "zh-Hans": "甘川文化村", "zh-Hant": "甘川文化村" },
+    "lat": 35.0975,
+    "lng": 129.0106,
+    "category": "village",
+    "indoor": false,
+    "nearest_station": "Toseong"
+  },
+  {
+    "place_id": "jagalchi-market",
+    "names": { "en": "Jagalchi Market", "ja": "チャガルチ市場", "zh-Hans": "札嘎其市场", "zh-Hant": "札嘎其市場" },
+    "lat": 35.0966,
+    "lng": 129.0306,
+    "category": "market",
+    "indoor": true,
+    "nearest_station": "Jagalchi"
+  },
+  {
+    "place_id": "gukje-market",
+    "names": { "en": "Gukje Market", "ja": "国際市場", "zh-Hans": "国际市场", "zh-Hant": "國際市場" },
+    "lat": 35.1011,
+    "lng": 129.0283,
+    "category": "market",
+    "indoor": false,
+    "nearest_station": "Jagalchi"
+  },
+  {
+    "place_id": "busan-tower",
+    "names": { "en": "Busan Tower", "ja": "釜山タワー", "zh-Hans": "釜山塔", "zh-Hant": "釜山塔" },
+    "lat": 35.1007,
+    "lng": 129.0324,
+    "category": "observatory",
+    "indoor": true,
+    "nearest_station": "Nampo"
+  },
+  {
+    "place_id": "haedong-yonggungsa",
+    "names": { "en": "Haedong Yonggungsa Temple", "ja": "海東龍宮寺", "zh-Hans": "海东龙宫寺", "zh-Hant": "海東龍宮寺" },
+    "lat": 35.1883,
+    "lng": 129.2233,
+    "category": "temple",
+    "indoor": false,
+    "nearest_station": "OSIRIA"
+  },
+  {
+    "place_id": "taejongdae",
+    "names": { "en": "Taejongdae", "ja": "太宗台", "zh-Hans": "太宗台", "zh-Hant": "太宗臺" },
+    "lat": 35.053,
+    "lng": 129.085,
+    "category": "park",
+    "indoor": false,
+    "nearest_station": null
+  },
+  {
+    "place_id": "shinsegae-centum-city",
+    "names": { "en": "Shinsegae Centum City", "ja": "新世界百貨店センタムシティ", "zh-Hans": "新世界百货Centum City店", "zh-Hant": "新世界百貨Centum City店" },
+    "lat": 35.1687,
+    "lng": 129.1296,
+    "category": "shopping",
+    "indoor": true,
+    "nearest_station": "Centum City"
+  },
+  {
+    "place_id": "beomeosa-temple",
+    "names": { "en": "Beomeosa Temple", "ja": "梵魚寺", "zh-Hans": "梵鱼寺", "zh-Hant": "梵魚寺" },
+    "lat": 35.2838,
+    "lng": 129.0682,
+    "category": "temple",
+    "indoor": false,
+    "nearest_station": "Beomeosa"
+  }
+]

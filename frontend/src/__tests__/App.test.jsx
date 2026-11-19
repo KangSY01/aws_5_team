@@ -1,11 +1,34 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, expect, it, vi } from "vitest";
 import App from "../App.jsx";
 
-// 테스트 환경(Vitest + RTL + jsdom) 구성이 동작하는지 확인하는 스모크 테스트
-describe("App 뼈대", () => {
-  it("제목 문구를 렌더링한다", () => {
-    render(<App />);
-    expect(screen.getByText("부산 여행 일정")).toBeInTheDocument();
-  });
+afterEach(() => vi.unstubAllGlobals());
+
+it("shows a local sample and preserves chat state without requesting the backend", async () => {
+  const fetchMock = vi.fn();
+  vi.stubGlobal("fetch", fetchMock);
+  render(<App />);
+  const user = userEvent.setup();
+  const open = () => user.click(screen.getByRole("button", { name: "Chat" }));
+
+  await open();
+  await user.type(screen.getByRole("textbox"), "Half a day by the sea{enter}");
+  expect(screen.getByRole("heading", { name: "Sample itinerary" })).toBeVisible();
+  const stop = screen.getAllByRole("listitem")[1];
+  expect(stop).toHaveTextContent("Fixed");
+  await user.click(within(stop).getByRole("button"));
+  await user.type(screen.getByRole("textbox"), "Add a market");
+  await user.click(screen.getByRole("button", { name: "Itinerary" }));
+  expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Sample itinerary" })).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "Home" }));
+  expect(screen.queryByRole("heading", { name: "Sample itinerary" })).not.toBeInTheDocument();
+  await open();
+  expect(screen.getByRole("textbox")).toHaveValue("Add a market");
+  expect(screen.getByText("Half a day by the sea")).toBeVisible();
+  expect(within(stop).getByRole("button")).toHaveAttribute("aria-pressed", "true");
+  await user.click(screen.getByRole("button", { name: "Send" }));
+  expect(screen.getByText("Add a market")).toBeVisible();
+  expect(fetchMock).not.toHaveBeenCalled();
 });
