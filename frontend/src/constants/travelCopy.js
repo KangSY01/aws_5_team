@@ -22,11 +22,21 @@ const starterCopy = {
   "zh-Hans": ["你想在釜山度过怎样的一天？", "说说你想做什么…", "收起聊天", ["在海边度过半天", "当地市场与街头美食", "雨天游览路线"]],
   "zh-Hant": ["你想在釜山度過怎樣的一天？", "說說你想做什麼…", "收合聊天", ["在海邊度過半天", "當地市場與街頭美食", "雨天遊覽路線"]],
 };
+const itineraryActions = {
+  ko: ["일정 접기", "일정 닫기"],
+  en: ["Collapse itinerary", "Close itinerary"],
+  ja: ["旅程を折りたたむ", "旅程を閉じる"],
+  "zh-Hans": ["收起行程", "关闭行程"],
+  "zh-Hant": ["收合行程", "關閉行程"],
+};
+
 export function getTravelCopy(language) {
   const [intro, prompt, example, submit, title, edit, itinerary, map, schematic, locked, languageLabel, night, loading, empty, network, timeout, http, invalidResponse, retry] = copy[language];
   const [ask, send, close, expand, reduce, ready, messageLabel, sampleTitle, home, chat, navigation] = chatCopy[language];
   const [greeting, placeholder, collapse, suggestions] = starterCopy[language];
+  const [collapseItinerary, closeItinerary] = itineraryActions[language];
   return {
+    collapseItinerary, closeItinerary,
     greeting, placeholder, collapse, suggestions,
     ask, send, close, expand, reduce, ready, messageLabel, sampleTitle, home, chat, navigation,
     intro, prompt, example, submit, title, edit, itinerary, map, schematic, locked,

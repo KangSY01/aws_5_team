@@ -21,13 +21,15 @@ function formatDate(date, language) {
 
 export default function TravelPreview({ night = false } = {}) {
   const [language, setLanguage] = useState("en");
-  const [sheet, setSheet] = useState("closed");
+  const [open, setOpen] = useState(false);
+  const [panel, setPanel] = useState("chat");
+  const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const dragStart = useRef(null);
   const root = useRef(null);
-  const opener = useRef(null);
+  const tabBar = useRef(null);
   const chatHeading = useRef(null);
   const log = useRef(null);
   const composer = useRef(null);
@@ -36,8 +38,10 @@ export default function TravelPreview({ night = false } = {}) {
   const plan = messages.length ? samplePlan : null;
   const stops = plan?.stops ?? [];
   const selected = Math.max(0, stops.findIndex((stop) => stop.stop_id === selectedId));
-  const open = sheet !== "closed";
-  const tab = sheet === "schedule" ? "itinerary" : open ? "chat" : "home";
+  const tab = open ? panel : "home";
+  const showChat = panel === "chat";
+  const collapseLabel = showChat ? copy.collapse : copy.collapseItinerary;
+  const closeLabel = showChat ? copy.close : copy.closeItinerary;
   const labels = { home: copy.home, itinerary: copy.itinerary, chat: copy.chat };
 
   useEffect(() => {
@@ -58,8 +62,9 @@ export default function TravelPreview({ night = false } = {}) {
   }, [open, tab]);
 
   function close() {
-    setSheet("closed");
-    requestAnimationFrame(() => opener.current?.focus());
+    setOpen(false);
+    setExpanded(false);
+    tabBar.current?.querySelector(`[data-tab="${panel}"]`)?.focus();
   }
 
   function selectStop(index) {
@@ -79,15 +84,15 @@ export default function TravelPreview({ night = false } = {}) {
     if (dragStart.current === null) return;
     const distance = event.clientY - dragStart.current;
     dragStart.current = null;
-    if (distance < -35 && tab === "chat") setSheet("expanded");
+    if (distance < -35) setExpanded(true);
     if (distance > 35) {
-      if (sheet === "expanded") setSheet("open");
+      if (expanded) setExpanded(false);
       else close();
     }
   }
 
   return (
-    <main ref={root} className="travel-preview" data-night={night} data-sheet={sheet} lang={language}>
+    <main ref={root} className="travel-preview" data-night={night} data-sheet={open ? "open" : "closed"} data-expanded={expanded} lang={language}>
       <div className="travel-shell">
         <header className="travel-header">
           <span className="travel-brand">Busan<span>Now</span></span>
@@ -113,9 +118,9 @@ export default function TravelPreview({ night = false } = {}) {
             ))}
           </div>
         </header>
-        {open && <button type="button" className="chat-backdrop" aria-label={copy.close} tabIndex={-1} onClick={close} />}
+        {open && <button type="button" className="chat-backdrop" aria-label={closeLabel} tabIndex={-1} onClick={close} />}
       </div>
-      <aside id="travel-chat" className="travel-chat" hidden={!open} aria-labelledby="travel-panel-title"
+      <aside id="travel-chat" className="travel-chat" hidden={!open} inert={!open} aria-labelledby="travel-panel-title"
         onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
         <div className="chat-grab" aria-hidden="true"
           onPointerDown={(event) => {
@@ -124,20 +129,16 @@ export default function TravelPreview({ night = false } = {}) {
           }}
           onPointerUp={endDrag} onPointerCancel={() => { dragStart.current = null; }} />
         <header className="chat-heading">
-          <h1 id="travel-panel-title" ref={chatHeading} tabIndex={-1}>{tab === "chat" ? "Busan AI" : copy.itinerary}</h1>
-          {tab === "chat" && (
-            <>
-              <button type="button" className="chat-collapse" aria-label={copy.collapse} onClick={close}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-              </button>
-              <button type="button" className="chat-close" aria-label={copy.close} onClick={close}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
-              </button>
-            </>
-          )}
+          <h1 id="travel-panel-title" ref={chatHeading} tabIndex={-1}>{showChat ? "Busan AI" : copy.itinerary}</h1>
+          <button type="button" className="chat-collapse" aria-label={collapseLabel} onClick={close}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </button>
+          <button type="button" className="chat-close" aria-label={closeLabel} onClick={close}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+          </button>
         </header>
         <div className="chat-content" ref={log}>
-          <div className="chat-messages" role="log" hidden={tab !== "chat"}>
+          <div className="chat-messages" role="log" hidden={!showChat}>
             <p className="chat-bubble">{copy.greeting}</p>
             {!messages.length && (
               <div className="chat-suggestions">
@@ -153,7 +154,7 @@ export default function TravelPreview({ night = false } = {}) {
               <p key={index} className="chat-bubble" data-role={message.role} lang={message.lang}>{message.text}</p>
             ))}
           </div>
-          {!plan && tab === "itinerary" && <EmptyState message={copy.empty} />}
+          {!plan && !showChat && <EmptyState message={copy.empty} />}
           {plan && (
             <section className="travel-panel" aria-label={copy.itinerary}>
               <h2>{copy.sampleTitle}</h2>
@@ -163,7 +164,7 @@ export default function TravelPreview({ night = false } = {}) {
             </section>
           )}
         </div>
-        <form className="chat-compose" hidden={tab !== "chat"} onSubmit={submit}>
+        <form className="chat-compose" hidden={!showChat} onSubmit={submit}>
           <textarea ref={composer} aria-label={copy.messageLabel} placeholder={copy.placeholder} rows={1}
             value={draft} onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
@@ -174,13 +175,25 @@ export default function TravelPreview({ night = false } = {}) {
           </button>
         </form>
       </aside>
-      <nav className="travel-tabs" data-chat-open={tab === "chat"} aria-label={copy.navigation}>
+      <nav ref={tabBar} className="travel-tabs" data-active-tab={tab} aria-label={copy.navigation}>
+        <span className="travel-tab-indicator" aria-hidden="true" />
         {Object.entries(tabIcons).map(([name, path]) => (
-          <button key={name} ref={name === "chat" ? opener : undefined}
+          <button key={name} data-tab={name}
             type="button" aria-label={labels[name]} title={labels[name]}
             aria-current={tab === name ? "page" : undefined}
             aria-controls={name === "home" ? undefined : "travel-chat"}
-            onClick={() => setSheet(name === "home" ? "closed" : name === "itinerary" ? "schedule" : "open")}>
+            aria-expanded={name !== "home" ? tab === name : undefined}
+            onClick={() => {
+              if (name === "home") {
+                setOpen(false);
+                setExpanded(false);
+              } else if (tab === name) {
+                close();
+              } else {
+                setPanel(name);
+                setOpen(true);
+              }
+            }}>
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
               strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round">
               <path d={path} />
