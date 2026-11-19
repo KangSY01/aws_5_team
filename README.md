@@ -23,13 +23,14 @@ uv run python -m scripts.local_server   # 로컬 서버 http://127.0.0.1:8000 (C
 
 ## 담당 영역
 
-| 역할 | 맡는 곳 |
-|---|---|
-| 에이전트·도구 | `backend/app/agent.py`, `backend/app/prompts.py`, `backend/app/tools/` |
-| Guardian | `backend/app/guardian/` |
-| 데이터·저장 | `backend/app/data/`, `backend/app/storage/` |
-| 프론트 | `frontend/` |
-| 인프라·배포 | Lambda, S3 + CloudFront, DynamoDB 배포 구성 |
+역할 분담 원본은 노션 「역할 분담과 타임테이블」입니다.
+
+| 역할 | 담당 | 맡는 곳 |
+|---|---|---|
+| A. 에이전트 백엔드 | 노윤지 | `backend/app/agent.py`, `backend/app/tools/plan_edit.py`, `backend/app/storage/`, 뼈대·배포 구성 |
+| B. 데이터·도구 | 강서영 | `backend/app/data/`, `backend/app/tools/lookup.py` |
+| C. 프론트엔드 | 이지혜 | `frontend/` (D 폴더 제외) |
+| D. 아키텍처 설계 인프라 | 이온규 | `backend/app/guardian/`, `backend/app/prompts.py`, `backend/eval/`, `frontend/src/features/local-card/`, `frontend/src/features/demo-panel/`, 사진 인식 백엔드(`/photo`, 계약 변경 PR 후 위치 결정) |
 
 - 지금은 스텁입니다. `agent.py`, `guardian/`, `tools/`의 함수는 시그니처와 docstring, `TODO(담당)`만 있고 호출하면 `NotImplementedError`가 납니다.
 - 구현한 뒤에는 `backend/app/handler.py`의 `TODO` 위치에서 고정 응답을 실제 호출로 바꿉니다. 이 파일은 공용 파일이라 아래 규칙을 따릅니다.
@@ -61,13 +62,18 @@ uv run python -m scripts.local_server   # 로컬 서버 http://127.0.0.1:8000 (C
 
 ## 일정
 
+원본은 노션 「역할 분담과 타임테이블」입니다.
+
 | 시각 | 목표 |
 |---|---|
-| 금 12:00 | 뼈대 배포 (화면 → API → Bedrock 연결) |
-| 금 18:00 | 전체 연결 (일정 생성 + Guardian 배지) |
-| 금 23:00 | 3~4순위 기능 마무리 |
-| 토 00:00 | 기능 동결 |
+| 목 23:00 | 점검 0: 뼈대 배포 (화면 → API → Bedrock "Hello", 못 끝내면 금 12:00까지) |
+| 금 12:00 | 점검 1: 각자 모듈 단독 동작 시연 |
+| 금 18:00 | 점검 2: 전체 연결 (1~2순위, 데모 장면 1·2) |
+| 금 21:00 | 점검 3: 3·4·5순위 백엔드 동작 확인 |
+| 토 00:00 | 기능 동결 (1~5순위 전부 화면에서 동작) |
+| 토 01:30 | 리허설 1 |
 | 토 03:00 | 코드 동결, `demo-v1` 태그 |
+| 토 06:30 | 리허설 2 |
 | 토 07:00 | 제출 |
 
 ## 데이터 출처
@@ -87,4 +93,4 @@ uv run python -m scripts.local_server   # 로컬 서버 http://127.0.0.1:8000 (C
 - [ ] 데모 영상 또는 스크린샷
 - [ ] 평가 결과 (장소 ID 정확도, 근거 없는 수치 건수, 응답 시간)
 - [ ] 팀원과 역할
-- [ ] 확장 계획 (음성 질문, 리뷰 광고 필터, 실시간 혼잡 데이터)
+- [ ] 확장 계획 (리뷰 광고 필터, 실시간 혼잡 데이터)

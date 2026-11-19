@@ -56,4 +56,4 @@ fileMatchPattern: ["backend/**", "frontend/package.json"]
 - 주석·로그·문서는 한국어, 식별자는 영어로 씁니다.
 
 ## 계획 중인 AWS 기능
-메뉴판 사진 번역(Textract), 한국어 음성(Polly)은 `product.md`의 4순위 기능입니다. 아직 API 계약에 없으므로 `contract.md` 규칙대로 계약 변경 PR을 먼저 올립니다.
+음성 입력(Transcribe)·여행 중 음성 출력(Polly)은 `product.md`의 3순위, 메뉴판·간판 사진 인식(Textract)·현지인 카드 한국어 음성(Polly)은 5순위 기능입니다. 모두 필수입니다. 아직 API 계약에 없으므로 `contract.md` 규칙대로 계약 변경 PR을 먼저 올립니다.

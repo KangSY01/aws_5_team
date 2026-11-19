@@ -9,13 +9,16 @@
 - PR은 작게, 자주 머지합니다. 브랜치는 수 시간 안에 머지합니다.
 
 ## 담당 영역
-| 역할 | 맡는 곳 |
-|---|---|
-| 에이전트·도구 | `backend/app/agent.py`, `backend/app/prompts.py`, `backend/app/tools/` |
-| Guardian | `backend/app/guardian/` |
-| 데이터·저장 | `backend/app/data/`, `backend/app/storage/` |
-| 프론트 | `frontend/` |
-| 인프라·배포 | Lambda, S3 + CloudFront, DynamoDB 배포 구성 |
+역할 분담 원본은 노션 「역할 분담과 타임테이블」입니다.
+
+| 역할 | 담당 | 맡는 곳 |
+|---|---|---|
+| A. 에이전트 백엔드 | 노윤지 | `backend/app/agent.py`, `backend/app/tools/plan_edit.py`, `backend/app/storage/`, 뼈대·배포 구성 |
+| B. 데이터·도구 | 강서영 | `backend/app/data/`, `backend/app/tools/lookup.py` |
+| C. 프론트엔드 | 이지혜 | `frontend/` (D 폴더 제외) |
+| D. 아키텍처 설계 인프라 | 이온규 | `backend/app/guardian/`, `backend/app/prompts.py`, `backend/eval/`, `frontend/src/features/local-card/`, `frontend/src/features/demo-panel/`, 사진 인식 백엔드(`/photo`, 계약 변경 PR 후 위치 결정) |
+
+D가 `frontend/` 안에 맡은 폴더는 C와 미리 합의한 하위 폴더에서만 작업합니다.
 
 공용 파일 (뼈대 담당자 리뷰 필수):
 - `backend/app/models/`

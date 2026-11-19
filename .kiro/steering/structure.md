@@ -10,29 +10,30 @@ backend/
   app/
     handler.py      공용 ⚠️  Lambda 진입점, 경로 분기
     models/         공용 ⚠️  Pydantic 데이터·요청·응답 모델
-    agent.py        에이전트  Strands Agent 구성
-    prompts.py      에이전트  시스템 프롬프트
-    tools/          에이전트·도구  lookup.py(조회), plan_edit.py(부분 수정)
-    guardian/       Guardian  check.py(점검), repair.py(해결안). LLM 미사용
-    data/           데이터    mock 데이터 원본 (places.json, 샘플 응답)
-    storage/        데이터    DynamoDB 읽기·쓰기
+    agent.py        A  Strands Agent 구성
+    prompts.py      D  시스템 프롬프트
+    tools/          A·B  lookup.py(공공데이터 조회, B), plan_edit.py(부분 수정, A)
+    guardian/       D  check.py(점검), repair.py(해결안). LLM 미사용
+    data/           B  mock 데이터 원본 (places.json, 샘플 응답)
+    storage/        A  세션 저장 (DynamoDB 읽기·쓰기)
     config.py       환경 변수 설정
   scripts/          로컬 실행 (local_invoke, local_server)
   tests/            pytest
-  eval/             평가 질의와 결과
+  eval/             D  평가 질의와 결과
 docs/
   api-contract.md   공용 ⚠️  API 계약
-frontend/           프론트   React + Vite + MapLibre
+frontend/           C  React + Vite + MapLibre (features/local-card/, features/demo-panel/은 D)
 .kiro/steering/team.md  공용 ⚠️  팀 규칙 원본
 ```
 
-| 역할 | 맡는 곳 |
-|---|---|
-| 에이전트·도구 | `backend/app/agent.py`, `backend/app/prompts.py`, `backend/app/tools/` |
-| Guardian | `backend/app/guardian/` |
-| 데이터·저장 | `backend/app/data/`, `backend/app/storage/` |
-| 프론트 | `frontend/` |
-| 인프라·배포 | Lambda, S3 + CloudFront, DynamoDB 배포 구성 |
+역할 분담 원본은 노션 「역할 분담과 타임테이블」입니다.
+
+| 역할 | 담당 | 맡는 곳 |
+|---|---|---|
+| A. 에이전트 백엔드 | 노윤지 | `backend/app/agent.py`, `backend/app/tools/plan_edit.py`, `backend/app/storage/`, 뼈대·배포 구성 |
+| B. 데이터·도구 | 강서영 | `backend/app/data/`, `backend/app/tools/lookup.py` |
+| C. 프론트엔드 | 이지혜 | `frontend/` (D 폴더 제외) |
+| D. 아키텍처 설계 인프라 | 이온규 | `backend/app/guardian/`, `backend/app/prompts.py`, `backend/eval/`, `frontend/src/features/local-card/`, `frontend/src/features/demo-panel/`, 사진 인식 백엔드(`/photo`, 계약 변경 PR 후 위치 결정) |
 
 ## AI 에이전트(Kiro) 작업 규칙
 - 요청받은 폴더 밖의 파일을 수정하지 마십시오. 필요하면 수정안만 제시하십시오.

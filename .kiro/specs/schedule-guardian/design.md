@@ -104,6 +104,19 @@ propose_repairs(plan, issue, ctx) -> list[RepairOption]
 
 화면 문구 예: `changed=0`이고 시각만 바뀌면 "변경 0곳 · 시간만 조정"으로 표시합니다.
 
+## 지연 재조정 (요구사항 7)
+- 입력: 일정, 지연 시간(분), `context`. 기준 시각(`context.now`) 이후의 비고정 Stop만 대상으로 합니다.
+- 탐색: `propose_repairs`와 같은 단계 순서를 씁니다. 먼저 남은 비고정 Stop을 지연만큼 뒤로 미루고, 고정 일정과 겹치면 `MIN_DWELL_MIN`까지 체류 시간을 줄입니다. 그래도 안 되면 순서 변경 → 교체 → 제외로 넘어갑니다.
+- 출력: `RepairOption` 목록과 보전 지표. 입력 경로(API·채팅)는 계약 변경 PR에서 정하고, 함수 이름은 그때 확정합니다.
+
+## 예약 점검 (요구사항 8)
+```
+EventBridge Scheduler (예보 갱신 시각)
+  → 점검 Lambda: 저장된 일정 읽기 → build_context → check_plan (LLM 없음)
+  → 결과를 DynamoDB에 저장 → /alerts API가 읽어 배지로 표시
+```
+- `guardian/`은 점검 로직만 제공합니다. Lambda 진입점, 스케줄, DynamoDB 저장 형식은 배포 구성·세션 저장 담당과 정합니다.
+
 ## 오류 처리
 - `context`에 필요한 값이 없으면 그 규칙만 건너뜁니다. 점검 전체를 실패시키지 않습니다.
 - 날씨 예보가 없는 날짜(약 3일 이후)는 `rain` 규칙을 건너뜁니다.
