@@ -21,6 +21,11 @@ it("shows a local sample and preserves chat state without requesting the backend
   expect(screen.getByRole("heading", { name: "Sample itinerary" })).toBeVisible();
   const stop = screen.getAllByRole("listitem")[1];
   expect(stop).toHaveTextContent("Fixed");
+  const pin = screen.getByRole("button", { name: "2. Jagalchi Market" });
+  await user.click(pin);
+  expect(within(stop).getByRole("button")).toHaveAttribute("aria-pressed", "true");
+  await user.click(within(screen.getAllByRole("listitem")[0]).getByRole("button"));
+  expect(screen.getByRole("button", { name: "1. Gamcheon Culture Village" })).toHaveAttribute("aria-pressed", "true");
   await user.click(within(stop).getByRole("button"));
   await user.type(screen.getByRole("textbox"), "Add a market");
   await user.click(screen.getByRole("button", { name: "Collapse chat" }));

@@ -3,6 +3,7 @@ import { getTravelCopy, languages } from "../constants/travelCopy.js";
 import EmptyState from "./EmptyState.jsx";
 import samplePlan from "../mocks/sample_plan.json";
 import samplePlaces from "../mocks/places.json";
+import BusanMap from "./BusanMap.jsx";
 import PlanList from "./PlanList.jsx";
 import "./travel-preview.css";
 
@@ -26,7 +27,8 @@ export default function TravelPreview({ night = false } = {}) {
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(samplePlan.stops[0]?.stop_id ?? null);
+  const [mapFocus, setMapFocus] = useState(null);
   const dragStart = useRef(null);
   const root = useRef(null);
   const tabBar = useRef(null);
@@ -35,8 +37,8 @@ export default function TravelPreview({ night = false } = {}) {
   const composer = useRef(null);
   const languageMenu = useRef(null);
   const copy = getTravelCopy(language);
-  const plan = messages.length ? samplePlan : null;
-  const stops = plan?.stops ?? [];
+  const plan = samplePlan;
+  const stops = plan.stops;
   const selected = Math.max(0, stops.findIndex((stop) => stop.stop_id === selectedId));
   const tab = open ? panel : "home";
   const showChat = panel === "chat";
@@ -68,7 +70,9 @@ export default function TravelPreview({ night = false } = {}) {
   }
 
   function selectStop(index) {
-    setSelectedId(stops[index].stop_id);
+    const id = stops[index].stop_id;
+    setSelectedId(id);
+    setMapFocus({ id });
   }
 
   function submit(event) {
@@ -94,6 +98,8 @@ export default function TravelPreview({ night = false } = {}) {
   return (
     <main ref={root} className="travel-preview" data-night={night} data-sheet={open ? "open" : "closed"} data-expanded={expanded} lang={language}>
       <div className="travel-shell">
+        <BusanMap plan={plan} places={samplePlaces} language={language} label={copy.map}
+          selectedId={selectedId} onSelect={setSelectedId} focusRequest={mapFocus} />
         <header className="travel-header">
           <span className="travel-brand">Busan<span>Now</span></span>
           <button type="button" className="travel-language-trigger" popoverTarget="travel-language-menu"
@@ -118,9 +124,8 @@ export default function TravelPreview({ night = false } = {}) {
             ))}
           </div>
         </header>
-        {open && <button type="button" className="chat-backdrop" aria-label={closeLabel} tabIndex={-1} onClick={close} />}
       </div>
-      <aside id="travel-chat" className="travel-chat" hidden={!open} inert={!open} aria-labelledby="travel-panel-title"
+      <aside id="travel-chat" className="travel-chat" hidden={!open} inert={!open} aria-hidden={!open} aria-labelledby="travel-panel-title"
         onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
         <div className="chat-grab" aria-hidden="true"
           onPointerDown={(event) => {
@@ -154,8 +159,8 @@ export default function TravelPreview({ night = false } = {}) {
               <p key={index} className="chat-bubble" data-role={message.role} lang={message.lang}>{message.text}</p>
             ))}
           </div>
-          {!plan && !showChat && <EmptyState message={copy.empty} />}
-          {plan && (
+
+          {(!showChat || messages.length > 0) && (
             <section className="travel-panel" aria-label={copy.itinerary}>
               <h2>{copy.sampleTitle}</h2>
               {plan.date && <time dateTime={plan.date}>{formatDate(plan.date, language)}</time>}
