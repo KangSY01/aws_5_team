@@ -24,7 +24,7 @@ Strands Agents로 작성하고 `POST /chat`을 처리하는 Lambda(`app.handler.
 - **FAKE_LLM**: `1`이면 Bedrock을 호출하지 않고 고정 응답을 돌려주는 환경 변수.
 - **USE_MOCK**: `1`이면 외부 API 대신 `backend/app/data/`의 샘플·캐시를 쓰는 환경 변수.
 - **DEMO_NOW**: 값이 있으면 현재 시각 대신 쓰는 ISO 시각 환경 변수.
-- **BEDROCK_REGION**: Bedrock 호출 리전을 정하는 환경 변수 (`ap-northeast-2`).
+- **AWS_REGION**: Bedrock 호출 리전을 정하는 환경 변수(`config.BEDROCK_REGION`으로 읽음) (`ap-northeast-2`).
 - **오류 형식**: `docs/api-contract.md`의 `{"error": {"code", "message"}}`.
 
 ## Requirements
@@ -97,7 +97,7 @@ Strands Agents로 작성하고 `POST /chat`을 처리하는 Lambda(`app.handler.
 4. IF 처리 중 오류가 나면 THEN 시스템은 `docs/api-contract.md`의 오류 형식(`{"error": {"code", "message"}}`)으로 답해야 합니다.
 5. WHEN 도구 호출 반복이 5회에 도달하면 THEN 시스템은 추가 도구 호출 없이 이미 확보한 결과만으로 `ChatResponse`를 만들어야 합니다.
 6. 시스템은 Bedrock 호출과 외부 API 호출마다 타임아웃 5초와 재시도 1회를 적용해야 합니다.
-7. IF `BEDROCK_REGION`이 `ap-northeast-2`가 아니면 THEN 시스템은 한국어 오류 로그를 남기고 예외를 발생시켜야 합니다.
+7. IF `AWS_REGION`이 `ap-northeast-2`가 아니면 THEN 시스템은 한국어 오류 로그를 남기고 예외를 발생시켜야 합니다.
 8. IF 모델 출력이 `ChatResponse` 검증을 통과하지 못하면 THEN 시스템은 그 출력을 반환하지 않고 오류 형식으로 답해야 하며, 그 요청으로 일정을 바꾸지 않아야 합니다.
 
 ### Requirement 7: 개발 모드
@@ -107,7 +107,7 @@ Strands Agents로 작성하고 `POST /chat`을 처리하는 Lambda(`app.handler.
 1. WHERE `FAKE_LLM=1`이면 시스템은 Bedrock을 호출하지 않고 `ChatResponse` 형식의 고정 응답을 돌려줘야 합니다.
 2. WHERE `USE_MOCK=1`이면 도구는 외부 API 대신 `backend/app/data/`의 샘플·캐시를 써야 합니다.
 3. IF Bedrock 호출이 제한(throttling)되면 THEN 시스템은 재시도 후에도 실패할 때 오류 형식으로 답해야 합니다.
-4. WHERE `FAKE_LLM=1`이고 `USE_MOCK=1`이면 기본 pytest 실행(`bedrock` 마커 제외)의 전체 테스트가 AWS 자격 증명, `DATA_GO_KR_KEY`, 네트워크 없이 통과해야 합니다.
+4. WHERE `FAKE_LLM=1`이고 `USE_MOCK=1`이면 기본 pytest 실행(`bedrock` 마커 제외)의 전체 테스트가 AWS 자격 증명, `DATA_GO_KR_KEY_DECODING`, 네트워크 없이 통과해야 합니다.
 
 ### Requirement 8: 평가
 

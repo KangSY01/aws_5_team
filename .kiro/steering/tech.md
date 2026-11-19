@@ -27,7 +27,7 @@ fileMatchPattern: ["backend/**", "frontend/package.json"]
 - FastAPI, Django, Firebase, LangChain은 쓰지 않습니다. 응답 스트리밍도 쓰지 않습니다.
 
 ## Bedrock
-- 모델 ID는 `config.MODEL_ID`, 리전은 `config.BEDROCK_REGION`(기본 `ap-northeast-2`)으로 읽습니다. 코드에 직접 쓰지 마십시오.
+- 모델 ID는 `config.MODEL_ID`(환경 변수 `BEDROCK_MODEL_ID`), 리전은 `config.BEDROCK_REGION`(환경 변수 `AWS_REGION`, 기본 `ap-northeast-2`)으로 읽습니다. 코드에 직접 쓰지 마십시오.
 - `global.` 접두사는 교차 리전 추론 프로필입니다. 대회 계정에서 실제로 호출되는 ID를 확인해 `.env`에 둡니다.
 - IAM 권한은 `bedrock:InvokeModel`, `bedrock:InvokeModelWithResponseStream`입니다. Converse API도 이 권한을 씁니다.
 - 모델 객체는 모듈 로드 때 1회 만들고, Agent는 요청마다 만듭니다. `max_tokens`를 설정하고 도구 반복은 5회까지입니다.
@@ -37,7 +37,7 @@ fileMatchPattern: ["backend/**", "frontend/package.json"]
 - 설정은 `backend/app/config.py`의 모듈 상수로 읽습니다. `os.environ`을 다른 파일에서 직접 읽지 마십시오.
 - 새 환경 변수가 필요하면 `config.py`와 `backend/.env.example`에 함께 추가하고, 필수 키면 `missing_keys()`에도 넣습니다.
 - 키 값은 `backend/.env`와 Lambda 환경 변수에만 둡니다. 코드·테스트·로그·커밋에 넣지 마십시오.
-- 공공데이터포털 키는 `DATA_GO_KR_KEY`에 Decoding 키 값을 넣고, HTTP 라이브러리의 쿼리 파라미터로 넘깁니다. 인코딩은 라이브러리에 맡깁니다.
+- 공공데이터포털 키는 `DATA_GO_KR_KEY_DECODING`에 Decoding 키 값을 넣고(Encoding 키는 선택 항목 `DATA_GO_KR_KEY_ENCODING`), HTTP 라이브러리의 쿼리 파라미터로 넘깁니다. 인코딩은 라이브러리에 맡깁니다.
 
 ## 개발 모드 스위치
 | 변수 | 뜻 |

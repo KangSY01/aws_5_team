@@ -15,8 +15,8 @@ inclusion: always
 - 배포: AWS Lambda (Function URL → 이후 API Gateway), S3 + CloudFront, DynamoDB
 
 ## AWS 규칙
-- 리소스와 Bedrock 호출 엔드포인트는 ap-northeast-2. 모델은 global. 교차 리전 프로필을 쓰며 처리는 다른 리전에서 될 수 있다. 대회 계정에서 실제 ID를 확인한다. BEDROCK_REGION 기본값 ap-northeast-2.
-- Bedrock 모델 ID는 환경 변수 MODEL_ID. 기본값 global.anthropic.claude-haiku-5-5
+- 리소스와 Bedrock 호출 엔드포인트는 ap-northeast-2. 모델은 global. 교차 리전 프로필을 쓰며 처리는 다른 리전에서 될 수 있다. 대회 계정에서 실제 ID를 확인한다. AWS_REGION 기본값 ap-northeast-2.
+- Bedrock 모델 ID는 환경 변수 BEDROCK_MODEL_ID. 기본값 global.anthropic.claude-haiku-5-5
 - 키는 .env와 Lambda 환경 변수로만 다룬다. 코드·테스트·커밋에 키 값을 넣지 않는다.
 
 ## 역할 분리 (가장 중요)

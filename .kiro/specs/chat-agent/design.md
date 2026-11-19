@@ -206,7 +206,7 @@ CURRENT_PLAN: {plan_json}
 | 같은 도구 결과를 여러 번 사용 | `sources`에 `tool`·`id` 조합이 처음 순서로 한 번만 있고 모두 도구 결과에 존재 |
 | 유효하지 않은 `place_id`가 섞인 일정 생성 | 그 장소 제외, 경고 로그, 나머지로 생성 |
 | 유효한 장소 0개 | 일정 미생성, `plan_changes` 빈 목록, 안내 문구 |
-| `BEDROCK_REGION`이 `ap-northeast-2`가 아님 | 한국어 오류 로그, 예외 |
+| `AWS_REGION`이 `ap-northeast-2`가 아님 | 한국어 오류 로그, 예외 |
 
 ### property-based test
 `hypothesis`로 아래 2종을 작성하고 각각 100회 이상 실행합니다. `hypothesis`는 `backend/pyproject.toml`의 dev 의존성에 추가해야 합니다(공용 파일이 아니므로 이 작업에서 직접 수정). 각 테스트에는 `Feature: chat-agent, Property N: ...` 형식의 주석을 붙입니다.
@@ -218,7 +218,7 @@ CURRENT_PLAN: {plan_json}
 
 Property 2, 4, 5, 6은 같은 방식으로 추가할 수 있으며, 위 2종이 필수 범위입니다.
 
-`bedrock` 마커 테스트는 기본 pytest 실행에서 제외하고, 기본 실행은 `FAKE_LLM=1`, `USE_MOCK=1`로 AWS 자격 증명, `DATA_GO_KR_KEY`, 네트워크 없이 통과해야 합니다. 기존 베이스라인 테스트 11개도 계속 통과해야 합니다.
+`bedrock` 마커 테스트는 기본 pytest 실행에서 제외하고, 기본 실행은 `FAKE_LLM=1`, `USE_MOCK=1`로 AWS 자격 증명, `DATA_GO_KR_KEY_DECODING`, 네트워크 없이 통과해야 합니다. 기존 베이스라인 테스트 11개도 계속 통과해야 합니다.
 
 ### 평가 (eval)
 - `backend/eval/queries.json`: 평가 질의 (언어, 질의, 기대 장소·도구, 통과 기준)

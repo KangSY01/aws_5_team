@@ -9,7 +9,7 @@
 - [ ] 1. 모델과 고정 응답 경로
   - `agent.py`의 `build_model()` 구현 (`config.MODEL_ID`, `config.BEDROCK_REGION`, `max_tokens`, 스트리밍 끔)
   - `FAKE_LLM=1`이면 `run_chat`이 고정 `ChatResponse`를 돌려주도록 구현
-  - `BEDROCK_REGION`이 `ap-northeast-2`가 아니면 한국어 오류 로그를 남기고 예외 발생
+  - `AWS_REGION`이 `ap-northeast-2`가 아니면 한국어 오류 로그를 남기고 예외 발생
   - Bedrock 호출에 타임아웃 5초, 재시도 1회 적용
   - `FAKE_LLM=1`, `USE_MOCK=1`에서 AWS 자격 증명 없이 테스트 통과 확인
   - 테스트: `uv run pytest -q`
@@ -69,7 +69,7 @@
   - `bedrock` 마커 등록, 기본 pytest 실행에서 제외
   - `design.md` 테스트 표의 케이스를 `backend/tests/`에 구현 (Bedrock 케이스는 `bedrock` 마커)
   - property-based test 2종, 각 100회 이상: Locked Stop 불변, 일정 생성 정합성(시간 겹침 없음, 모든 `place_id`가 `places.json`에 존재)
-  - 기본 실행이 AWS 자격 증명, `DATA_GO_KR_KEY`, 네트워크 없이 통과하고 기존 베이스라인 테스트 11개도 통과하는지 확인
+  - 기본 실행이 AWS 자격 증명, `DATA_GO_KR_KEY_DECODING`, 네트워크 없이 통과하고 기존 베이스라인 테스트 11개도 통과하는지 확인
   - _요구사항: 10.4, 10.5, 10.6, 10.7_
 
 ## Notes

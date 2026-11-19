@@ -13,11 +13,18 @@ FAKE_LLM = _flag("FAKE_LLM")  # Bedrock 호출 없이 고정 응답
 DEMO_NOW = os.environ.get("DEMO_NOW") or None  # ISO 시각 문자열. 있으면 현재 시각 대신 사용
 
 # Bedrock
-MODEL_ID = os.environ.get("MODEL_ID", "global.anthropic.claude-haiku-5-5")
-BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "ap-northeast-2")
+MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-5-5")
+BEDROCK_REGION = os.environ.get("AWS_REGION", "ap-northeast-2")
+BEDROCK_EMBED_MODEL_ID = os.environ.get("BEDROCK_EMBED_MODEL_ID", "")  # 선택
 
 # 공공데이터포털 키 (USE_MOCK=1이면 필요 없음)
-DATA_GO_KR_KEY = os.environ.get("DATA_GO_KR_KEY", "")
+DATA_GO_KR_KEY = os.environ.get("DATA_GO_KR_KEY_DECODING", "")  # Decoding 키 (requests가 URL 인코딩을 한다)
+DATA_GO_KR_KEY_ENCODING = os.environ.get("DATA_GO_KR_KEY_ENCODING", "")  # 선택
+
+# 선택 항목 (없어도 missing_keys()에 걸리지 않는다)
+KMA_API_KEY = os.environ.get("KMA_API_KEY", "")
+KAKAO_JS_KEY = os.environ.get("KAKAO_JS_KEY", "")
+KAKAO_REST_API_KEY = os.environ.get("KAKAO_REST_API_KEY", "")
 
 
 def missing_keys() -> list[str]:
@@ -25,5 +32,5 @@ def missing_keys() -> list[str]:
 
     AWS 자격 증명은 boto3 기본 체인(프로필·Lambda 역할)에 맡기므로 여기서 보지 않는다.
     """
-    required = [] if USE_MOCK else ["DATA_GO_KR_KEY"]
+    required = [] if USE_MOCK else ["DATA_GO_KR_KEY_DECODING"]
     return [name for name in required if not os.environ.get(name)]
