@@ -53,8 +53,8 @@ class Issue(BaseModel):
 
 
 class PreservationMetrics(BaseModel):
-    changed: int  # 바뀐 곳 수
-    kept: int  # 유지한 곳 수
+    changed: int  # 바뀐 곳 수: 장소가 교체·제거된 Stop 수 (시각·순서만 바뀐 곳은 세지 않음)
+    kept: int  # 유지한 곳 수: 원래 장소 중 새 일정에 남은 수
     extra_travel_min: int  # 늘어난 이동 시간(분)
     locked_kept: bool  # 고정 일정 유지 여부
 
