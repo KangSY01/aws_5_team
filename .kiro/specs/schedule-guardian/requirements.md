@@ -1,0 +1,59 @@
+# 요구사항: Schedule Guardian
+
+## 개요
+Schedule Guardian은 일정에서 혼잡·비·휴무·빠듯한 이동 문제를 규칙으로 먼저 찾아 알리는 기능입니다.
+문제마다 변경이 작은 해결안부터 제시하고, 각 해결안이 일정을 얼마나 유지하는지 보전 지표로 보여 줍니다.
+점검과 해결안 탐색에는 LLM을 쓰지 않습니다(`backend/app/guardian/`, 순수 파이썬).
+형식은 `docs/api-contract.md`의 `POST /plan/check`와 `backend/app/models/plan.py`의 `Issue`, `RepairOption`, `PreservationMetrics`를 따릅니다.
+
+## 용어
+- Stop: 일정의 장소 1곳
+- 고정 일정: `locked: true`인 Stop. 시간·장소를 바꾸면 안 됩니다
+- 보전 지표: 해결안 적용 후 바뀐 곳 수(`changed`), 유지한 곳 수(`kept`), 늘어난 이동 시간(`extra_travel_min`), 고정 일정 유지 여부(`locked_kept`)
+
+## 요구사항 1: 점검 시점
+**사용자 스토리**: 여행자로서, 내가 묻지 않아도 일정의 문제를 미리 알고 싶습니다.
+
+1. WHEN 프론트엔드가 `POST /plan/check`를 호출하면 THEN 시스템은 해당 일정을 점검해 `CheckResponse`를 돌려줘야 합니다.
+2. 시스템은 `checked_at`에 점검 기준 시각을 넣어야 합니다. `DEMO_NOW`가 있으면 그 값을 써야 합니다.
+
+## 요구사항 2: 문제 유형
+**사용자 스토리**: 여행자로서, 붐빔·비·휴무·빠듯한 이동을 구분해서 알고 싶습니다.
+
+1. WHEN Stop의 방문일 혼잡 정도가 기준 이상이면 THEN 시스템은 `type: crowded` Issue를 만들어야 합니다.
+2. IF 장소가 집중률 데이터에 없으면 THEN 시스템은 요일 규칙(평일 낮음, 토 가장 높음, 일 높음)으로 판단해야 합니다.
+3. WHEN 방문일에 대형 행사가 있고 Stop이 행사 장소 근처면 THEN 시스템은 행사 가중 규칙으로 심각도를 한 단계 올려야 합니다.
+4. 시스템은 집중률을 장소끼리 비교하지 않아야 하고, 일 단위 값인 집중률로 시간대별 혼잡을 판단하지 않아야 합니다.
+5. WHEN 실외(`Place.indoor: false`) Stop의 체류 시간대에 비 예보가 있으면 THEN 시스템은 `type: rain` Issue를 만들어야 합니다.
+6. WHEN 방문일이 휴무일이거나 체류 시간대가 운영시간 밖이면 THEN 시스템은 `type: closed` Issue를 `severity: high`로 만들어야 합니다.
+7. WHEN 이전 Stop의 `end` + 이동 시간 + 여유 10분이 다음 Stop의 `start`보다 늦으면 THEN 시스템은 `type: tight_transfer` Issue를 만들어야 합니다.
+8. 시스템은 같은 일정의 같은 문제에 대해 항상 같은 `issue_id`를 만들어야 합니다.
+9. 시스템은 `Issue.detail`에 개발자용 한국어 설명(근거 규칙과 수치)을 넣어야 합니다.
+10. IF 문제가 없으면 THEN 시스템은 `issues: []`, `repairs: {}`를 돌려줘야 합니다.
+
+## 요구사항 3: 고정 일정
+1. 시스템은 고정 일정의 문제도 `issues`에 넣되, 심각도를 `low`로 제한해야 합니다.
+2. 시스템은 고정 일정의 Issue에 대해 해결안을 만들지 않아야 합니다(`repairs`에 빈 목록).
+
+## 요구사항 4: 해결안 탐색
+**사용자 스토리**: 여행자로서, 문제가 생겨도 내가 고른 일정을 최대한 유지하고 싶습니다.
+
+1. 시스템은 Issue마다 해결안을 `move_time` → `reorder` → `replace` → `remove` 순서로 찾아야 합니다.
+2. 시스템은 어떤 해결안에서도 고정 일정의 `place_id`, `start`, `end`를 바꾸지 않아야 합니다.
+3. IF Issue 유형이 `crowded`이면 THEN 시스템은 행사 시간대처럼 시간대 근거가 있을 때만 `move_time` 해결안을 만들어야 합니다.
+4. 시스템은 `replace` 후보를 같은 `category`이거나 비 문제일 때 실내 장소로 제한하고, 이동 시간 증가를 30분 이하로 제한해야 합니다.
+5. 시스템은 해결안 적용 후 일정을 다시 점검해 같은 유형의 `high` Issue가 남는 해결안을 빼야 합니다.
+6. 시스템은 Issue마다 해결안을 최대 3개 돌려줘야 합니다. 정렬 기준은 `changed` → `extra_travel_min` → 단계 순서입니다.
+7. 시스템은 각 해결안의 `metrics`에 보전 지표를 채워야 합니다.
+8. 시스템은 해결안에 새로 등장하는 장소의 `Place`를 `CheckResponse.places`에 넣어야 합니다.
+9. `remove`는 다른 단계 해결안이 없을 때만 돌려줘야 합니다.
+
+## 요구사항 5: 적용
+1. 해결안 적용은 프론트엔드가 `changes`를 일정에 반영해 `PUT /plan/{plan_id}`로 저장하는 방식입니다. Guardian은 일정을 직접 저장하지 않아야 합니다.
+2. 대화 에이전트가 문제를 고칠 때는 `propose_repairs`의 첫 번째 해결안을 써야 합니다.
+
+## 요구사항 6: 성능과 개발 모드
+1. 시스템은 `check_plan`을 Stop 5곳 기준 300ms 이내에 끝내야 합니다(외부 데이터는 미리 조회해 `context`로 전달).
+2. 시스템은 Issue 하나의 `propose_repairs`를 Stop 5곳 기준 1초 이내에 끝내야 합니다.
+3. WHERE `USE_MOCK=1`이면 시스템은 `backend/app/data/`의 샘플 날씨·혼잡·영업 정보로 점검해야 합니다.
+4. IF 점검에 필요한 외부 데이터 하나를 못 받으면 THEN 시스템은 그 규칙만 건너뛰고 나머지 점검은 계속해야 합니다.
