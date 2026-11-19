@@ -1,0 +1,29 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. React + Vite(JavaScript) 프로젝트 뼈대 만들기": [
+      {
+        "executionId": "a6c8a79d-ac07-4399-b635-d8a0f463ae2e",
+        "chatSessionId": "sess_f6a7d3b7-2202-4617-88f3-c9e91ba24f63",
+        "timestamp": 1795070830236
+      },
+      {
+        "executionId": "a6c8a79d-ac07-4399-b635-d8a0f463ae2e",
+        "chatSessionId": "sess_f6a7d3b7-2202-4617-88f3-c9e91ba24f63",
+        "timestamp": 1795071212295
+      }
+    ],
+    "2.2 `formatTime` 구현": [
+      {
+        "executionId": "4dcf46c3-4fde-4f5e-97f3-63889e97a39c",
+        "chatSessionId": "sess_4512f8c9-7795-47d0-8cdf-16e6b3d1f46b",
+        "timestamp": 1795072017986
+      },
+      {
+        "executionId": "4dcf46c3-4fde-4f5e-97f3-63889e97a39c",
+        "chatSessionId": "sess_4512f8c9-7795-47d0-8cdf-16e6b3d1f46b",
+        "timestamp": 1795072189177
+      }
+    ]
+  }
+}
