@@ -15,7 +15,7 @@ inclusion: always
 - 배포: AWS Lambda (Function URL → 이후 API Gateway), S3 + CloudFront, DynamoDB
 
 ## AWS 규칙
-- 리전은 ap-northeast-2만 사용한다.
+- 리소스와 Bedrock 호출 엔드포인트는 ap-northeast-2. 모델은 global. 교차 리전 프로필을 쓰며 처리는 다른 리전에서 될 수 있다. 대회 계정에서 실제 ID를 확인한다. BEDROCK_REGION 기본값 ap-northeast-2.
 - Bedrock 모델 ID는 환경 변수 MODEL_ID. 기본값 global.anthropic.claude-haiku-5-5
 - 키는 .env와 Lambda 환경 변수로만 다룬다. 코드·테스트·커밋에 키 값을 넣지 않는다.
 
@@ -24,6 +24,12 @@ inclusion: always
 - 코드: 방문 순서, 시간 계산, 수치, 장소 ID 검증, 일정 점검(Guardian)
 - 장소명·수치·시간·영업 정보는 도구 결과에 있는 값만 쓴다. 없으면 모른다고 답한다.
 - 일정 수정은 전체 재생성 대신 부분 수정 도구(replace/add/remove/move_stop)로 한다.
+- 부분 수정 도구와 RepairAction 대응:
+  - replace_stop → replace
+  - remove_stop → remove
+  - move_stop(시간 변경) → move_time
+  - move_stop(순서 변경) → reorder
+  - add_stop은 사용자 요청 전용
 - locked=true인 일정은 어떤 경우에도 수정하지 않는다.
 
 ## Schedule Guardian
@@ -47,13 +53,15 @@ inclusion: always
 - 에이전트는 Strands만 쓴다. LangChain 등 다른 에이전트 프레임워크를 섞지 않는다.
 - 도구 함수는 app/tools/ 아래. docstring에 언제 쓰는지, 입력, 출력을 자세히 쓴다.
 - 도구 반복 상한 5회, max_tokens 설정, 외부 API 타임아웃 5초 재시도 1회.
-- Lambda: 모델 객체는 핸들러 밖에서 1회 생성, Agent는 요청마다 생성. 스트리밍은 쓰지 않는다.
+- Lambda: 모델 객체는 핸들러 밖에서 1회 생성, Agent는 요청마다 생성. API 응답은 스트리밍하지 않는다(SDK 내부 호출은 예외).
+- FastAPI, Django, Firebase를 쓰지 않는다.
 - 응답 형식은 docs/api-contract.md를 따른다.
 - 주석과 로그는 한국어.
 
 ## 공용 파일과 mock 데이터
 - 공용 파일은 뼈대 담당자 리뷰를 거친 PR로만 수정한다:
   backend/app/models/, docs/api-contract.md, backend/app/handler.py, .kiro/steering/team.md
+- backend/app/data/는 공용 파일이 아니다. 단 places.json의 필드 구조는 models/plan.py를 따른다.
 - mock 데이터 원본은 backend/app/data/ 이다. 프론트엔드 mock은 그 복사본이다.
 
 ## 작업 방식

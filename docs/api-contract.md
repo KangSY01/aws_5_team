@@ -189,7 +189,7 @@ Schedule Guardian 으로 일정을 점검한다. LLM 을 호출하지 않는다.
       "type": "crowded",
       "stop_id": "s1",
       "severity": "medium",
-      "detail": "토요일 10:00-12:00 혼잡 예상 (요일 규칙)"
+      "detail": "토요일 혼잡 예상(요일 규칙)"
     },
     {
       "issue_id": "i2",

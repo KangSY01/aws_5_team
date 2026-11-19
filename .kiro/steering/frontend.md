@@ -1,6 +1,6 @@
 ---
 inclusion: fileMatch
-fileMatchPattern: "frontend/**"
+fileMatchPattern: ["frontend/**"]
 ---
 
 # 프론트엔드 규칙
