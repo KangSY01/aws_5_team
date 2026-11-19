@@ -1,5 +1,8 @@
 .travel-preview {
-  --mobile-nav-height: 50px;
+  --mobile-nav-height: 48px;
+  --capsule-surface: rgba(255, 255, 255, 0.78);
+  --capsule-border: rgba(23, 23, 23, 0.10);
+  --capsule-shadow: rgba(23, 23, 23, 0.10);
   --nav-bottom: calc(12px + env(safe-area-inset-bottom));
   position: relative;
   display: grid;
@@ -10,6 +13,9 @@
 }
 .travel-preview[data-night="true"] {
   color-scheme: dark;
+  --capsule-surface: rgba(23, 23, 23, 0.78);
+  --capsule-border: rgba(255, 255, 255, 0.16);
+  --capsule-shadow: rgba(0, 0, 0, 0.22);
   --color-bg: #171717;
   --color-surface: #222223;
   --color-text: #F5F5F6;
@@ -141,44 +147,43 @@
 .travel-chat :is(.chat-compose, .chat-messages)[hidden] { display: none; }
 @media (max-width: 899px) {
   .travel-tabs {
-    width: min(calc(100% - 40px), 220px);
     max-width: none;
     height: var(--mobile-nav-height);
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-items: center;
     gap: 0;
-    padding: 2px 0;
-    box-shadow: 0 3px 12px var(--color-shadow);
+    padding: 1px 0;
   }
   .travel-tabs button {
     width: 100%;
     border-radius: 999px;
     isolation: isolate;
   }
-  .travel-tabs svg { width: 22px; height: 22px; }
+  .travel-tabs svg { width: 20px; height: 20px; stroke-width: 1.75px; }
+  .travel-tabs svg :is(path, circle, ellipse) { vector-effect: non-scaling-stroke; }
   .travel-tabs [aria-current="page"] { background: transparent; }
   .travel-tab-indicator {
     position: absolute;
     inset: 0 auto 0 0;
     display: grid;
     place-items: center;
-    width: calc(100% / 3);
+    width: 25%;
     transform: translateX(var(--tab-slide, 0%));
     transition: transform 240ms cubic-bezier(.2, .75, .25, 1);
     pointer-events: none;
   }
   .travel-tab-indicator::before {
     content: "";
-    width: 56px;
-    height: 36px;
+    width: 44px;
+    height: 34px;
     border-radius: 999px;
     background: var(--color-selected);
   }
   .travel-tabs[data-active-tab="itinerary"] { --tab-slide: 100%; }
   .travel-tabs[data-active-tab="chat"] { --tab-slide: 200%; }
   .travel-preview {
-    --capsule-width: min(calc(100% - 40px), 220px);
+    --capsule-width: min(calc(100% - 40px), 212px);
     --sheet-left: max(12px, env(safe-area-inset-left));
     --sheet-right: max(12px, env(safe-area-inset-right));
     --chat-height: min(calc(var(--visible-height, 100dvh) * .58),
@@ -203,15 +208,18 @@
     right: calc((100% - var(--capsule-width)) / 2);
     bottom: var(--nav-bottom);
     height: var(--mobile-nav-height);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--capsule-border);
     border-radius: 25px;
-    background: var(--color-bg);
-    box-shadow: 0 3px 12px var(--color-shadow);
+    background: var(--capsule-surface);
+    box-shadow: 0 2px 10px var(--capsule-shadow);
+    backdrop-filter: blur(8px);
     pointer-events: none;
     transition: height 225ms var(--panel-ease) 55ms,
       left 225ms var(--panel-ease) 55ms, right 225ms var(--panel-ease) 55ms;
   }
   .travel-preview[data-sheet="open"]::after {
+    background: var(--color-bg);
+    backdrop-filter: none;
     left: var(--sheet-left);
     right: var(--sheet-right);
     height: calc(var(--chat-height) + var(--mobile-nav-height));
@@ -390,3 +398,15 @@
   color: #fff;
 }
 .busan-map-pin:focus-visible { outline: 2px solid #171717; }
+@media (min-width: 900px) {
+  .travel-tabs .travel-language-mobile { display: none; }
+}
+@media (max-width: 899px) {
+  .travel-header .travel-language-trigger { display: none; }
+  .travel-tabs .travel-language-mobile { display: grid; }
+  .travel-language-menu {
+    inset: auto calc((100% - var(--capsule-width)) / 2 + 1px)
+      calc(var(--nav-bottom) + var(--mobile-nav-height) + 8px) auto;
+    max-height: calc(100dvh - var(--nav-bottom) - var(--mobile-nav-height) - 16px);
+  }
+}

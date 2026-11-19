@@ -12,6 +12,19 @@ const tabIcons = {
   itinerary: "M7 3v4m10-4v4M4 9h16M5 5h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm3 8h3m2 0h3m-8 4h3",
   chat: "M20 11.5a8 8 0 0 1-8 8 9 9 0 0 1-3.4-.7L4 20l1.2-4A8 8 0 1 1 20 11.5zM8.5 11.5h7",
 };
+function LanguageTrigger({ className, label }) {
+  return (
+    <button type="button" className={className} popoverTarget="travel-language-menu" aria-label={label}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65"
+        strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <ellipse cx="12" cy="12" rx="4" ry="9" />
+        <path d="M3 12h18" />
+      </svg>
+    </button>
+  );
+}
+
 function formatDate(date, language) {
   if (!date) return null;
   const day = new Date(date + "T00:00:00Z");
@@ -37,6 +50,7 @@ export default function TravelPreview({ night = false } = {}) {
   const composer = useRef(null);
   const languageMenu = useRef(null);
   const copy = getTravelCopy(language);
+  const languageLabel = copy.languageLabel + ": " + languages[language];
   const plan = samplePlan;
   const stops = plan.stops;
   const selected = Math.max(0, stops.findIndex((stop) => stop.stop_id === selectedId));
@@ -102,14 +116,7 @@ export default function TravelPreview({ night = false } = {}) {
           selectedId={selectedId} onSelect={setSelectedId} focusRequest={mapFocus} />
         <header className="travel-header">
           <span className="travel-brand">Busan<span>Now</span></span>
-          <button type="button" className="travel-language-trigger" popoverTarget="travel-language-menu"
-            aria-label={copy.languageLabel + ": " + languages[language]}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" aria-hidden="true">
-              <circle cx="12" cy="12" r="9" />
-              <ellipse cx="12" cy="12" rx="4" ry="9" />
-              <path d="M3 12h18" />
-            </svg>
-          </button>
+          <LanguageTrigger className="travel-language-trigger" label={languageLabel} />
           <div id="travel-language-menu" className="travel-language-menu" ref={languageMenu}
             popover="auto" role="group" aria-label={copy.languageLabel}>
             {Object.entries(languages).map(([code, name]) => (
@@ -205,6 +212,7 @@ export default function TravelPreview({ night = false } = {}) {
             </svg>
           </button>
         ))}
+        <LanguageTrigger className="travel-language-mobile" label={languageLabel} />
       </nav>
     </main>
   );
