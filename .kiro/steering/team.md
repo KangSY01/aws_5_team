@@ -53,7 +53,7 @@ inclusion: always
 
 ## 공용 파일과 mock 데이터
 - 공용 파일은 뼈대 담당자 리뷰를 거친 PR로만 수정한다:
-  backend/app/models/plan.py, docs/api-contract.md, backend/app/handler.py, .kiro/steering/team.md
+  backend/app/models/, docs/api-contract.md, backend/app/handler.py, .kiro/steering/team.md
 - mock 데이터 원본은 backend/app/data/ 이다. 프론트엔드 mock은 그 복사본이다.
 
 ## 작업 방식
