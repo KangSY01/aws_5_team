@@ -19,9 +19,8 @@ function formatDate(date, language) {
   }).format(day);
 }
 
-export default function TravelPreview() {
+export default function TravelPreview({ night = false } = {}) {
   const [language, setLanguage] = useState("en");
-  const [night, setNight] = useState(false);
   const [sheet, setSheet] = useState("closed");
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState([]);
@@ -32,6 +31,7 @@ export default function TravelPreview() {
   const chatHeading = useRef(null);
   const log = useRef(null);
   const composer = useRef(null);
+  const languageMenu = useRef(null);
   const copy = getTravelCopy(language);
   const plan = messages.length ? samplePlan : null;
   const stops = plan?.stops ?? [];
@@ -91,11 +91,26 @@ export default function TravelPreview() {
       <div className="travel-shell">
         <header className="travel-header">
           <span className="travel-brand">Busan<span>Now</span></span>
-          <div className="travel-controls">
-            <select value={language} aria-label={copy.languageLabel} onChange={(event) => setLanguage(event.target.value)}>
-              {Object.entries(languages).map(([code, name]) => <option key={code} value={code} lang={code}>{name}</option>)}
-            </select>
-            <button type="button" aria-label={copy.night} aria-pressed={night} onClick={() => setNight(!night)}>{night ? "☀" : "☾"}</button>
+          <button type="button" className="travel-language-trigger" popoverTarget="travel-language-menu"
+            aria-label={copy.languageLabel + ": " + languages[language]}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <ellipse cx="12" cy="12" rx="4" ry="9" />
+              <path d="M3 12h18" />
+            </svg>
+          </button>
+          <div id="travel-language-menu" className="travel-language-menu" ref={languageMenu}
+            popover="auto" role="group" aria-label={copy.languageLabel}>
+            {Object.entries(languages).map(([code, name]) => (
+              <button key={code} type="button" lang={code} aria-pressed={language === code}
+                onClick={() => {
+                  setLanguage(code);
+                  languageMenu.current.hidePopover();
+                }}>
+                {name}
+                {language === code && <span aria-hidden="true">✓</span>}
+              </button>
+            ))}
           </div>
         </header>
         {open && <button type="button" className="chat-backdrop" aria-label={copy.close} tabIndex={-1} onClick={close} />}

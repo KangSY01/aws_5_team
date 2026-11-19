@@ -1,6 +1,7 @@
-export const languages = { en: "English", ja: "日本語", "zh-Hans": "简体中文", "zh-Hant": "繁體中文" };
+export const languages = { ko: "한국어", en: "English", ja: "日本語", "zh-Hans": "简体中文", "zh-Hant": "繁體中文" };
 
 const copy = {
+  ko: ["나만의 부산 여행", "부산에서 무엇을 하고 싶으세요?", "해운대 근처에서 바다를 보며 반나절 보내고 싶어요.", "코스 추천받기", "부산 여행 일정", "여행 조건 수정", "일정", "지도", "개략도", "고정", "언어", "야간 테마", "코스를 찾는 중…", "아직 일정이 없습니다.", "서버에 연결할 수 없습니다.", "응답 시간이 초과됐습니다.", "일정을 불러올 수 없습니다.", "서버 응답 형식이 올바르지 않습니다.", "다시 시도"],
   en: ["Explore Busan your way", "What would you like to do in Busan?", "I’d like to spend half a day by the sea near Haeundae.", "Get a route", "Your Busan itinerary", "Edit preferences", "Itinerary", "Map", "Schematic map", "Fixed", "Language", "Night theme", "Finding your route…", "There are no stops in this itinerary.", "Couldn’t connect to the server.", "The request timed out.", "Couldn’t load the itinerary.", "Unexpected server response.", "Try again"],
   ja: ["釜山を、あなたらしく", "釜山で何をしてみたいですか？", "海雲台の近くで海を眺めながら半日過ごしたいです。", "コースを提案してもらう", "釜山の旅程", "希望を変更", "旅程", "地図", "概略図", "固定", "言語", "夜間テーマ", "コースを探しています…", "旅程に立ち寄り先がありません。", "サーバーに接続できません。", "応答がタイムアウトしました。", "旅程を取得できません。", "サーバーの応答形式が正しくありません。", "再試行"],
   "zh-Hans": ["按你的方式游釜山", "你想在釜山体验什么？", "我想在海云台附近看海，度过半天。", "获取路线推荐", "你的釜山行程", "修改偏好", "行程", "地图", "示意图", "已固定", "语言", "夜间主题", "正在推荐路线…", "本行程暂无景点。", "无法连接服务器。", "请求超时。", "无法加载行程。", "服务器响应异常。", "重试"],
@@ -8,12 +9,14 @@ const copy = {
 };
 
 const chatCopy = {
+  ko: ["AI에게 물어보기", "전송", "채팅 닫기", "채팅 확장", "채팅 축소", "일정 있음", "BusanNow에 메시지 보내기", "샘플 일정", "홈", "채팅", "주 메뉴"],
   en: ["Ask AI", "Send", "Close chat", "Expand chat", "Reduce chat", "Route available", "Message BusanNow", "Sample itinerary", "Home", "Chat", "Main navigation"],
   ja: ["AIに聞く", "送信", "チャットを閉じる", "チャットを拡大", "チャットを縮小", "コースあり", "BusanNowへのメッセージ", "サンプル旅程", "ホーム", "チャット", "メインナビゲーション"],
   "zh-Hans": ["问 AI", "发送", "关闭聊天", "展开聊天", "缩小聊天", "已有路线", "给 BusanNow 发消息", "示例行程", "首页", "聊天", "主导航"],
   "zh-Hant": ["問 AI", "傳送", "關閉聊天", "展開聊天", "縮小聊天", "已有路線", "傳訊息給 BusanNow", "範例行程", "首頁", "聊天", "主導覽"],
 };
 const starterCopy = {
+  ko: ["부산에서 어떤 하루를 보내고 싶으세요?", "하고 싶은 일을 알려 주세요…", "채팅 접기", ["바닷가에서 반나절", "전통시장과 길거리 음식", "비 오는 날 코스"]],
   en: ["What kind of day would you like in Busan?", "Tell me what you’d like to do…", "Collapse chat", ["Half a day by the sea", "Local markets & street food", "A rainy-day route"]],
   ja: ["釜山でどんな一日を過ごしたいですか？", "したいことを教えてください…", "チャットを折りたたむ", ["海辺で半日", "地元の市場と屋台グルメ", "雨の日のコース"]],
   "zh-Hans": ["你想在釜山度过怎样的一天？", "说说你想做什么…", "收起聊天", ["在海边度过半天", "当地市场与街头美食", "雨天游览路线"]],
