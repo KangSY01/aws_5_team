@@ -31,6 +31,7 @@ export default function TravelPreview() {
   const opener = useRef(null);
   const chatHeading = useRef(null);
   const log = useRef(null);
+  const composer = useRef(null);
   const copy = getTravelCopy(language);
   const plan = messages.length ? samplePlan : null;
   const stops = plan?.stops ?? [];
@@ -50,7 +51,7 @@ export default function TravelPreview() {
 
   useEffect(() => {
     if (open && log.current) log.current.scrollTop = log.current.scrollHeight;
-  }, [open, messages]);
+  }, [open, messages, tab]);
 
   useEffect(() => {
     if (open) chatHeading.current?.focus();
@@ -97,9 +98,9 @@ export default function TravelPreview() {
             <button type="button" aria-label={copy.night} aria-pressed={night} onClick={() => setNight(!night)}>{night ? "☀" : "☾"}</button>
           </div>
         </header>
-        {open && <button type="button" className="chat-backdrop" aria-label={copy.close} onClick={close} />}
+        {open && <button type="button" className="chat-backdrop" aria-label={copy.close} tabIndex={-1} onClick={close} />}
       </div>
-      <aside id="travel-chat" className="travel-chat" hidden={!open} aria-label={tab === "chat" ? copy.ask : copy.itinerary}
+      <aside id="travel-chat" className="travel-chat" hidden={!open} aria-labelledby="travel-panel-title"
         onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
         <div className="chat-grab" aria-hidden="true"
           onPointerDown={(event) => {
@@ -108,11 +109,31 @@ export default function TravelPreview() {
           }}
           onPointerUp={endDrag} onPointerCancel={() => { dragStart.current = null; }} />
         <header className="chat-heading">
-          <h1 ref={chatHeading} tabIndex={-1}>{tab === "chat" ? copy.ask : copy.itinerary}</h1>
+          <h1 id="travel-panel-title" ref={chatHeading} tabIndex={-1}>{tab === "chat" ? "Busan AI" : copy.itinerary}</h1>
+          {tab === "chat" && (
+            <>
+              <button type="button" className="chat-collapse" aria-label={copy.collapse} onClick={close}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+              </button>
+              <button type="button" className="chat-close" aria-label={copy.close} onClick={close}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+              </button>
+            </>
+          )}
         </header>
         <div className="chat-content" ref={log}>
-          {tab === "chat" && !messages.length && <p className="chat-intro">{copy.prompt}</p>}
           <div className="chat-messages" role="log" hidden={tab !== "chat"}>
+            <p className="chat-bubble">{copy.greeting}</p>
+            {!messages.length && (
+              <div className="chat-suggestions">
+                {copy.suggestions.map((question) => (
+                  <button key={question} type="button" aria-pressed={draft === question} onClick={() => {
+                    setDraft(question);
+                    composer.current?.focus();
+                  }}>{question}</button>
+                ))}
+              </div>
+            )}
             {messages.map((message, index) => (
               <p key={index} className="chat-bubble" data-role={message.role} lang={message.lang}>{message.text}</p>
             ))}
@@ -128,15 +149,17 @@ export default function TravelPreview() {
           )}
         </div>
         <form className="chat-compose" hidden={tab !== "chat"} onSubmit={submit}>
-          <textarea aria-label={copy.messageLabel} placeholder={copy.example} rows={2}
+          <textarea ref={composer} aria-label={copy.messageLabel} placeholder={copy.placeholder} rows={1}
             value={draft} onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) submit(event);
             }} />
-          <button type="submit" disabled={!draft.trim()}>{copy.send}</button>
+          <button type="submit" aria-label={copy.send} disabled={!draft.trim()}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg>
+          </button>
         </form>
       </aside>
-      <nav className="travel-tabs" aria-label={copy.navigation}>
+      <nav className="travel-tabs" data-chat-open={tab === "chat"} aria-label={copy.navigation}>
         {Object.entries(tabIcons).map(([name, path]) => (
           <button key={name} ref={name === "chat" ? opener : undefined}
             type="button" aria-label={labels[name]} title={labels[name]}

@@ -13,12 +13,17 @@ it("shows a local sample and preserves chat state without requesting the backend
   const open = () => user.click(screen.getByRole("button", { name: "Chat" }));
 
   await open();
-  await user.type(screen.getByRole("textbox"), "Half a day by the sea{enter}");
+  expect(screen.getByRole("heading", { name: "Busan AI" })).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "Half a day by the sea" }));
+  expect(screen.getByRole("textbox")).toHaveValue("Half a day by the sea");
+  await user.click(screen.getByRole("button", { name: "Send" }));
+  expect(screen.queryByRole("button", { name: "Half a day by the sea" })).not.toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "Sample itinerary" })).toBeVisible();
   const stop = screen.getAllByRole("listitem")[1];
   expect(stop).toHaveTextContent("Fixed");
   await user.click(within(stop).getByRole("button"));
   await user.type(screen.getByRole("textbox"), "Add a market");
+  await user.click(screen.getByRole("button", { name: "Collapse chat" }));
   await user.click(screen.getByRole("button", { name: "Itinerary" }));
   expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "Sample itinerary" })).toBeVisible();
