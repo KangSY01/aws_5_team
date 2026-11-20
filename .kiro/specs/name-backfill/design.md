@@ -82,7 +82,7 @@ REGION_CODE = "26"
 AREA_ROWS = 100                    # 한 쪽에 받는 건수
 MAX_PAGES = 50                     # 무한 반복 방지. 넘으면 1.7 경고
 EXPECTED_CALLS = 30                # 사전 추정 호출 수 (「API 호출 수 추정과 상한」 표). 보고서에 같이 적는다
-MAX_CALLS = 45                     # 한 번의 실행에서 보낼 HTTP 요청 상한 (재시도 포함). EXPECTED_CALLS × 1.5
+MAX_CALLS = 60                     # 한 번의 실행에서 보낼 HTTP 요청 상한 (재시도 포함). EXPECTED_CALLS × 1.5
 SEEDS_PATH = fp.SCRIPTS_DIR / "place_seeds.json"   # biff-square query 변경과 jeonpo-cafe-street 시드 추가를 저장
 TARGET_TYPES = ("76", "78", "79", "75")   # 외국어 관광타입: 관광지, 문화시설, 쇼핑, 레포츠. 실행 중 검증한다
 NAME_LANGS = fp.NAME_LANGS         # ["en", "ja", "zh-Hans", "zh-Hant"]
@@ -460,7 +460,7 @@ prework에서 PROPERTY로 분류한 항목을 합쳤다.
 
 ### 상한 `MAX_CALLS`
 
-- `MAX_CALLS = ceil(EXPECTED_CALLS × 1.5) = 45`. 코드 상수로 두고, 호출 전에 추정 표와 맞는지 보고서에 `expected_calls`, `max_calls`로 같이 남긴다.
+- `MAX_CALLS = 60`. 코드 상수로 두고, 호출 전에 추정 표와 맞는지 보고서에 `expected_calls`, `max_calls`로 같이 남긴다.
 - 1.5배의 여유는 재시도와 가정치 오차를 위한 것이다. 첫 호출에서 쪽 수가 가정보다 크게 나오면 상한이 먼저 막는다. 상한을 올리려면 사람이 추정 표를 다시 계산하고 상수를 고친다.
 - 점검은 두 곳에서 한다. 둘 다 순수 함수 `check_budget`을 쓴다.
 
@@ -487,8 +487,8 @@ def check_budget(used: int, pending_calls: int, max_calls: int) -> str | None:
 - 종료 코드는 3이다. 표준 오류에 다음 형식으로 한국어 메시지를 낸다. `serviceKey`는 넣지 않는다.
 
 ```text
-[중단] API 호출 상한 도달: 사용 45회, 상한 45회 (멈춘 위치: ja, 타입 76, 쪽 3)
-이미 받은 raw 45개는 그대로 있습니다. 쓰기는 하지 않았습니다.
+[중단] API 호출 상한 도달: 사용 60회, 상한 60회 (멈춘 위치: ja, 타입 76, 쪽 3)
+이미 받은 raw 60개는 그대로 있습니다. 쓰기는 하지 않았습니다.
 추정과 다르면 MAX_CALLS를 고친 뒤 --reuse-raw 로 다시 실행하세요. 저장된 쪽은 다시 부르지 않습니다.
 ```
 

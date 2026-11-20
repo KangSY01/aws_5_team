@@ -1,6 +1,6 @@
 # 구현 작업: 축제 후 귀가 분산 (return-dispersal)
 담당: B. 위에서부터 순서대로 하고, 작업 하나가 끝나면 실행·테스트 방법을 적고 멈춥니다.
-수정 범위는 `backend/app/tools/return_options.py`, `backend/app/tools/lookup.py`(`get_events` 필드 추가만), `backend/app/data/stations.json`, `backend/app/data/events.json`, `backend/scripts/build_stations.py`, `backend/scripts/fetch_events.py`, `backend/tests/test_return_options.py`, `backend/tests/test_lookup.py`입니다. 공용 파일(`models/`, `api-contract.md`, `handler.py`, `team.md`)과 `agent.py`는 고치지 않습니다.
+수정 범위는 `backend/app/tools/return_options.py`, `backend/app/tools/lookup.py`(`get_events` 필드 추가만), `backend/app/data/stations.json`, `backend/app/data/events.json`, `backend/scripts/build_stations.py`, `backend/scripts/fetch_events.py`, `backend/tests/test_return_options.py`, `backend/tests/test_lookup.py`입니다. 작업 9~11에서 `backend/tests/test_return_options_kakao.py`, `backend/tests/conftest.py`, `backend/app/data/last_trains.json`, `backend/scripts/fetch_last_trains.py`, `backend/tests/test_fetch_last_trains.py`가 더해졌습니다. 공용 파일(`models/`, `api-contract.md`, `handler.py`, `team.md`)과 `agent.py`는 고치지 않습니다.
 기능 동결(토 00:00) 전에 머지되지 않으면 장면 7은 슬라이드 캡처로 대체합니다(`docs/demo-readiness.md`).
 열린 질문 5개는 확정했습니다(`design.md` 「확정된 결정」).
 
@@ -30,7 +30,7 @@
   - `uv run pytest -q tests/test_return_options.py`
   - _요구사항: 2, 3, 4_
 - [x] 6. `@tool` 도구와 반환 형식
-  - `get_return_options` 작성(`@tool` + `@_safe`, 영어 docstring: 언제 쓰는지, 입력, 출력, 규칙 기반 추정, 혼잡 시간대는 가정, 이동 시간은 카카오 실시간 경로 우선·없으면 역 좌표 어림값, 막차 시각은 아직 반영하지 않음, 도착역 기본값 Seomyeon)
+  - `get_return_options` 작성(`@tool` + `@_safe`, 영어 docstring: 언제 쓰는지, 입력, 출력, 규칙 기반 추정, 혼잡 시간대는 가정, 이동 시간은 카카오 실시간 경로 우선·없으면 역 좌표 어림값, 막차 경고는 저장된 표준 시간표 기준(작업 10), 도착역 기본값 Seomyeon)
   - `destination_station` 기본값은 `None`(생략과 직접 지정을 구별), docstring에는 "기본값 Seomyeon"이라고 적는다
   - 반환 dict가 `design.md` 「반환 형식」과 같은지 확인, `ratio`·혼잡 등급 필드 없음, `basis`에 가정 시간대와 이동 시간 규칙 값 포함
   - 기존 `tests/test_lookup.py`의 도구 docstring 검사와 같은 방식의 검사를 추가
@@ -52,3 +52,12 @@
   - [x] 9.4 `tests/test_return_options_kakao.py`(성공·일부 실패·전부 실패·`USE_MOCK`), `tests/conftest.py`의 `no_kakao`(모든 테스트에서 실제 호출 차단), `tests/test_return_options.py` 기대값에 `time_source`·`ranked` 반영
   - `uv run pytest -q`, `uv run python -m scripts.demo_offline_check`(12/12, 네트워크 0회)
   - _요구사항: 4.6, 5.1~5.4, 6, 7.2~7.4_
+- [x] 10. 막차 판정
+  - [x] 10.1 `scripts/fetch_last_trains.py`: 부산교통공사 열차시각표(_GW)에서 해운대·동백·중동 → 서면, 서면 → 해운대 막차를 요일별로 골라 `app/data/last_trains.json`에 저장(원본은 `app/data/raw/_last_trains/`). `tests/test_fetch_last_trains.py`
+  - [x] 10.2 `return_options.py`: `shift_later`의 출발 시각을 막차 표와 비교해 `last_train_missed`·경고 없음·`last_train_unknown`(파일·값이 없을 때만)을 정한다. `basis.note`와 docstring에 반영
+  - [x] 10.3 `tests/test_return_options.py`: 막차 뒤, 막차 이전, 방향 불일치, 파일 없음
+  - _요구사항: 4.4, 5.3, 5.4, 7.2_
+- [x] 11. 카카오 `legs`의 언어별 승하차 이름
+  - `return_options.py`: 구간마다 `from_names`·`to_names` 추가(`ko`는 항상, `en`은 지하철 구간의 역이 역 표에 있을 때만, 없는 언어는 만들지 않음). docstring에 반영
+  - `tests/test_return_options_kakao.py`에 검사 추가
+  - _요구사항: 5.1, 5.4_

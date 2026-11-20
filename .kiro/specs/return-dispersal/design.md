@@ -10,7 +10,8 @@
 | 도착지 | `destination_station`(`busan_stations.csv`의 `name_en`), 기본값 `"Seomyeon"`(데모 숙소가 서면, 팀 확정). `destination_place_id`는 선택이며 주면 그 장소의 `nearest_station`을 도착역으로 쓴다. 둘 다 주면 `destination_station` 우선 |
 | 이동 시간 | 도착지가 역이라 역 사이 시간이 필요하다. 카카오 대중교통 경로를 실시간으로 불러 쓰고(저장·캐시 금지), 실패하거나 `USE_MOCK=1`이면 역 좌표 기반 추정(기존 `travel_times`와 같은 규칙: 경로 거리 = 직선거리 × 1.3, 지하철 25km/h + 10분)으로 계산한다. 항목마다 `time_source`(`kakao`·`estimate`)로 밝히고 `basis`에도 적는다 |
 | `main_place_id` | `fetch_events.py`가 `events.json`에 저장. `event_name`만 받으면 이것을 출발 장소로 쓴다 |
-| 혼잡 시간대 | 종료 30분 전~60분 뒤. 규칙 기반 가정이며 `basis`와 docstring에 밝힌다. 막차는 경고만 |
+| 혼잡 시간대 | 종료 30분 전~60분 뒤. 규칙 기반 가정이며 `basis`와 docstring에 밝힌다 |
+| 막차 | `shift_later`만 저장된 막차 표(`last_trains.json`)와 비교한다. 막차 뒤면 `last_train_missed`, 파일·값이 없으면 `last_train_unknown`. 막차 시각은 응답에 넣지 않는다 |
 
 ## 구성
 ```
@@ -22,15 +23,19 @@ backend/
     tools/lookup.py           get_events 반환에 main_place_id 추가 (B, 필드 추가만)
     data/stations.json        역 표 (새로 추가, B). busan_stations.csv에서 만든다
     data/events.json          행사마다 main_place_id 추가 (fetch_events.py가 만든다)
+    data/last_trains.json     역·방향·요일별 막차 시각 (fetch_last_trains.py가 만든다)
   scripts/build_stations.py   busan_stations.csv → app/data/stations.json (새로 추가)
   scripts/fetch_events.py     main_place_id 계산 추가 (B)
+  scripts/fetch_last_trains.py  부산교통공사 열차시각표(_GW) → app/data/last_trains.json
+  tests/test_fetch_last_trains.py     막차 수집 스크립트 (실제 API를 부르지 않음)
   tests/test_return_options.py        카카오 없이(전부 estimate) 동작하는 경우
   tests/test_return_options_kakao.py  카카오 성공·일부 실패·전부 실패·USE_MOCK (fetch_routes 를 mock)
   tests/conftest.py                   no_kakao: 모든 테스트에서 fetch_routes 를 None 으로 고정
   tests/test_lookup.py        get_events 반환의 main_place_id 검사 추가
 ```
 - `lookup.py`는 이미 커서 도구를 새 파일에 둡니다. `return_options.py`는 `lookup.py`의 `_safe`, `LookupFailure`, `_load_json`, `_load_places`, `_parse_date`와 `get_events`의 계산을 불러 씁니다.
-- `get_events`는 `@tool`로 감싸져 있으므로 내부 계산에서는 같은 결과를 주는 일반 함수를 부르는 방법을 구현 때 정합니다(작업 4.1).
+- `get_events`는 `@tool`이지만 그대로 부를 수 있어 `lookup.get_events(date=...)`를 직접 부릅니다(Guardian과 같은 방식). 오류 dict가 오면 같은 코드로 다시 알립니다.
+- 계산은 `@tool`이 없는 `return_options(...)`에 있고, `get_return_options`는 이를 `@tool` + `@_safe`로 감싼 것입니다.
 - 이동 시간은 `get_travel_time`(장소 사이 표)을 쓰지 않습니다. 도착지가 역이라 `return_options.py`가 역 좌표(`stations.json`)로 `kakao_route.fetch_routes`를 부르고, 결과가 없으면 같은 좌표와 `travel_times.json`의 `rule`로 직접 계산합니다.
 - `get_events`에 필드를 추가해도 Guardian은 영향이 없습니다. `guardian/context.py`의 `Event` 모델은 `name`, `start`, `end`, `place_ids`만 읽고 모르는 필드는 무시합니다(`extra` 설정 없음, 구현 때 테스트로 확인).
 - `guardian/`은 이 도구를 부르지 않습니다.
@@ -52,6 +57,19 @@ backend/
 - 도착역 입력은 `station` 값과 대소문자·앞뒤 공백을 무시하고 비교합니다. 응답에는 표의 `station` 값을 돌려줍니다.
 - `places.json`의 `nearest_station` 중 표에 없는 값이 하나 있습니다(`OSIRIA`, 동해선). 스크립트가 경고로 출력합니다. `destination_place_id`로 정한 장소의 역이 이것이면 `no_station` 오류입니다.
 - `places.json`의 좌표·가까운 역은 검증 전 값입니다(`data-rules.md`). 역을 사실로 단정하지 않습니다.
+
+### 막차 표 `last_trains.json`
+`scripts/fetch_last_trains.py`가 공공데이터포털 「부산교통공사_부산도시철도 열차시각표 조회 서비스_GW」에서 받아 만듭니다. 원본 응답은 `app/data/raw/_last_trains/`에 두고 이 파일에는 막차 시각만 저장합니다. 도구는 이 파일만 읽고 API를 부르지 않습니다.
+```
+{"source": {"provider": "부산교통공사", "api": "...", "service": "...", "fetched_at": "2026-11-20", "day_codes": {...}, "note": "..."},
+ "stations": {"Haeundae": {"scode": "203", "toward": "Seomyeon", "updown": 1,
+                           "last_train": {"1": "23:29", "2": "23:29", "3": "23:29"}}}}
+```
+- 저장하는 역·방향은 네 개입니다: `Haeundae`·`Dongbaek`·`Jung-dong` → `Seomyeon`, `Seomyeon` → `Haeundae`(모두 2호선). 역마다 방향(`toward`)은 하나입니다.
+- `last_train`의 키는 요일 코드입니다(`1` 평일, `2` 토요일, `3` 일요일·공휴일). 값은 "HH:MM"이며 자정을 넘는 막차는 24시 이상으로 적습니다(예: `24:05`). 조건에 맞는 열차가 없는 요일은 키를 넣지 않습니다(지어내지 않음).
+- 목적지 전에 끝나는 열차는 막차로 보지 않습니다. 값은 표준 열차 도착시각이라 실제와 다를 수 있습니다.
+- 도구가 읽는 방법(`return_options.last_train_warnings`): `stations[혼잡 역]`의 `toward`가 도착역과 같을 때만 `last_train[요일 코드]`를 씁니다. 요일 코드는 행사 날짜의 요일로 정하고(토 `2`, 일 `3`, 그 외 `1`), 공휴일 달력이 없어 평일 공휴일은 평일로 봅니다. 막차 시각은 행사 날짜 00:00에 시·분을 더한 값입니다.
+- 파일이 없거나, 역 행이 없거나, 방향이 다르거나, 요일 값이 없거나, 형식이 틀리면(시 0~47, 분 0~59 밖) 막차를 모르는 것으로 봅니다(`last_train_unknown`). 도구 오류로 만들지 않습니다.
 
 ### 이미 있는 데이터
 - 행사: `get_events(date)`. 11/28 빛축제는 `start` 18:00, `end` 23:00. 11/28 외 날짜는 개막일 규칙 때문에 나오지 않습니다.
@@ -84,7 +102,9 @@ get_return_options(date, place_id=None, event_name=None, destination_station=Non
   - 혼잡 시간대(종료 30분 전~60분 뒤)는 근거 데이터 없이 정한 가정이다
   - 이동 시간은 카카오 실시간 대중교통 경로를 우선하고, 없으면 역 좌표로 어림한 값이다(둘 다 장소에서 역까지 걷는 시간 제외). 카카오 결과는 저장·캐시하지 않는다
   - `time_source`가 `kakao`이면 `route_type`, `transfers`, `fare`, `walk_meters`, `legs`는 카카오 값이다. `estimate`이면 노선·환승을 지어내지 않는다
-  - 막차 시각은 아직 반영하지 않음
+  - 막차 경고는 저장된 표준 시간표에 해당 역·방향이 있을 때만 쓰며 실제 열차 시각과 다를 수 있다. `shift_later`는 출발이 막차 뒤면 `last_train_missed`, 막차 뒤가 아니면 막차 경고 없음, 맞는 시간표가 없으면 `last_train_unknown`이다. 두 경고 모두 실시간 시간표를 확인하라고 안내한다
+  - `legs`의 `from_names`·`to_names`에 사용자 언어가 있으면 그 이름을, 없으면 한국어 이름을 그대로 쓴다. 승하차 이름을 번역하거나 지어내지 않는다
+  - "expected to be crowded", "about N minutes"로 말한다
   - 도착역 기본값은 `Seomyeon`(데모 숙소 기준)이다. 사용자가 다른 도착지를 말하면 `destination_station`(영문 역 이름) 또는 `destination_place_id`로 넘긴다
 - `place_id`·`event_name`이 둘 다 없으면 `missing_argument` 오류입니다.
 - 에이전트가 사용자의 도착역을 영문 이름(`name_en`)으로 알면 `destination_station`, 장소만 알면 `destination_place_id`(`places.json`에 있는 장소만)로 넘깁니다.
@@ -92,12 +112,13 @@ get_return_options(date, place_id=None, event_name=None, destination_station=Non
 ## 처리 순서
 1. `date` 검증, `place_id` 검증(`places.json`). 도착역 결정(요구사항 2.5): `destination_station`이 있으면 역 표에서 찾고(없으면 `station_not_found`), 없고 `destination_place_id`가 있으면 그 장소의 `nearest_station`(`place_not_found`·`no_station`), 둘 다 없으면 기본값.
 2. `get_events(date)`에서 행사 찾기(요구사항 2.2~2.3). 행사 `start`·`end`가 00:00:00·23:59:59면 `no_time_basis`.
-3. 출발 장소 정하기(요구사항 2.4). 혼잡 역 = 행사 `main_place_id`의 `nearest_station`. 없거나 역 표에 없으면 `no_event_station`.
+3. 출발 장소 정하기(요구사항 2.4). 혼잡 역 = 행사 `main_place_id`의 `nearest_station`. 없거나 역 표에 없으면 `no_event_station`. 출발 장소의 역을 `stations.json`에서 찾고, 없으면 `no_station`. 도착역이 혼잡 역 또는 출발 장소의 역과 같으면 `same_station`.
 4. 혼잡 시간대 = `[end − 30분, end + 60분)`. 자정을 넘을 수 있어 날짜가 있는 시각으로 계산합니다.
-5. 기준 출발 결정(요구사항 2.8). 출발 장소의 역을 `stations.json`에서 찾음. 도착역이 혼잡 역과 같으면 `same_station`.
+5. 기준 출발 결정(요구사항 2.8). `planned_departure` 형식이 틀리면 `invalid_time`.
 6. `baseline.congested` = 기준 출발이 혼잡 시간대 안 **그리고** 출발 장소의 역이 혼잡 역. 아니면 `options: []`로 끝. `baseline.minutes`는 이 경우에도 계산해 돌려줍니다(출발 장소의 역 → 도착역).
 7. 제안 만들기:
-   - (a) 시각: 출발 역은 그대로, 출발 시각을 `end − 40분`, `end + 60분`으로.
+   - (a) 시각: 출발 역은 그대로, 출발 시각을 `end − 40분`, `end + 60분`으로. `end − 40분`이 행사 시작보다 늦지 않으면 `shift_earlier`는 만들지 않습니다.
+   - (a) `shift_later`의 `warnings`는 `last_train_warnings(행사 날짜, 혼잡 역, 도착역, end + 60분)`의 결과입니다(「막차 표」): 막차 뒤면 `["last_train_missed"]`, 막차 이전이면 `[]`, 표에서 찾지 못하면 `["last_train_unknown"]`. 다른 제안과 `baseline`은 막차와 비교하지 않습니다.
    - (b) 걸어서 다른 역: 혼잡 역이 아니고, 혼잡 역에서 걸어서 20분 이내인 역(노선 무관), 가까운 순.
 8. 역 사이 시간 정하기: 기준 출발 역과 제안의 이용 역마다 카카오 경로를 조회하고(아래 「카카오 실시간 경로」), 결과가 없는 역은 추정 시간을 씁니다.
 9. (b)의 `extra_min` = (혼잡 역→이용 역 도보 + 이용 역→도착역 시간) − `baseline.minutes`. 이용 역이 도착역이면 추정 시간 0. (a)는 출발 역이 같아 0입니다.
@@ -151,7 +172,7 @@ Guardian·프론트가 필드를 그대로 쓰도록 평평한 dict로 돌려줍
     {"type": "shift_earlier", "depart_at": "...T22:20:00+09:00", "station": "Haeundae", "walk_min": 0,
      "extra_min": 0, "avoids_congestion": true, "warnings": ["leaves_before_event_end"], "time_source": "estimate"},
     {"type": "shift_later", "depart_at": "2026-11-29T00:00:00+09:00", "station": "Haeundae", "walk_min": 0,
-     "extra_min": 0, "avoids_congestion": true, "warnings": ["last_train_unknown"], "time_source": "estimate"},
+     "extra_min": 0, "avoids_congestion": true, "warnings": ["last_train_missed"], "time_source": "estimate"},
     {"type": "walk_to_station", "depart_at": "...T23:00:00+09:00", "station": "Dongbaek", "walk_min": 18,
      "extra_min": 15, "avoids_congestion": true, "warnings": [], "time_source": "estimate"},
     {"type": "walk_to_station", "depart_at": "...T23:00:00+09:00", "station": "Jung-dong", "walk_min": 17,
@@ -174,27 +195,34 @@ Guardian·프론트가 필드를 그대로 쓰도록 평평한 dict로 돌려줍
 }
 ```
 - 위 숫자는 카카오가 없을 때(전부 `estimate`)의 값이며 「장면 7 어림값」과 같습니다. 카카오 경로를 받으면 `minutes`·`extra_min`·`ranked`가 그 값으로 바뀝니다.
+- 위 예에서 `shift_later`(11/29 00:00 출발)는 저장된 해운대 → 서면 토요일 막차(23:29)보다 늦어 `last_train_missed`이고, 그래서 `ranked`에 없습니다.
 - `time_source`: `baseline`과 `options` 항목마다 `"kakao"` 또는 `"estimate"`. `"kakao"`인 항목에는 카카오 첫 경로의 요약이 더 붙습니다. `"estimate"`인 항목에는 이 필드들이 없습니다.
   ```
   "route_type": "SUBWAY" | "BUS" | "BUS_AND_SUBWAY", "transfers": 0, "distance_m": 16000, "fare": 1600 (없으면 null),
   "walk_meters": 0,
-  "legs": [{"mode": "SUBWAY", "minutes": 40, "distance_m": 16000, "lines": ["2호선"], "from_name": "해운대", "to_name": "서면"}]
+  "legs": [{"mode": "SUBWAY", "minutes": 40, "distance_m": 16000, "lines": ["2호선"], "from_name": "해운대", "to_name": "서면",
+            "from_names": {"ko": "해운대", "en": "Haeundae"}, "to_names": {"ko": "서면", "en": "Seomyeon"}}]
   ```
+  - `from_name`·`to_name`은 카카오가 준 한국어 승하차 이름입니다. 카카오가 준 구간 값은 그대로 두고 `from_names`·`to_names`만 덧붙입니다.
+  - `from_names`·`to_names`는 `{언어: 이름}`이며 데이터에 있는 언어만 넣습니다(장소의 `names`와 같은 방식). `ko`는 카카오 이름 그대로입니다. `en`은 `mode`가 `SUBWAY`인 구간에서 이름의 '역'을 떼고 역 표의 `name_ko`와 맞을 때만 역 표의 `station` 값을 넣습니다. 역 표에는 한국어·영어만 있어 다른 언어는 나오지 않습니다.
+  - 버스 정류장과 역 표에 없는 역은 `{"ko": ...}`만, 이름이 없는 구간(도보)은 `{}`입니다. 이름을 번역하거나 만들지 않습니다.
 - `ranked`: `rank_routes`(`app/ranking/routes.py`)가 `options`를 채점해 점수 높은 순으로 돌려준 2~3안입니다. `options`는 그대로 두고(순서 없는 제안 목록, `extra_min` 순) 추천 순서는 `ranked`로 봅니다.
   - 항목: `option`(`options` 항목 그대로), `score`(비용을 분으로 환산해 음수로 둔 값, 높을수록 좋음), `travel_min`(`baseline.minutes + extra_min`), `arrive_at`(`depart_at + travel_min`), `breakdown`(`travel`, `early`, `wait`, `walk`, `penalty`), `labels`, `excluded`.
   - `labels`: `best`(점수 1위), `earliest_arrival`(도착역에 가장 빨리 닿는 안), `least_walking`(가장 덜 걷는 안). 한 안이 여러 이름을 가질 수 있고, 이름 붙은 안을 먼저 넣은 뒤 남은 자리(최대 3안)를 점수 순으로 채웁니다. 동점은 `options` 순서입니다.
   - 막차를 놓치는 안(`warnings`에 `last_train_missed`)은 `ranked`에서 뺍니다. `options`에는 남습니다. `ranked`에 들어간 항목의 `excluded`는 `null`입니다.
   - 가중치는 `app/ranking/weights.py`의 `ROUTE_*`입니다. `options`가 비면 `ranked`도 빈 목록입니다.
 - `destination.place_id`는 `destination_place_id`로 도착역을 정했을 때만 값이 있고, 그 밖에는 `null`입니다. `is_default`는 기본값을 썼을 때만 `true`입니다.
-- `type`: `shift_earlier`, `shift_later`, `walk_to_station`. `warnings`: `leaves_before_event_end`, `last_train_unknown`.
+- `type`: `shift_earlier`, `shift_later`, `walk_to_station`. `warnings`: `leaves_before_event_end`(`shift_earlier`), `last_train_missed` 또는 `last_train_unknown`(`shift_later`, 막차 이전이면 빈 목록).
 - `ratio`, 혼잡 등급, 집중률 같은 필드는 두지 않습니다.
-- 오류: `{"error": {"code", "message"}}`. 코드: `invalid_date`, `place_not_found`, `missing_argument`, `event_not_found`, `ambiguous_event`, `no_time_basis`, `no_event_station`, `station_not_found`(`destination_station`이 역 표에 없음), `no_station`(`destination_place_id`의 장소에 쓸 수 있는 역이 없음), `same_station`, `data_unavailable`.
-- 출처 표기: 행사(한국관광공사 행사정보), 역 위치(부산교통공사 도시철도 역 정보)를 `sources`에 담는 형식은 다른 도구가 정하는 방식을 확인해 맞춥니다(작업 1).
+- 오류: `{"error": {"code", "message"}}`. 코드: `invalid_date`, `invalid_time`(`planned_departure`가 HH:MM이 아님), `place_not_found`, `missing_argument`, `event_not_found`, `ambiguous_event`, `no_time_basis`, `no_event_station`, `station_not_found`(`destination_station`이 역 표에 없음), `no_station`(`destination_place_id`의 장소 또는 출발 장소에 쓸 수 있는 역이 없음), `same_station`(도착역이 혼잡 역 또는 출발 장소의 역), `data_unavailable`.
+- 출처 표기: 도구는 `sources`를 돌려주지 않습니다. 다른 조회 도구처럼 `app/chat/answer.py`가 도구 이름으로 조립합니다.
 
 ## 에이전트·프론트에서 쓰는 방법
 - LLM은 `options`·`ranked`의 값(시각, 역 이름, 분)만 말합니다. 추천 순서와 이름(`labels`)은 `ranked`를 따릅니다. 역 혼잡을 "붐빈다"고 단정하지 않고 "행사가 끝나는 시간대라 붐빌 것으로 예상된다"로 말합니다(프롬프트 문구는 D가 정합니다).
 - `destination.is_default`가 `true`면 "서면역 기준으로 계산했다, 다른 곳이면 알려 달라"고 안내합니다.
 - 분은 "약 N분"으로 말하고, 장소에서 역까지 걷는 시간이 빠진 값이라는 점을 알립니다. 노선·환승은 `time_source`가 `kakao`인 항목에서만 `legs`·`transfers` 값으로 말하고, `estimate`인 항목에서는 단정하지 않습니다.
+- 승하차 이름은 `from_names`·`to_names`에 사용자 언어가 있으면 그 이름을, 없으면 한국어 이름을 그대로 말합니다. 번역하거나 지어내지 않습니다.
+- `last_train_missed`·`last_train_unknown`이 있으면 실시간 시간표를 확인하라고 안내합니다. 막차 시각은 응답에 없으므로 말하지 않습니다.
 - 프론트는 `congested_station`과 `options`로 카드를 그릴 수 있습니다. 화면에 `basis.note`를 함께 보여 줍니다.
 
 ## 검증
@@ -213,6 +241,9 @@ Guardian·프론트가 필드를 그대로 쓰도록 평평한 dict로 돌려줍
 - 카카오 없음 확인: `fetch_routes`가 `None`이면 `baseline`·`options`·`ranked`의 `time_source`가 전부 `estimate`이고 `legs` 등 경로 상세 필드가 없는지, 네트워크(`urllib`, 소켓)와 현재 시각을 막은 상태에서 `USE_MOCK` 값과 무관하게 같은 결과가 나오는지(네트워크 0회), `USE_MOCK=1`이면 실제 `fetch_routes`를 끼워도 네트워크를 타지 않는지 확인합니다.
 - 저장 금지 확인: 저장하는 역 표와 스크립트(`build_stations.py`, `stations.json`)에 `kakao` 문자열·API 주소가 없는지 검사합니다.
 - 카카오 성공(`test_return_options_kakao.py`): 출발 역마다 한 번씩 동시에 조회하는지, `baseline`·`options`에 `time_source: "kakao"`와 `legs`가 붙고 `extra_min`이 카카오 분으로 계산되는지, 일부 역만 실패하면 그 역만 `estimate`인지, 전부 실패하면 추정값과 같은지, `USE_MOCK=1`이면 `fetch_routes`를 부르지 않는지.
+- 막차(`test_return_options.py`): 막차 뒤 출발이면 `last_train_missed`, 막차 이전이면 경고 없음, 방향(`toward`)이 다르거나 `last_trains.json`이 없으면 `last_train_unknown`. 수집 스크립트는 `tests/test_fetch_last_trains.py`가 실제 API 없이 확인합니다(없는 요일 값은 지어내지 않음, 자정 넘는 막차는 24시 이상).
+- 승하차 이름(`test_return_options_kakao.py`): 지하철 구간의 역은 `ko`·`en`, 버스 정류장은 `ko`만, 도보 구간은 `{}`이고 `ko`·`en` 밖의 언어가 없는지.
+- `planned_departure` 형식 오류 → `invalid_time`.
 - `ranked`: 손으로 적은 기대 결과를 `rank_routes`에 넣은 값과 같은지, 순서와 `labels`(동백 `best` → 중동 → 해운대 `shift_earlier`가 `earliest_arrival`·`least_walking`), 막차를 놓치는 `shift_later`가 빠지는지, `options`가 비면 빈 목록인지.
 
 ## 연결 (이 spec의 범위 밖, 수정안만 제시)
