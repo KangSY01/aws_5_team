@@ -1016,13 +1016,21 @@
 .profile-content > header { text-align: start; }
 .profile-content h1 { margin: 0; font-size: 1.4rem; letter-spacing: -.025em; }
 .profile-content h1:focus { outline: none; }
-.profile-content > header p { margin: 2px 0 0; color: var(--color-muted); font-size: .8rem; }
+.profile-person {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding-block: 18px;
+}
+.profile-person img { flex: none; border-radius: 50%; object-fit: cover; }
+.profile-person > div { min-width: 0; overflow-wrap: anywhere; }
+.profile-person strong { display: block; font-size: 1.3125rem; line-height: 1.25; font-weight: 750; }
+.profile-person p { margin: 4px 0 0; color: var(--color-muted); font-size: .85rem; }
 .profile-settings {
-  border: 1px solid var(--color-border);
-  border-radius: 16px;
+  border-block-start: 1px solid var(--color-border);
   background: var(--color-bg);
 }
-.profile-settings h2 { margin: 0; padding: 10px 12px 0; font-size: 1rem; }
+.profile-settings h2 { margin: 0; padding-block-start: 10px; font-size: 1rem; }
 .profile-language-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto 18px;
@@ -1030,7 +1038,7 @@
   gap: 8px;
   width: 100%;
   min-height: 44px;
-  padding: 8px 12px;
+  padding: 8px 0;
   background: transparent;
   border: 0;
   border-radius: 15px;
@@ -1055,7 +1063,6 @@
   text-align: start;
 }
 .profile-language-options button[aria-pressed="true"] { background: var(--color-selected); }
-.profile-account { margin: 0; border-top: 1px solid var(--color-border); padding: 9px 12px; color: var(--color-muted); font-size: .78rem; }
 
 @media (max-width: 899px) {
   .travel-preview[data-page="profile"]:not([data-night="true"])::after {
@@ -1726,7 +1733,7 @@
 .travel-preview :is(.planner-options label, .planner-options button, .translation-select, .translation-voice-input, .translation-photo-inputs label) {
   border-radius: 14px;
 }
-.travel-preview :is(.profile-settings, .chat-place-card) { border-radius: 18px; }
+.travel-preview .chat-place-card { border-radius: 18px; }
 
 @media (min-width: 900px) {
   .travel-preview { --desktop-panel-width: clamp(340px, 30vw, 430px); }

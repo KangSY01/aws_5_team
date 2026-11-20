@@ -39,11 +39,11 @@ const itineraryResetCopy = {
 };
 
 const profileCopy = {
-  ko: ["프로필", "게스트로 이용 중", "계정 관리", "현재 로그인과 계정 관리 기능을 제공하지 않습니다.", "설정"],
-  en: ["Profile", "Browsing as a guest", "Account management", "Sign-in and account management are currently unavailable.", "Settings"],
-  ja: ["プロフィール", "ゲストとして利用中", "アカウント管理", "現在、ログインとアカウント管理は利用できません。", "設定"],
-  "zh-Hans": ["个人资料", "正在以访客身份浏览", "账号管理", "目前无法登录或管理账号。", "设置"],
-  "zh-Hant": ["個人資料", "正在以訪客身分瀏覽", "帳號管理", "目前無法登入或管理帳號。", "設定"],
+  ko: ["프로필", "게스트로 이용 중", "계정 관리", "설정"],
+  en: ["Profile", "Browsing as a guest", "Account management", "Settings"],
+  ja: ["プロフィール", "ゲストとして利用中", "アカウント管理", "設定"],
+  "zh-Hans": ["个人资料", "正在以访客身份浏览", "账号管理", "设置"],
+  "zh-Hant": ["個人資料", "正在以訪客身分瀏覽", "帳號管理", "設定"],
 };
 
 const tripCopy = {
@@ -159,7 +159,7 @@ export function getTravelCopy(language) {
   const [greeting, placeholder, collapse, suggestions] = starterCopy[language];
   const [collapseItinerary, closeItinerary] = itineraryActions[language];
   const [resetMenu, resetAction, resetTitle, resetDescription, resetCancel, resetConfirm] = itineraryResetCopy[language];
-  const [profile, guest, account, accountUnavailable, settings] = profileCopy[language];
+  const [profile, guest, account, settings] = profileCopy[language];
   const [startTrip, endTrip, traveling, currentPlace, askForRoute] = tripCopy[language];
   const [check, clear, apply, move_time, reorder, replace, remove] = guardianLabels[language];
   const [currentStop, switchPlace, switchPlaceLabel] = guardianReplacementCopy[language];
@@ -187,7 +187,7 @@ export function getTravelCopy(language) {
     stopLock: { hint: lockHint, label: (place, locked) => (locked ? unlockStop : lockStop).replace("{place}", () => place) },
     emergency: emergencyCopy[language],
     startTrip, endTrip, traveling, currentPlace, askForRoute,
-    profile, guest, account, accountUnavailable, settings,
+    profile, guest, account, settings,
     collapseItinerary, closeItinerary,
     resetItinerary: { menu: resetMenu, action: resetAction, title: resetTitle, description: resetDescription, cancel: resetCancel, confirm: resetConfirm },
     greeting, placeholder, collapse, suggestions,

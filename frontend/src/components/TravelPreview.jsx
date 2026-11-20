@@ -1,3 +1,4 @@
+import misakiPhoto from "../assets/misaki-profile.png";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getTravelCopy, languages } from "../constants/travelCopy.js";
 import { closeLandmark, mapLandmarks } from "../constants/mapLandmarks.js";
@@ -173,8 +174,17 @@ function LanguageOptions({ language, onSelect }) {
   ));
 }
 
-function ProfilePage({ copy, plannerCopy, language, onLanguageChange, demoMode, albumRevision, archiveError }) {
+const misakiProfile = {
+  ko: ["사토 미사키", "28세", "일본"],
+  en: ["Misaki Sato", "28 years old", "Japan"],
+  ja: ["さとう みさき", "28歳", "日本"],
+  "zh-Hans": ["Misaki Sato", "28岁", "日本"],
+  "zh-Hant": ["Misaki Sato", "28歲", "日本"],
+};
+
+function ProfilePage({ copy, language, onLanguageChange, demoMode, albumRevision, archiveError }) {
   const [languageOpen, setLanguageOpen] = useState(false);
+  const [name, age, nationality] = misakiProfile[language];
   const heading = useRef(null);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, []);
 
@@ -183,7 +193,13 @@ function ProfilePage({ copy, plannerCopy, language, onLanguageChange, demoMode, 
       <div className="profile-content">
         <header>
           <h1 id="profile-heading" ref={heading} tabIndex={-1}>{copy.profile}</h1>
-          <p>{plannerCopy.demoAccount}</p>
+          <div className="profile-person">
+            <img src={misakiPhoto} alt="" width="68" height="68" />
+            <div>
+              <strong>{name}</strong>
+              <p>{age} · {nationality}</p>
+            </div>
+          </div>
         </header>
         <TripAlbum language={language} demoMode={demoMode} revision={albumRevision} archiveError={archiveError}
           formatDate={(date) => formatDate(date, language)} />
@@ -202,7 +218,6 @@ function ProfilePage({ copy, plannerCopy, language, onLanguageChange, demoMode, 
             role="group" aria-label={copy.languageLabel}>
             <LanguageOptions language={language} onSelect={onLanguageChange} />
           </div>
-          <p className="profile-account">{copy.accountUnavailable}</p>
         </section>
       </div>
     </section>
@@ -1090,7 +1105,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
           </div>
         </header>
       </div>
-      {profile && <ProfilePage copy={copy} plannerCopy={plannerCopy} language={language} onLanguageChange={changeLanguage}
+      {profile && <ProfilePage copy={copy} language={language} onLanguageChange={changeLanguage}
         demoMode={demoMode} albumRevision={albumRevision} archiveError={archiveError} />}
       <aside id="travel-chat" className="travel-chat" data-translation={showTranslation} hidden={!sheetOpen} inert={!sheetOpen} aria-hidden={!sheetOpen} aria-labelledby="travel-panel-title"
         onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
