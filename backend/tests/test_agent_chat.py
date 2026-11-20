@@ -110,7 +110,7 @@ def test_system_prompt_carries_context_but_not_the_user_message(chat, api_storag
 
 
 def test_the_agent_uses_the_final_system_prompt_written_by_d(chat, api_storage):
-    assert agent.build_system_prompt is prompts.build_system_prompt  # 임시 프롬프트(app/chat/prompt.py)가 아니다
+    assert agent.build_system_prompt is prompts.build_system_prompt  # D 의 최종 프롬프트(app/prompts.py)를 쓴다
     create, edit = ScriptedModel([text_turn("ok")]), ScriptedModel([text_turn("ok")])
 
     chat(create, language="zh-Hant")
