@@ -56,6 +56,39 @@ it("opens general AI chat without an itinerary and continues the same conversati
   expect(localStorage.getItem("busannow.course")).toBeNull();
 });
 
+it("opens a walking path from a structured return option in chat", async () => {
+  vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+  const pathRequest = vi.fn();
+  vi.stubGlobal("fetch", async (url, request) => {
+    if (url.endsWith("/chat")) return Response.json({
+      session_id: "return-session", plan_id: "return-plan", language: "en", answer: "Try Dongbaek station.",
+      return_routes: {
+        origin_place_id: "haeundae-beach",
+        destination: { names: { en: "Seomyeon" } },
+        options: [{ station: { names: { en: "Dongbaek" }, lat: 35.161484, lng: 129.147897 },
+          travel_min: 51, depart_at: "2026-11-28T22:00:00+09:00", time_source: "kakao" }],
+      },
+    });
+    if (url.endsWith("/routes/pedestrian")) {
+      pathRequest(JSON.parse(request.body));
+      return Response.json({ paths: [[[129.16, 35.16], [129.147897, 35.161484]]] });
+    }
+    return Response.json({ events: [] });
+  });
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Chat", exact: true }));
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "How do I get back after the festival?" } });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  const walk = await screen.findByRole("button", { name: "Show walking route" });
+  expect(screen.getByText("Dongbaek → Seomyeon")).toBeVisible();
+  fireEvent.click(walk);
+  await waitFor(() => expect(document.querySelector(".travel-preview")).toHaveAttribute("data-sheet", "closed"));
+  expect(pathRequest).toHaveBeenCalledWith(expect.objectContaining({
+    destination: { lat: 35.161484, lng: 129.147897 },
+  }));
+  await waitFor(() => expect(document.querySelector(".leaflet-control-attribution")).toHaveTextContent("© TMAP"));
+});
+
 it("answers a known landmark question in demo chat without a selected stop", async () => {
   render(<App />);
   fireEvent.click(screen.getByRole("button", { name: "Chat", exact: true }));
@@ -298,6 +331,10 @@ it("shows Korean names for AWS places missing Korean and preserves other languag
   expect(resolvePlaceName(place, places, "ko").name).toBe("부산시민공원");
   expect(resolvePlaceName(place, places, "ja").name).toBe("釜山市民公園");
   place.names.ko = "서버가 제공한 한국어 이름";
+  const cinema = { place_id: "busan-cinema-street", names: { en: "Busan Cine Road", ja: "釜山映画の通り" } };
+  const alternatives = new Map([[cinema.place_id, cinema]]);
+  expect(resolvePlaceName(cinema, alternatives, "ko").name).toBe("부산 영화의 거리");
+  expect(resolvePlaceName(cinema, alternatives, "en").name).toBe("Busan Cine Road");
   expect(resolvePlaceName(place, places, "ko").name).toBe(place.names.ko);
 });
 
@@ -382,27 +419,13 @@ it("confirms itinerary reset, preserves preferences, and permits a new course wi
   expect(document.querySelectorAll(".busan-map-pin").length).toBeGreaterThan(0);
 });
 
-it("shows API events on the map and falls back to their Korean names", async () => {
+it("does not load the event layer on the home map", () => {
   vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
-  localStorage.setItem("busannow.language", "ja");
-  const fetchEvents = vi.fn(async (url) => {
-    const date = new URL(url, "https://api.example.test").searchParams.get("date");
-    return Response.json({ date, events: [{
-      contentid: "2048902", name: "해운대 빛축제", names: { ko: "해운대 빛축제", en: "Haeundae Light Festival" },
-      type: "festival", lat: 35.1592056511, lng: 129.1615365475,
-      main_place_id: null, place_ids: [],
-      start: date + "T18:00:00+09:00", end: date + "T23:00:00+09:00",
-      period_start: "2026-11-28T18:00:00+09:00", period_end: "2027-01-10T23:00:00+09:00",
-    }] });
-  });
+  const fetchEvents = vi.fn();
   vi.stubGlobal("fetch", (url) => String(url).includes("/events?") ? fetchEvents(url) : Promise.reject(new Error()));
   render(<App />);
-  const marker = await screen.findByLabelText("해운대 빛축제");
-  expect(marker).toHaveClass("busan-event-festival");
-  expect(fetchEvents).toHaveBeenCalledWith(expect.stringMatching(/\/events\?date=\d{4}-\d{2}-\d{2}$/));
-  fireEvent.click(marker);
-  expect(screen.getByRole("heading", { name: "해운대 빛축제" })).toBeVisible();
-  expect(screen.getByText("18:00 – 23:00")).toBeVisible();
+  expect(document.querySelector(".busan-event-pin")).toBeNull();
+  expect(fetchEvents).not.toHaveBeenCalled();
 });
 
 it("turns grounded chat recommendations into cards and keeps weather guidance in the reply", async () => {
@@ -494,11 +517,19 @@ it("keeps a saved traveler profile across reloads and sends only its notes with 
   expect(screen.getByText("28 years · Woman · Japan")).toBeVisible();
   await user.click(screen.getByRole("button", { name: "Itinerary", exact: true }));
   await user.click(screen.getByRole("button", { name: "Get an AI itinerary" }));
+  fireEvent.change(screen.getByLabelText(/Start time/), { target: { value: "14:30" } });
   await user.click(screen.getByRole("button", { name: "Create itinerary" }));
   await waitFor(() => expect(chat).toHaveBeenCalledTimes(1));
   const request = chat.mock.calls[0][0];
+  expect(request.message).toContain("Start time (required, Korea Standard Time): 14:30");
   expect(request.message).toContain("Please keep walking distances short.");
   expect(JSON.stringify(request)).not.toMatch(/Private nickname|Japan|woman|\b28\b/);
+});
+
+it("starts offline itinerary recommendations at the chosen local time", async () => {
+  const course = await recommendDemo({ regions: ["oldtown"], duration: "day", activities: [], startTime: "19:20" }, "en");
+  expect(course.plan.stops[0].start).toBe(course.plan.date + "T19:20:00+09:00");
+  expect(course.plan.stops.every((stop) => stop.start.startsWith(course.plan.date))).toBe(true);
 });
 
 it("remembers skipping traveler setup and lets the traveler edit their optional profile later", async () => {

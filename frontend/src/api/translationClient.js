@@ -1,3 +1,5 @@
+import { hasConfiguredPlanApi, requestJson } from "./planClient.js";
+
 const supportedLanguages = ["ko", "en", "ja", "zh-Hans", "zh-Hant"];
 
 function detectWrittenLanguage(text) {
@@ -45,6 +47,20 @@ export async function translateText(text, source, target, signal) {
     const { translatedText } = await response.json();
     if (typeof translatedText !== "string" || !translatedText.trim()) throw new Error("failed");
     return translatedText;
+  }
+
+  if (hasConfiguredPlanApi()) {
+    try {
+      const { translatedText } = await requestJson("/translate", {
+        signal,
+        request: { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ q: text, source, target }) },
+      });
+      if (typeof translatedText !== "string" || !translatedText.trim()) throw new Error("failed");
+      return translatedText;
+    } catch (error) {
+      if (error.status !== 404) throw error;
+    }
   }
 
   const api = globalThis.Translator;

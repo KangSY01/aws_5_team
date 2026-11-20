@@ -1,67 +1,43 @@
-.travel-map-tools {
-  display: none;
-}
+.travel-map-tools { display: none; }
 
 @media (max-width: 899px) {
   .travel-map-tools {
-    display: grid;
     width: max-content;
-    max-width: 52%;
+    max-width: 100%;
     margin-inline-start: auto;
-    flex: none;
   }
 
   .travel-preview .travel-map-tools > button {
-    --capsule-top: 5px;
-    --capsule-bottom: 3px;
-    --capsule-background: #fff;
-    --capsule-border: #1717171c;
     position: relative;
-    isolation: isolate;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    box-sizing: border-box;
-    width: 100%;
-    height: 44px;
-    padding: var(--capsule-top) 12px var(--capsule-bottom);
-    border: 0;
-    border-radius: 999px;
-    background: transparent;
-    color: #292929;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 6px 10px;
+    border: 1.5px solid var(--skin-ink);
+    border-radius: 8px;
+    background: var(--skin-card);
+    color: var(--skin-ink);
     font-size: 13px;
     font-weight: 600;
     line-height: 1.15;
-    text-align: center;
     overflow-wrap: anywhere;
     pointer-events: auto;
   }
 
-  .travel-map-tools > button::before {
-    content: "";
-    position: absolute;
-    inset: var(--capsule-top) 0 var(--capsule-bottom);
-    z-index: -1;
-    border: 1px solid var(--capsule-border);
-    border-radius: inherit;
-    background: var(--capsule-background);
-    box-shadow: 0 1px 4px #17171718;
-    pointer-events: none;
-  }
-
   .travel-preview .travel-map-tools > .emergency-help {
-    --capsule-background: #fdf0ee;
-    --capsule-border: #8c302c29;
-    color: #8c302c;
+    background: var(--skin-coral-surface);
+    color: var(--skin-coral);
   }
 
-  .travel-preview .travel-map-tools > .travel-phrases {
-    --capsule-top: 3px;
-    --capsule-bottom: 5px;
+  .travel-preview .travel-map-tools > button:focus-visible {
+    outline: 2px solid var(--skin-ink);
+    outline-offset: 3px;
   }
 
-  .travel-map-tools svg { width: 16px; height: 16px; flex: none; }
+  .travel-map-tools svg { width: 16px; height: 16px; flex: none; stroke-width: 1.75; }
 }
 
 .emergency-dialog {

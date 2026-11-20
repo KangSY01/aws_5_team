@@ -3,6 +3,8 @@ import { languages } from "../constants/travelCopy.js";
 import { detectSourceLanguage, translateText } from "../api/translationClient.js";
 import { photoLanguages, photoTypes, translatePhoto } from "../api/photoClient.js";
 import { localeFlags } from "../constants/localeFlags.js";
+import { hasConfiguredPlanApi } from "../api/planClient.js";
+import { useChatVoice } from "../hooks/useChatVoice.js";
 import "./translation-page.css";
 
 const speechLocales = { ko: "ko-KR", en: "en-US", ja: "ja-JP", "zh-Hans": "zh-CN", "zh-Hant": "zh-TW" };
@@ -39,7 +41,9 @@ export default function TranslationPage({ mode, active, language, copy, onInputF
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
   const [speechStarting, setSpeechStarting] = useState(false);
-  const speechActive = listening || speechStarting;
+  const liveSpeech = hasConfiguredPlanApi();
+  const voice = useChatVoice(liveSpeech && active && isVoice, speechLanguage, acceptTranscript);
+  const speechActive = liveSpeech ? Boolean(voice.phase) : listening || speechStarting;
   const [message, setMessage] = useState("");
   const [result, setResult] = useState("");
   const body = useRef(null);
@@ -88,6 +92,28 @@ export default function TranslationPage({ mode, active, language, copy, onInputF
     setSpeechStarting(false);
   }
 
+  function acceptTranscript(text) {
+    setDraft(text);
+    setHasTranscript(true);
+    setSpokenSource(speechLanguage);
+    setVoiceSource("");
+    setResolvedVoiceSource("");
+    setEditVoiceSource(false);
+  }
+
+  function toggleSpeech() {
+    if (liveSpeech) {
+      if (!voice.phase) clearResult();
+      voice.toggle("");
+    } else if (speechStarting) {
+      stopSpeech();
+    } else if (listening) {
+      recognition.current?.stop();
+    } else {
+      startSpeech();
+    }
+  }
+
   function startSpeech() {
     if (recognition.current || busy) return;
     clearResult();
@@ -104,12 +130,7 @@ export default function TranslationPage({ mode, active, language, copy, onInputF
     };
     session.onresult = (event) => {
       if (recognition.current !== session) return;
-      setDraft(event.results[0][0].transcript);
-      setHasTranscript(true);
-      setSpokenSource(speechLanguage);
-      setVoiceSource("");
-      setResolvedVoiceSource("");
-      setEditVoiceSource(false);
+      acceptTranscript(event.results[0][0].transcript);
     };
     session.onerror = ({ error }) => {
       if (recognition.current !== session) return;
@@ -235,7 +256,9 @@ export default function TranslationPage({ mode, active, language, copy, onInputF
   }, [compact]);
 
 
-  const inputHelp = message ? copy[message] : listening ? copy.listening : (busy || speechStarting) ? copy.working
+  const speechMessage = isVoice && (liveSpeech ? voice.error : null);
+  const inputHelp = message || speechMessage ? copy[message || speechMessage]
+    : (listening || voice.phase === "listening") ? copy.listening : (busy || speechActive) ? copy.working
     : emptyPhoto && copy.photoNeeded;
 
   return (
@@ -278,7 +301,7 @@ export default function TranslationPage({ mode, active, language, copy, onInputF
                 {isVoice && (
                   <div className="translation-microphone">
                     <button type="button" aria-label={speechActive ? copy.stop : copy.mic}
-                      onClick={speechStarting ? stopSpeech : listening ? () => recognition.current?.stop() : startSpeech}>
+                      onClick={toggleSpeech}>
                       {speechActive ? copy.stop : <MicIcon />}
                     </button>
                   </div>

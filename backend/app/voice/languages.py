@@ -10,7 +10,7 @@ https://docs.aws.amazon.com/transcribe/latest/dg/supported-languages.html
 
 from dataclasses import dataclass
 
-from app.models.plan import Language
+from app.models.api import TranslationLanguage as Language
 
 
 @dataclass(frozen=True)
@@ -21,6 +21,7 @@ class VoiceLanguage:
 
 
 VOICE_LANGUAGES: dict[Language, VoiceLanguage] = {
+    "ko": VoiceLanguage("ko", "ko-KR", "ko"),
     "en": VoiceLanguage("en", "en-US", "en"),
     "ja": VoiceLanguage("ja", "ja-JP", "ja"),
     "zh-Hans": VoiceLanguage("zh-Hans", "zh-CN", "zh-Hans"),  # 표준 중국어, 간체로 출력

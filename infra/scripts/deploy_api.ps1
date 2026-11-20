@@ -21,6 +21,7 @@ param(
     [ValidateRange(0, 1000)] [int]$ReservedConcurrency = 0,
     [string]$DataGoKrKey = $env:DATA_GO_KR_KEY_DECODING,
     [string]$KakaoRestApiKey = $env:KAKAO_REST_API_KEY,
+    [string]$TmapAppKey = $env:TMAP_APP_KEY,
     [string]$DemoNow = "",
     [ValidateSet("true", "false")] [string]$DemoCache = "false",
     [string]$StackName = "busan-guide-api",
@@ -93,6 +94,7 @@ $Overrides = @(
 )
 if ($DataGoKrKey) { $Overrides += "DataGoKrKey=$DataGoKrKey" }
 if ($KakaoRestApiKey) { $Overrides += "KakaoRestApiKey=$KakaoRestApiKey" }
+if ($TmapAppKey) { $Overrides += "TmapAppKey=$TmapAppKey" }
 if ($DemoNow) { $Overrides += "DemoNow=$DemoNow" }
 $ExtraArgs = @()
 if ($ReviewOnly) { $ExtraArgs += "--no-execute-changeset" }

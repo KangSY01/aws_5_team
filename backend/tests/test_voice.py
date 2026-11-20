@@ -18,8 +18,7 @@ from botocore.credentials import ReadOnlyCredentials
 from app import config
 from app import handler as handler_module
 from app.handler import handler
-from app.models.api import ErrorResponse, VoiceUrlResponse
-from app.models.plan import Language
+from app.models.api import ErrorResponse, TranslationLanguage, VoiceUrlResponse
 from app.voice import languages, presign, service
 from app.voice.errors import VoiceServiceError
 from scripts.local_invoke import make_event
@@ -65,9 +64,9 @@ def expected_signature(url: str, secret: str) -> str:
 
 
 def test_every_app_language_has_a_streaming_language_code():
-    assert set(languages.VOICE_LANGUAGES) == set(typing.get_args(Language))
+    assert set(languages.VOICE_LANGUAGES) == set(typing.get_args(TranslationLanguage))
     codes = {lang: v.transcribe_code for lang, v in languages.VOICE_LANGUAGES.items()}
-    assert codes == {"en": "en-US", "ja": "ja-JP", "zh-Hans": "zh-CN", "zh-Hant": "zh-TW"}
+    assert codes == {"ko": "ko-KR", "en": "en-US", "ja": "ja-JP", "zh-Hans": "zh-CN", "zh-Hant": "zh-TW"}
 
 
 def test_recognition_code_and_transcript_language_are_separate():
@@ -76,8 +75,7 @@ def test_recognition_code_and_transcript_language_are_separate():
     assert languages.transcript_language("zh-TW") == "zh-Hant"
     assert all(languages.transcript_language(v.transcribe_code) == v.transcript_language
                for v in languages.VOICE_LANGUAGES.values())
-    with pytest.raises(KeyError):
-        languages.transcript_language("ko-KR")
+    assert languages.transcript_language("ko-KR") == "ko"
 
 
 # ---- 서명 ----
@@ -113,7 +111,7 @@ def test_expiry_is_limited_to_what_transcribe_accepts(expires):
 # ---- 서비스 ----
 
 
-@pytest.mark.parametrize("language, code", [("en", "en-US"), ("ja", "ja-JP"), ("zh-Hans", "zh-CN"), ("zh-Hant", "zh-TW")])
+@pytest.mark.parametrize("language, code", [("ko", "ko-KR"), ("en", "en-US"), ("ja", "ja-JP"), ("zh-Hans", "zh-CN"), ("zh-Hant", "zh-TW")])
 def test_real_mode_signs_with_the_role_credentials_in_the_config_region(monkeypatch, frozen_time, language, code):
     monkeypatch.setattr(config, "USE_MOCK", False)
     monkeypatch.setattr(config, "BEDROCK_REGION", REGION)
@@ -154,7 +152,7 @@ def test_missing_credentials_become_a_service_error(monkeypatch):
 
 
 @pytest.mark.parametrize("body, status, code", [
-    ({"language": "ko"}, 422, "validation_error"),  # 지원하지 않는 언어
+    ({"language": "fr"}, 422, "validation_error"),
     ({}, 422, "validation_error"),
     ("{bad", 400, "bad_request"),
 ])
