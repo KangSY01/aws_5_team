@@ -5,9 +5,8 @@ run_chat(A)이 LLM 이 고른 place_id 목록으로 build_plan 을 부른다. @t
 """
 
 import datetime as dt
-import hashlib
-import json
 import logging
+import uuid
 
 from app.models.plan import Plan, Profile, Stop
 from app.tools.lookup import KST, LookupFailure, _load_places, get_travel_time
@@ -83,7 +82,10 @@ def build_plan(
     profile: Profile,
     plan_id: str | None = None,
 ) -> Plan:
-    """장소 목록으로 하루 일정을 만든다. 같은 입력이면 항상 같은 Plan 이 나온다.
+    """장소 목록으로 하루 일정을 만든다. 같은 입력이면 항상 같은 stops(방문 순서·시각)가 나온다.
+
+    plan_id: run_chat 은 저장소가 발급한 plan_id 를 넘길 것. 넘기지 않으면 저장소와 같은 형식의 무작위 ID
+    (plan-<uuid4 hex>)를 새로 만든다. 입력으로 계산한 ID 는 남이 추측할 수 있어서 쓰지 않는다.
 
     - places.json 에 없는 place_id 는 빼고, 중복은 처음 것만 남긴다.
     - 방문 순서: place_ids[0] 을 출발점으로 고정, 나머지는 get_travel_time 기준 최근접 이웃 + 2-opt.
@@ -145,8 +147,6 @@ def build_plan(
         logger.warning("일정 생성: 마지막 일정이 22:00 이후(%s)에 끝납니다", stops[-1].end.isoformat())
 
     if plan_id is None:
-        # 입력이 같으면 ID 도 같다. date·start 는 문자열로 주든 객체로 주든 같은 값이 되게 정규화한 뒤 해시한다.
-        raw = json.dumps([list(place_ids), day.isoformat(), start_time.isoformat()], ensure_ascii=False)
-        plan_id = "plan-" + hashlib.sha1(raw.encode("utf-8")).hexdigest()[:8]
+        plan_id = f"plan-{uuid.uuid4().hex}"  # app/storage/service.py 의 new_plan_id 와 같은 형식
 
     return Plan(plan_id=plan_id, date=day, profile=profile, stops=stops)

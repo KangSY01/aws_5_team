@@ -383,17 +383,17 @@ def test_build_place_영문은_키워드_검색으로_보완(monkeypatch):
     assert {r["lang"] for r in reviews} == {"ja", "zh-Hans", "zh-Hant"}
 
 
-def test_pick_en_keyword_300m_밖과_빈_이름은_버리고_같은_거리에_다른_이름이면_고르지_않는다():
+def test_pick_keyword_300m_밖과_빈_이름은_버리고_같은_거리에_다른_이름이면_고르지_않는다():
     kor = cand("1", "롯데프리미엄아울렛 동부산점")
-    assert fp.pick_en_keyword(kor, []) is None
-    assert fp.pick_en_keyword(kor, [cand("2", "Far", lat=HAEUNDAE[0] + 0.006), cand("3", "(한글만)")]) is None
+    assert fp.pick_keyword(kor, []) is None
+    assert fp.pick_keyword(kor, [cand("2", "Far", lat=HAEUNDAE[0] + 0.006), cand("3", "(한글만)")]) is None
     lap = cand("4", "LAP - Lotte Premium Outlets (LAP 롯데프리미엄아울렛 동부산점)")
     apc = cand("5", "APC - Lotte Premium Outlets (APC 롯데프리미엄아울렛 동부산점)")
-    assert fp.pick_en_keyword(kor, [lap, apc]) is None  # 입점 매장끼리 좌표가 같다
+    assert fp.pick_keyword(kor, [lap, apc]) is None  # 입점 매장끼리 좌표가 같다
     same = [cand("6", "Busan Tower (부산타워)"), cand("7", "Busan Tower")]  # 이름이 같으면 어느 쪽이든 된다
-    assert fp.pick_en_keyword(kor, same)["name"] == "Busan Tower"
+    assert fp.pick_keyword(kor, same)["name"] == "Busan Tower"
     store = cand("8", "Lotte Premium Outlets", lat=HAEUNDAE[0] + 0.0001)
-    assert fp.pick_en_keyword(kor, [store, cand("9", "Other", lat=HAEUNDAE[0] + 0.001)])["contentid"] == "8"
+    assert fp.pick_keyword(kor, [store, cand("9", "Other", lat=HAEUNDAE[0] + 0.001)])["contentid"] == "8"
 
 
 def test_offline은_저장된_같은_요청의_응답만_다시_읽는다(monkeypatch, tmp_path):
@@ -409,6 +409,43 @@ def test_offline은_저장된_같은_요청의_응답만_다시_읽는다(monkey
         fp.search_keyword("다른 검색어", raw)  # 저장된 응답과 요청이 다르다
     with pytest.raises(fp.FetchError):
         fp.search_keyword("부산타워", tmp_path / "p" / "none.json")
+
+
+def test_reuse_raw는_저장된_같은_요청은_다시_부르지_않고_없는_요청만_호출한다(monkeypatch, tmp_path):
+    body = {"response": {"header": {"resultCode": "0000"}, "body": {"items": {"item": {
+        "contentid": "1", "title": "A", "addr1": "부산", "mapx": "129.1", "mapy": "35.1"}}}}}
+    calls = []
+    monkeypatch.setattr(fp, "request_json", lambda *a: calls.append(a) or body)
+    monkeypatch.setattr(fp, "REUSE_RAW", True)
+    raw = tmp_path / "p" / "ko.json"
+    first = fp.search_keyword("부산타워", raw)  # 저장된 응답이 없으면 호출한다
+    assert fp.search_keyword("부산타워", raw) == first and len(calls) == 1
+    fp.search_keyword("다른 검색어", raw)  # 요청이 다르면 호출하고 raw 를 바꾼다
+    assert len(calls) == 2 and fp.load_json(raw, {})["params"]["keyword"] == "다른 검색어"
+
+
+def test_build_place_일문도_시드_키워드가_있으면_키워드_검색으로_보완(monkeypatch):
+    asked = []
+
+    def fake_keyword(keyword, raw_path, service="KorService2"):
+        asked.append((service, keyword, raw_path.name))
+        if service == "KorService2":
+            return [cand("1", "해운대시장")]
+        if service == "JpnService2":
+            return [cand("40", "釜山海雲台市場（부산 해운대시장）", lat=HAEUNDAE[0] + 0.0003)]
+        return []  # 영문 키워드는 0건
+
+    monkeypatch.setattr(fp, "search_keyword", fake_keyword)
+    monkeypatch.setattr(fp, "search_nearby", lambda *a, **k: [cand("9", "Other (다른곳)")])
+    seed = {"place_id": "haeundae-market", "name_ko": "해운대전통시장", "query": "해운대시장", "category": "market",
+            "indoor": False, "keywords": {"en": "Haeundae Market", "ja": "海雲台市場"}}
+    reviews: list[dict] = []
+    place, source = fp.build_place(seed, None, STATIONS, reviews)
+    assert place["names"] == {"ja": "釜山海雲台市場"}  # 괄호 안 한국어는 뺀다
+    assert asked == [("KorService2", "해운대시장", "ko.json"), ("EngService2", "Haeundae Market", "en_keyword.json"),
+                     ("JpnService2", "海雲台市場", "ja_keyword.json")]  # 키워드가 없는 중국어는 호출하지 않는다
+    assert source["match_kind"] == {"ja": "keyword_ja"} and source["contentids"]["ja"] == "40"
+    assert {r["lang"] for r in reviews} == {"en", "zh-Hans", "zh-Hant"}  # 못 찾은 언어는 review 에 남는다
 
 
 def test_dump_places_names는_한_줄():

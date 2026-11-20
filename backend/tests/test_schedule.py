@@ -2,10 +2,12 @@
 
 import datetime as dt
 import logging
+import re
 
 import pytest
 
 from app.models.plan import Profile
+from app.storage.service import new_plan_id
 from app.tools import schedule
 from app.tools.schedule import PlanBuildError, build_plan
 
@@ -15,14 +17,27 @@ SAMPLE = ["gamcheon-village", "jagalchi-market", "busan-tower", "haeundae-beach"
 DAY = dt.date(2026, 11, 28)
 
 
-def test_same_input_gives_same_plan():
+def without_id(plan):
+    return plan.model_dump(exclude={"plan_id"})
+
+
+def test_same_input_gives_same_stops():
     first = build_plan(SAMPLE, DAY, dt.time(10, 0), PROFILE)
-    assert first == build_plan(SAMPLE, DAY, dt.time(10, 0), PROFILE)
+    assert without_id(first) == without_id(build_plan(SAMPLE, DAY, dt.time(10, 0), PROFILE))
     # 문자열로 주거나 start 를 생략(기본 10:00)해도 같다
-    assert first == build_plan(SAMPLE, "2026-11-28", "10:00", PROFILE) == build_plan(SAMPLE, DAY, None, PROFILE)
-    assert first.plan_id.startswith("plan-")
-    assert build_plan(SAMPLE, DAY, "11:00", PROFILE).plan_id != first.plan_id
-    assert build_plan(SAMPLE, DAY, None, PROFILE, plan_id="p1").plan_id == "p1"
+    assert without_id(first) == without_id(build_plan(SAMPLE, "2026-11-28", "10:00", PROFILE))
+    assert without_id(first) == without_id(build_plan(SAMPLE, DAY, None, PROFILE))
+    # plan_id 를 넘기면 그대로 쓰고 stops 는 같다
+    given = build_plan(SAMPLE, DAY, None, PROFILE, plan_id="plan-from-storage")
+    assert given.plan_id == "plan-from-storage" and without_id(given) == without_id(first)
+
+
+def test_plan_id_없으면_저장소와_같은_형식의_무작위_ID():
+    first, second = (build_plan(SAMPLE, DAY, None, PROFILE) for _ in range(2))
+    for plan in (first, second):
+        assert re.fullmatch(r"plan-[0-9a-f]{32}", plan.plan_id)
+    assert first.plan_id != second.plan_id  # 입력이 같아도 ID 는 다르다 (추측할 수 없게)
+    assert re.fullmatch(r"plan-[0-9a-f]{32}", new_plan_id())  # 저장소 형식이 바뀌면 여기서 드러난다
 
 
 def test_unknown_removed_duplicates_removed(caplog):
@@ -104,6 +119,6 @@ def test_sample_plan(capsys):
     """보고용 샘플. `uv run pytest -q -s -k sample_plan` 으로 출력한다."""
     plan = build_plan(SAMPLE, "2026-11-28", "10:00", PROFILE)
     with capsys.disabled():
-        print("\n" + plan.plan_id)
+        print()
         for s in plan.stops:
             print(f"  {s.stop_id} {s.place_id:18} {s.start.isoformat()} ~ {s.end.isoformat()}")

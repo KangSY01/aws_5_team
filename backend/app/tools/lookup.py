@@ -1,4 +1,4 @@
-"""조회 도구 (도구 담당). 장소 검색, 혼잡, 날씨, 운영시간, 이동 시간, 행사.
+"""조회 도구 (도구 담당). 장소 검색, 장소 정보(큐레이션), 혼잡, 날씨, 운영시간, 이동 시간, 행사.
 
 반환 형식은 .kiro/specs/chat-agent/design.md 「조회 도구 반환 형식 (11/20 결정)」을 따른다.
 필드 이름은 app/guardian/context.py 의 모델(HourlyWeather, OpeningHours, Event)과 같다.
@@ -8,10 +8,9 @@ Guardian 의 build_context 도 이 함수들을 그대로 부른다.
 - config.USE_MOCK 이면 날씨는 외부 API 를 부르지 않고 app/data/weather/{날짜}.json 샘플을 쓴다.
 - 외부 API 는 타임아웃 5초, 재시도 1회. serviceKey 는 로그와 오류 메시지에 남기지 않는다.
 - 모르는 값(운영시간, 집중률)은 null·빈 목록으로 돌려준다. 지어내지 않는다.
-- 이동 시간(travel_times.json)과 행사(events.json)는 USE_MOCK 과 무관하게 app/data/ 의 파일을 읽는다.
-  만드는 스크립트: scripts/build_travel_times.py, scripts/fetch_events.py
-
-TODO(도구 담당): 집중률 파일 읽기(_concentration), 운영시간 데이터.
+- 이동 시간(travel_times.json), 행사(events.json), 운영시간(hours.json), 큐레이션(curation.json),
+  집중률(congestion.json)은 USE_MOCK 과 무관하게 app/data/ 의 파일을 읽는다.
+  만드는 스크립트: scripts/build_travel_times.py, fetch_events.py, fetch_hours.py, build_curation.py, build_congestion.py
 """
 
 import datetime as dt
@@ -27,7 +26,6 @@ from pathlib import Path
 from strands import tool
 
 from app import config
-from app.guardian.thresholds import WEEKDAY_RULE_PLACES
 
 logger = logging.getLogger(__name__)
 
@@ -125,9 +123,24 @@ def _get_json(url: str, params: dict) -> dict:
 def _concentration(place_id: str, day: dt.date) -> float | None:
     """그 장소의 그 날짜 집중률(0~100). 데이터가 없으면 None.
 
-    TODO(도구 담당, 다음 작업): app/data/ 의 집중률 파일을 읽는다. 지금은 파일이 없어 항상 None.
+    congestion.json(scripts/build_congestion.py 가 만든다)을 읽는다. 표에 없는 장소와 받아 둔 기간 밖의 날짜는 None.
     """
-    return None
+    return _load_json("congestion.json")["places"].get(place_id, {}).get(day.isoformat())
+
+
+# ---------- 운영시간 ----------
+
+def _hours(place_id: str) -> dict:
+    """hours.json(scripts/fetch_hours.py 가 만든다)의 그 장소 값. 파일에 없는 장소는 모르는 값(지어내지 않는다)."""
+    known = _load_json("hours.json")["hours"].get(place_id, {})
+    return {
+        "place_id": place_id,
+        "opens": known.get("opens"),
+        "closes": known.get("closes"),
+        "closed_weekdays": known.get("closed_weekdays", []),
+        "closed_dates": known.get("closed_dates", []),
+        "raw_text": known.get("raw_text"),
+    }
 
 
 # ---------- 이동 시간 ----------
@@ -275,13 +288,13 @@ def get_crowd(place_id: str, date: str) -> dict:
 
     Returns:
         {"place_id", "date", "ratio": 0~100 또는 null, "source": "concentration" | "weekday_rule"}.
-        ratio 가 null 이고 source 가 "weekday_rule" 이면 집중률 데이터가 없는 장소다. 이때는 숫자를 말하지 말고
-        요일로만 판단한다(평일 한산, 토요일 가장 붐빔, 일요일 붐빔).
+        ratio 가 null 이고 source 가 "weekday_rule" 이면 집중률 데이터가 없는 장소이거나, 받아 둔 기간(약 30일)
+        밖의 날짜다. 이때는 숫자를 말하지 말고 요일로만 판단한다(평일 한산, 토요일 가장 붐빔, 일요일 붐빔).
         실패하면 {"error": {"code", "message"}} (invalid_date, place_not_found 등).
     """
     day = _parse_date(date)
     _require_place(place_id)
-    ratio = None if place_id in WEEKDAY_RULE_PLACES else _concentration(place_id, day)
+    ratio = _concentration(place_id, day)
     return {
         "place_id": place_id,
         "date": day.isoformat(),
@@ -313,7 +326,10 @@ def get_weather(date: str) -> dict:
 @_safe
 def get_hours(place_id: str) -> dict:
     """장소의 운영시간과 휴무일을 가져온다. 문을 여는 시간, 닫는 시간, 쉬는 날을 답하거나 일정 시각을 정할 때 쓴다.
-    값이 null 이거나 빈 목록이면 모르는 것이다. 운영시간을 추측하지 말고 모른다고 답한다
+    한국관광공사 소개정보(공공데이터)를 미리 받아 둔 값이다. opens·closes 는 원문이 단순한 한 구간일 때만 들어 있다.
+    계절·요일별 시간, 입장 마감, "월요일이 공휴일이면 다음 날 휴관" 같은 예외는 raw_text(한국어 원문)에만 있으니
+    raw_text 가 있으면 그 내용을 사용자의 언어로 옮겨 답한다.
+    opens·closes 가 null 이고 raw_text 도 null 이면 모르는 것이다. 추측하지 말고 모른다고 답한다
     (현장 직원이나 1330 관광통역안내전화로 확인하도록 안내).
 
     Args:
@@ -321,13 +337,42 @@ def get_hours(place_id: str) -> dict:
 
     Returns:
         {"place_id", "opens": "HH:MM" 또는 null, "closes": "HH:MM" 또는 null,
-        "closed_weekdays": [0~6] (0=월 ... 6=일), "closed_dates": ["YYYY-MM-DD"]}.
-        지금은 운영시간 데이터가 없어 모든 장소가 opens·closes null, 빈 목록이다.
+        "closed_weekdays": [0~6] (0=월 ... 6=일, 매주 쉬는 요일), "closed_dates": ["YYYY-MM-DD"],
+        "raw_text": 이용시간·쉬는날 한국어 원문 또는 null}.
         실패하면 {"error": {"code", "message"}} (place_not_found 등).
     """
     _require_place(place_id)
-    # 운영시간 데이터를 아직 넣지 않았다. 모르는 값으로 돌려준다(지어내지 않는다).
-    return {"place_id": place_id, "opens": None, "closes": None, "closed_weekdays": [], "closed_dates": []}
+    return _hours(place_id)
+
+
+@tool
+@_safe
+def get_place_info(place_id: str) -> dict:
+    """장소 한 곳의 기본 정보, 큐레이션, 운영시간을 한 번에 가져온다. 장소를 소개하거나, 붐비거나 비가 올 때
+    대신 갈 곳을 고르거나, 운영시간을 답할 때 쓴다. search_places 와 get_hours 를 따로 부르지 않아도 된다.
+    curation 은 규칙으로 만든 참고 값이다. crowd_alternatives·rain_alternatives 는 후보일 뿐이니
+    그 장소의 실제 혼잡·날씨는 get_crowd·get_weather 로 확인한다.
+
+    Args:
+        place_id: 장소 ID (search_places 결과의 place_id)
+
+    Returns:
+        Place 필드(place_id, names, lat, lng, category, indoor, nearest_station)에 아래 둘을 더한 dict.
+        "curation": {"tags": food, sea, history, culture, shopping, nature, night_view, kids, indoor 중 해당하는 것,
+            "foreigner_friendly": 0~3 (한국관광공사 다국어 관광정보가 있는 언어 수: 영어·일본어·중국어.
+                현장의 외국어 안내 수준을 뜻하지 않는다),
+            "crowd_alternatives": 약 30분 이내이고 tags 가 겹치는 place_id 최대 3곳(가까운 순),
+            "rain_alternatives": 약 30분 이내의 실내 place_id 최대 3곳(가까운 순),
+            "source": "rule" | "manual"}. 큐레이션이 없는 장소는 null.
+        "hours": get_hours 와 같은 값(opens, closes, closed_weekdays, closed_dates, raw_text). place_id 는 뺀다.
+        실패하면 {"error": {"code", "message"}} (place_not_found 등).
+    """
+    place = next((p for p in _load_places() if p["place_id"] == place_id), None)
+    if place is None:
+        _require_place(place_id)  # place_not_found 오류를 같은 문구로 낸다
+    hours = _hours(place_id)
+    del hours["place_id"]
+    return {**place, "curation": _load_json("curation.json").get(place_id), "hours": hours}
 
 
 @tool

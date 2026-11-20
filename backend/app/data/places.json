@@ -118,7 +118,7 @@
   },
   {
     "place_id": "haeundae-market",
-    "names": { "en": "Busan Haeundae Market" },
+    "names": { "en": "Busan Haeundae Market", "ja": "釜山海雲台市場" },
     "lat": 35.1614753828,
     "lng": 129.1627110674,
     "category": "market",
@@ -232,6 +232,15 @@
     "category": "village",
     "indoor": false,
     "nearest_station": "Nampo"
+  },
+  {
+    "place_id": "songdo-cable-car",
+    "names": { "en": "Busan Air Cruise" },
+    "lat": 35.0766411637,
+    "lng": 129.023396378,
+    "category": "attraction",
+    "indoor": false,
+    "nearest_station": "Jagalchi"
   },
   {
     "place_id": "national-maritime-museum",
