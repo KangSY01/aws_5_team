@@ -1,0 +1,56 @@
+{
+  "source": {
+    "provider": "부산교통공사",
+    "api": "https://apis.data.go.kr/B551542/trainTime/getTrainTime",
+    "service": "부산교통공사_부산도시철도 열차시각표 조회 서비스_GW",
+    "fetched_at": "2026-11-20",
+    "day_codes": {
+      "1": "평일",
+      "2": "토요일",
+      "3": "일요일·공휴일"
+    },
+    "note": "표준 열차 도착시각이며 실제 도착시각과 다를 수 있습니다. 목적지 전에 끝나는 열차는 뺐습니다."
+  },
+  "stations": {
+    "Haeundae": {
+      "scode": "203",
+      "toward": "Seomyeon",
+      "updown": 1,
+      "last_train": {
+        "1": "23:29",
+        "2": "23:29",
+        "3": "23:29"
+      }
+    },
+    "Dongbaek": {
+      "scode": "204",
+      "toward": "Seomyeon",
+      "updown": 1,
+      "last_train": {
+        "1": "23:31",
+        "2": "23:31",
+        "3": "23:31"
+      }
+    },
+    "Jung-dong": {
+      "scode": "202",
+      "toward": "Seomyeon",
+      "updown": 1,
+      "last_train": {
+        "1": "23:28",
+        "2": "23:28",
+        "3": "23:28"
+      }
+    },
+    "Seomyeon": {
+      "scode": "219",
+      "toward": "Haeundae",
+      "updown": 0,
+      "last_train": {
+        "1": "24:00",
+        "2": "24:00",
+        "3": "24:00"
+      }
+    }
+  }
+}
