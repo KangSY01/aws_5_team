@@ -1,0 +1,610 @@
+{
+  "version": 8,
+  "name": "Busan tourism poster",
+  "glyphs": "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+  "sprite": "./gwangan-sprite",
+  "sources": {
+    "openmaptiles": {
+      "type": "vector",
+      "url": "https://tiles.openfreemap.org/planet",
+      "attribution": "© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors · © <a href=\"https://openmaptiles.org/\">OpenMapTiles</a>"
+    },
+    "gwangan": {
+      "type": "geojson",
+      "data": {
+        "type": "Feature",
+        "properties": {},
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            129.128385,
+            35.14569
+          ]
+        }
+      }
+    }
+  },
+  "layers": [
+    {
+      "id": "land",
+      "type": "background",
+      "paint": {
+        "background-color": "#F5F4EF"
+      }
+    },
+    {
+      "id": "green-cover",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landcover",
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "wood",
+            "grass"
+          ]
+        ]
+      ],
+      "minzoom": 7,
+      "paint": {
+        "fill-color": "#CBDDC4",
+        "fill-opacity": 0.9
+      }
+    },
+    {
+      "id": "parks",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "park",
+      "minzoom": 9,
+      "paint": {
+        "fill-color": "#CBDDC4",
+        "fill-opacity": 0.74
+      }
+    },
+    {
+      "id": "beaches",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landcover",
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "sand"
+          ]
+        ]
+      ],
+      "minzoom": 11,
+      "paint": {
+        "fill-color": "#EDE1C5"
+      }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "water",
+      "paint": {
+        "fill-color": "#A8D8E8",
+        "fill-outline-color": "#94C5D4"
+      }
+    },
+    {
+      "id": "waterways",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "waterway",
+      "minzoom": 10,
+      "paint": {
+        "line-color": "#A8D8E8",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0.5,
+          15,
+          1.3
+        ]
+      }
+    },
+    {
+      "id": "local-roads",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 11,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "minor",
+            "service"
+          ]
+        ]
+      ],
+      "paint": {
+        "line-color": "#C9CFD0",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          11,
+          0.32,
+          14,
+          0.7,
+          17,
+          1.45
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          11,
+          0.37,
+          14,
+          0.72,
+          17,
+          0.92
+        ]
+      }
+    },
+    {
+      "id": "main-roads",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 8,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "motorway",
+            "trunk",
+            "primary",
+            "secondary",
+            "tertiary"
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#A9B6BC",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          0.32,
+          11,
+          0.72,
+          14,
+          1.35,
+          17,
+          2.7
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          0.72,
+          14,
+          0.92
+        ]
+      }
+    },
+    {
+      "id": "busan-coastal-districts",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "place",
+      "minzoom": 9.5,
+      "filter": [
+        "in",
+        [
+          "get",
+          "name"
+        ],
+        [
+          "literal",
+          [
+            "해운대구",
+            "해운대",
+            "광안동",
+            "광안리",
+            "영도구",
+            "영도"
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name:latin"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          14,
+          14,
+          17
+        ],
+        "text-padding": 8,
+        "text-max-width": 10
+      },
+      "paint": {
+        "text-color": "#203A48",
+        "text-halo-color": "#F5F4EF",
+        "text-halo-width": 1.45
+      }
+    },
+    {
+      "id": "regional-places",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "place",
+      "minzoom": 7,
+      "filter": [
+        "all",
+        [
+          "!",
+          [
+            "in",
+            [
+              "get",
+              "name"
+            ],
+            [
+              "literal",
+              [
+                "해운대구",
+                "해운대",
+                "광안동",
+                "광안리",
+                "영도구",
+                "영도"
+              ]
+            ]
+          ]
+        ],
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "city",
+              "town"
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name:latin"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          12,
+          14,
+          15
+        ],
+        "text-padding": 10,
+        "text-max-width": 10
+      },
+      "paint": {
+        "text-color": "#203A48",
+        "text-halo-color": "#F5F4EF",
+        "text-halo-width": 1.45
+      }
+    },
+    {
+      "id": "beach-names",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 11,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "class"
+          ],
+          "attraction"
+        ],
+        [
+          "in",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "literal",
+            [
+              "광안리 해수욕장",
+              "광안리해수욕장",
+              "해운대 해수욕장",
+              "해운대해수욕장"
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name:latin"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 13,
+        "text-padding": 7,
+        "text-max-width": 10
+      },
+      "paint": {
+        "text-color": "#203A48",
+        "text-halo-color": "#F5F4EF",
+        "text-halo-width": 1.45
+      }
+    },
+    {
+      "id": "gwangan-bridge",
+      "type": "symbol",
+      "source": "gwangan",
+      "minzoom": 9.5,
+      "maxzoom": 16,
+      "layout": {
+        "icon-image": "gwangan-bridge",
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0.66,
+          12,
+          0.8,
+          15,
+          0.94
+        ],
+        "icon-padding": 6
+      }
+    },
+    {
+      "id": "local-places",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "place",
+      "minzoom": 12.5,
+      "filter": [
+        "all",
+        [
+          "!",
+          [
+            "in",
+            [
+              "get",
+              "name"
+            ],
+            [
+              "literal",
+              [
+                "해운대구",
+                "해운대",
+                "광안동",
+                "광안리",
+                "영도구",
+                "영도"
+              ]
+            ]
+          ]
+        ],
+        [
+          "in",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "literal",
+            [
+              "suburb",
+              "borough",
+              "quarter",
+              "neighbourhood",
+              "village"
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name:latin"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 12,
+        "text-padding": 7,
+        "text-max-width": 10
+      },
+      "paint": {
+        "text-color": "#203A48",
+        "text-halo-color": "#F5F4EF",
+        "text-halo-width": 1.45
+      }
+    },
+    {
+      "id": "stations",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 14,
+      "filter": [
+        "any",
+        [
+          "all",
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "railway"
+          ],
+          [
+            "in",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "literal",
+              [
+                "station",
+                "halt",
+                "subway",
+                "tram_stop"
+              ]
+            ]
+          ]
+        ],
+        [
+          "==",
+          [
+            "get",
+            "subclass"
+          ],
+          "subway"
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name:latin"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-padding": 7,
+        "text-max-width": 10
+      },
+      "paint": {
+        "text-color": "#203A48",
+        "text-halo-color": "#F5F4EF",
+        "text-halo-width": 1.45
+      }
+    }
+  ]
+}

@@ -1,0 +1,224 @@
+/* 일정 목록 스타일: 모바일 우선, min-width 미디어 쿼리로 확장한다. */
+:root {
+  --color-text: #171717;
+  --color-muted: #555555;
+  --color-bg: #FFFFFF;
+  --color-surface: #F5F5F6;
+  --color-border: #E5E5E7;
+  --color-selected: #EEEEF0;
+  --color-selected-text: #111111;
+  --color-action: #171717;
+  --color-on-action: #FFFFFF;
+  --color-shadow: #0000001A;
+  --page-gutter: 16px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* 360px 미만에서도 overflow-x: hidden 을 쓰지 않는다. */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: "Pretendard Variable", "Noto Sans CJK KR", "Noto Sans CJK JP",
+    "Noto Sans CJK SC", "Noto Sans CJK TC", "Hiragino Sans", "Yu Gothic",
+    "PingFang SC", "PingFang TC", "Malgun Gothic", system-ui, sans-serif;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.app {
+  padding: 16px var(--page-gutter);
+}
+
+/* ---- 일정 목록 ---- */
+.plan-list__date {
+  margin: 0 0 12px;
+  font-size: 1.125rem;
+}
+
+.plan-list__stops {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stop-item {
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  overflow-wrap: anywhere;
+}
+
+/* 모바일: 시각 범위는 장소명 위 별도 줄 */
+.stop-item__time {
+  display: block;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.stop-item__name {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.stop-item__locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.stop-item__note {
+  display: block;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+/* ---- 로딩 ---- */
+.loading-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 0;
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-action);
+  border-radius: 50%;
+  animation: loading-spin 0.8s linear infinite;
+}
+
+.loading-message {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- 빈 상태 ---- */
+.empty-state {
+  padding: 24px 0;
+  text-align: center;
+}
+
+.empty-state-date {
+  margin: 0 0 8px;
+  color: var(--color-muted);
+}
+
+.empty-state-message {
+  margin: 0;
+}
+
+/* ---- 오류 ---- */
+.error-state {
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+
+.error-title {
+  margin: 0 0 8px;
+  font-size: 1.125rem;
+}
+
+.error-detail {
+  margin: 0 0 8px;
+  color: var(--color-muted);
+}
+
+/* 터치 요소 최소 크기 */
+button,
+.retry-button {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.retry-button {
+  margin-top: 8px;
+  padding: 0 16px;
+  border: 1px solid var(--color-action);
+  border-radius: 8px;
+  background: var(--color-action);
+  color: var(--color-on-action);
+  font: inherit;
+  cursor: pointer;
+}
+
+.retry-button:focus-visible {
+  outline: 3px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+/* ---- 태블릿: 한 열, 좌우 여백 32px ---- */
+@media (min-width: 481px) {
+  :root {
+    --page-gutter: 32px;
+  }
+}
+
+/* ---- 데스크톱: 가운데 정렬, 2열 항목 ---- */
+@media (min-width: 1024px) {
+  .app {
+    max-width: 760px;
+    margin-inline: auto;
+  }
+
+  .stop-item {
+    display: grid;
+    grid-template-columns: 8rem 1fr;
+    column-gap: 16px;
+    align-items: baseline;
+  }
+
+  .stop-item__time {
+    grid-column: 1;
+  }
+
+  .stop-item__name {
+    grid-column: 2;
+  }
+
+  .stop-item__locked,
+  .stop-item__note {
+    grid-column: 2;
+  }
+}
+
+/* ---- 움직임 줄이기 ---- */
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner {
+    animation: none;
+  }
+}
