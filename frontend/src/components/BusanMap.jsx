@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { buildPlacesById, resolvePlaceName } from "../lib/resolvePlaceName.js";
@@ -18,9 +19,14 @@ const eventIcons = {
   market: "M4 10h16l-2-5H6zm2 0v9h12v-9m-7 9v-5h4",
 };
 
-export default function BusanMap({ plan, places, events, onEventSelect, language, label, selectedId, nextStopId, onSelect, focusRequest, regionPicker }) {
+export default function BusanMap({ plan, places, events, onEventSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, focusRequest, regionPicker }) {
   const container = useRef(null);
   const mapRef = useRef(null);
+  const [locationControl, setLocationControl] = useState(null);
+  const [locationStatus, setLocationStatus] = useState("");
+  const locationMarker = useRef(null);
+  const locationRequest = useRef(false);
+  const cancelLocationMove = useRef(null);
   const fittedPlan = useRef(null);
   const markersRef = useRef(new Map());
   const languageRef = useRef(language);
@@ -67,6 +73,15 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
     mapRef.current = map;
 
     L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
+    const control = L.control({ position: "bottomright" });
+    control.onAdd = () => {
+      const element = L.DomUtil.create("div", "busan-location-control");
+      L.DomEvent.disableClickPropagation(element);
+      L.DomEvent.disableScrollPropagation(element);
+      return element;
+    };
+    control.addTo(map);
+    setLocationControl(control.getContainer());
     const addRaster = () => {
       const url = tileOverride || osmTileUrl;
       const host = new URL(url, window.location.href).hostname;
@@ -119,6 +134,10 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
       updateMapLanguage.current = null;
       updateBridge.current = null;
       observer?.disconnect();
+      cancelLocationMove.current?.();
+      cancelLocationMove.current = null;
+      locationMarker.current = null;
+      locationRequest.current = false;
       map.remove();
       mapRef.current = null;
       fittedPlan.current = null;
@@ -290,9 +309,100 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
     map.panTo(map.unproject(center), { animate: !window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches });
   }, [focusRequest]);
 
+  function findLocation() {
+    const map = mapRef.current;
+    if (!map || locationRequest.current) return;
+    if (!navigator.geolocation) {
+      setLocationStatus("unavailable");
+      return;
+    }
+
+    locationRequest.current = true;
+    setLocationStatus("pending");
+    navigator.geolocation.getCurrentPosition(({ coords }) => {
+      if (mapRef.current !== map) return;
+      locationRequest.current = false;
+      setLocationStatus("");
+      cancelLocationMove.current?.();
+      map.stop();
+
+      const position = L.latLng(coords.latitude, coords.longitude);
+      if (!locationMarker.current) {
+        locationMarker.current = L.marker(position, {
+          interactive: false,
+          keyboard: false,
+          zIndexOffset: 1200,
+          icon: L.divIcon({
+            className: "busan-location-pin",
+            iconSize: [44, 44],
+            iconAnchor: pinAnchor,
+            html: `<span class="busan-location-ring"></span><span class="busan-location-ring"></span>
+              <svg viewBox="0 0 44 44" aria-hidden="true">
+                <path d="M22 42C15 34 7 25 7 18a15 15 0 1 1 30 0c0 7-8 16-15 24Z" />
+                <circle cx="22" cy="18" r="4" />
+              </svg>`,
+          }),
+        }).addTo(map);
+      } else {
+        locationMarker.current.setLatLng(position);
+      }
+
+      const pin = locationMarker.current.getElement();
+      pin.setAttribute("aria-hidden", "true");
+      pin.removeAttribute("data-pulse");
+      const size = map.getSize();
+      const bounds = container.current.getBoundingClientRect();
+      const panel = container.current.closest("main").querySelector(".travel-chat");
+      const panelBounds = panel.getBoundingClientRect();
+      const covered = !panel.hidden && panelBounds.width > 0 && panelBounds.left < bounds.right;
+      const bottomSheet = covered && panelBounds.top > bounds.top;
+      const visibleHeight = bottomSheet ? panelBounds.top - bounds.top : size.y;
+      const visibleWidth = covered && !bottomSheet ? Math.max(0, panelBounds.left - bounds.left) : size.x;
+      const center = map.unproject(map.project(position).add([(size.x - visibleWidth) / 2, (size.y - visibleHeight) / 2]));
+      const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      const alreadyCentered = map.project(map.getCenter()).distanceTo(map.project(center)) < 1;
+
+      function pulse() {
+        cancelLocationMove.current?.();
+        // Flush removal so replay works when the same marker is already centered.
+        pin.getBoundingClientRect();
+        pin.setAttribute("data-pulse", "");
+      }
+
+      if (reducedMotion) {
+        map.panTo(center, { animate: false });
+      } else if (alreadyCentered) {
+        pulse();
+      } else {
+        cancelLocationMove.current = () => {
+          map.off("moveend", pulse);
+          cancelLocationMove.current = null;
+        };
+        map.on("moveend", pulse);
+        map.panTo(center, { animate: true, duration: .45 });
+      }
+    }, (error) => {
+      if (mapRef.current !== map) return;
+      locationRequest.current = false;
+      setLocationStatus(error.code === 1 ? "denied" : "unavailable");
+    }, { timeout: 10000, maximumAge: 0 });
+  }
+
   return (
     <>
       <div ref={container} className="busan-map" role="region" aria-label={label} />
+      {locationControl && locationCopy && createPortal(
+        <>
+          <button type="button" aria-label={locationCopy.find} title={locationCopy.find}
+            aria-disabled={locationStatus === "pending"} onClick={findLocation}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2" />
+              <path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
+            </svg>
+          </button>
+          <div className="busan-location-status" role="status">{locationCopy[locationStatus]}</div>
+        </>, locationControl
+      )}
       {regionPicker && <RegionMap mapRef={mapRef} {...regionPicker} />}
     </>
   );

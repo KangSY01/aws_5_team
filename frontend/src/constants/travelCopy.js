@@ -79,6 +79,14 @@ const emergencyCopy = {
   },
 };
 
+const locationLabels = {
+  ko: ["내 위치 찾기", "위치 확인 중…", "위치 권한이 거부됐어요.", "현재 위치를 가져올 수 없어요."],
+  en: ["Find my location", "Finding your location…", "Location permission was denied.", "Could not find your location."],
+  ja: ["現在地を表示", "現在地を確認中…", "位置情報の使用が許可されていません。", "現在地を取得できませんでした。"],
+  "zh-Hans": ["查找我的位置", "正在获取位置…", "位置权限已被拒绝。", "无法获取当前位置。"],
+  "zh-Hant": ["尋找我的位置", "正在取得位置…", "位置權限已遭拒絕。", "無法取得目前位置。"],
+};
+
 export function getTravelCopy(language) {
   const [intro, prompt, example, submit, title, edit, itinerary, map, schematic, locked, languageLabel, night, loading, empty, network, timeout, http, invalidResponse, retry] = copy[language];
   const [ask, send, close, expand, reduce, ready, messageLabel, sampleTitle, home, chat, navigation] = chatCopy[language];
@@ -86,7 +94,9 @@ export function getTravelCopy(language) {
   const [collapseItinerary, closeItinerary] = itineraryActions[language];
   const [profile, guest, account, accountUnavailable] = profileCopy[language];
   const [startTrip, endTrip, traveling, nextPlace, askForRoute] = tripCopy[language];
+  const [find, pending, denied, unavailable] = locationLabels[language];
   return {
+    location: { find, pending, denied, unavailable },
     emergency: emergencyCopy[language],
     startTrip, endTrip, traveling, nextPlace, askForRoute,
     profile, guest, account, accountUnavailable,

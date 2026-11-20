@@ -3,33 +3,33 @@ import { getTravelCopy, languages } from "../constants/travelCopy.js";
 import { getPlannerCopy, transportPreferenceIds } from "../constants/plannerCopy.js";
 import { recommendDemo, suggestDemo } from "../lib/demoPlanner.js";
 import { normalizeActivities } from "../lib/activityPreferences.js";
-import koreanFlag from "../assets/flags/kr.svg";
-import englishFlag from "../assets/flags/gb.svg";
-import japaneseFlag from "../assets/flags/jp.svg";
-import simplifiedChineseFlag from "../assets/flags/cn.svg";
-import traditionalChineseFlag from "../assets/flags/tw.svg";
+import { localeFlags } from "../constants/localeFlags.js";
 import EmptyState from "./EmptyState.jsx";
 import sampleEvents from "../mocks/events.js";
 import { buildPlacesById, resolvePlaceName } from "../lib/resolvePlaceName.js";
 import BusanMap from "./BusanMap.jsx";
+import TranslationPage, { PhotoActionIcon, MicIcon, TextActionIcon } from "./TranslationPage.jsx";
+import { getTranslationCopy } from "../constants/translationCopy.js";
 import EmergencyHelp from "./EmergencyHelp.jsx";
 import "./emergency-help.css";
 import PlanList from "./PlanList.jsx";
 import TravelPreferences from "./TravelPreferences.jsx";
 import "./travel-preview.css";
 
-const localeFlags = {
-  ko: koreanFlag,
-  en: englishFlag,
-  ja: japaneseFlag,
-  "zh-Hans": simplifiedChineseFlag,
-  "zh-Hant": traditionalChineseFlag,
-};
+function readTravelRoute() {
+  const page = window.location.hash.slice(1);
+  return page === "profile" ? page : "map";
+}
+
+
+
+const translationModes = ["text", "photo", "voice"];
 
 const tabIcons = {
   home: "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z",
   itinerary: "M7 3v4m10-4v4M4 9h16M5 5h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm3 8h3m2 0h3m-8 4h3",
   chat: "M20 11.5a8 8 0 0 1-8 8 9 9 0 0 1-3.4-.7L4 20l1.2-4A8 8 0 1 1 20 11.5zM8.5 11.5h7",
+  translation: "M3 5h12M9 3v2m4 0c-1 5-4 8-9 10m2-7c1 3 3 5 6 7m2 5 4-10 4 10m-7-3h6",
   profile: "M16 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2",
 };
 function LanguageTrigger({ className, label }) {
@@ -157,7 +157,11 @@ function formatDate(date, language) {
 
 export default function TravelPreview({ night = false } = {}) {
   const [language, setLanguage] = useState(getSavedLanguage);
-  const [profile, setProfile] = useState(() => window.location.hash === "#profile");
+  const [route, setRoute] = useState(readTravelRoute);
+  const [translationMenu, setTranslationMenu] = useState(false);
+  const [translationMode, setTranslationMode] = useState(null);
+  const [translationExpanded, setTranslationExpanded] = useState(false);
+  const page = route;
   const [open, setOpen] = useState(false);
   const [course, setCourse] = useState(() => {
     const saved = loadSaved(courseStorageKey);
@@ -190,6 +194,8 @@ export default function TravelPreview({ night = false } = {}) {
   const dragStart = useRef(null);
   const root = useRef(null);
   const tabBar = useRef(null);
+  const translationTrigger = useRef(null);
+  const translationPopover = useRef(null);
   const chatHeading = useRef(null);
   const log = useRef(null);
   const composer = useRef(null);
@@ -206,11 +212,18 @@ export default function TravelPreview({ night = false } = {}) {
   const editIndex = stops.findIndex((stop) => stop.stop_id === editId);
   const editStop = stops[editIndex];
   const selected = Math.max(0, stops.findIndex((stop) => stop.stop_id === selectedId));
-  const tab = profile ? "profile" : open ? panel : "home";
+  const profile = page === "profile";
+  const isMap = page === "map";
+  const translationCopy = getTranslationCopy(language);
+  const baseTab = isMap ? open ? panel : "home" : page;
+  const showTranslation = translationMode !== null;
+  const sheetOpen = open || showTranslation;
+  const sheetExpanded = showTranslation ? translationExpanded : expanded;
+  const tab = showTranslation ? "translation" : baseTab;
   const showChat = panel === "chat";
   const collapseLabel = showChat ? copy.collapse : copy.collapseItinerary;
   const closeLabel = showChat ? copy.close : copy.closeItinerary;
-  const labels = { home: copy.home, itinerary: copy.itinerary, chat: copy.chat, profile: copy.profile };
+  const labels = { home: copy.home, itinerary: copy.itinerary, chat: copy.chat, translation: translationCopy.title, profile: copy.profile };
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -222,19 +235,19 @@ export default function TravelPreview({ night = false } = {}) {
   }, []);
 
   useEffect(() => {
-    if (open && tab === "chat" && log.current) log.current.scrollTop = log.current.scrollHeight;
-  }, [open, messages, tab, pending, reviewStatus]);
+    if (open && baseTab === "chat" && log.current) log.current.scrollTop = log.current.scrollHeight;
+  }, [open, messages, baseTab, pending, reviewStatus]);
 
   useEffect(() => {
-    if (tab === "itinerary" && log.current) {
+    if (baseTab === "itinerary" && log.current) {
       log.current.scrollTop = restorePreferencesScroll.current ?? 0;
       restorePreferencesScroll.current = null;
     }
-  }, [tab, showPreferences]);
+  }, [baseTab, showPreferences]);
 
   useEffect(() => {
-    if (open) chatHeading.current?.focus({ preventScroll: true });
-  }, [open, tab]);
+    if (sheetOpen) chatHeading.current?.focus({ preventScroll: true });
+  }, [sheetOpen, tab]);
 
   const exitRegionPicker = useCallback((restorePanel) => {
     if (!regionSession.current) return;
@@ -251,10 +264,12 @@ export default function TravelPreview({ night = false } = {}) {
 
   useEffect(() => {
     function syncPage() {
-      const next = window.location.hash === "#profile";
-      if (!window.history.state?.busanRegionPicker) exitRegionPicker(!next);
-      setProfile(next);
-      if (next) {
+      const next = readTravelRoute();
+      if (!window.history.state?.busanRegionPicker) exitRegionPicker(next === "map");
+      setRoute(next);
+      setTranslationMenu(false);
+      setTranslationMode(null);
+      if (next !== "map") {
         setOpen(false);
         setExpanded(false);
       }
@@ -297,14 +312,54 @@ export default function TravelPreview({ night = false } = {}) {
     }
   }
 
-  function navigateProfile(next) {
-    if (profile === next) return;
+  function navigatePage(next) {
+    if (route === next) return;
     const { pathname, search } = window.location;
-    window.history.pushState(null, "", pathname + search + (next ? "#profile" : ""));
-    setProfile(next);
+    window.history.pushState(null, "", pathname + search + (next === "map" ? "" : "#" + next));
+    setRoute(next);
   }
 
+  useEffect(() => {
+    if (!translationMenu) return;
+    translationPopover.current?.querySelector("button")?.focus({ preventScroll: true });
+    function dismissOutside(event) {
+      if (!translationTrigger.current?.contains(event.target) && !translationPopover.current?.contains(event.target)) {
+        setTranslationMenu(false);
+      }
+    }
+    function dismissOnEscape(event) {
+      if (event.key !== "Escape") return;
+      event.stopPropagation();
+      setTranslationMenu(false);
+      translationTrigger.current?.focus({ preventScroll: true });
+    }
+    document.addEventListener("pointerdown", dismissOutside);
+    document.addEventListener("keydown", dismissOnEscape, true);
+    return () => {
+      document.removeEventListener("pointerdown", dismissOutside);
+      document.removeEventListener("keydown", dismissOnEscape, true);
+    };
+  }, [translationMenu]);
+
+  function openTranslation(mode) {
+    setTranslationMenu(false);
+    if (!showTranslation) setTranslationExpanded(false);
+    setTranslationMode(mode);
+    if (translationMode === mode) chatHeading.current?.focus({ preventScroll: true });
+  }
+
+  function setSheetExpanded(next) {
+    if (showTranslation) setTranslationExpanded(next);
+    else setExpanded(next);
+  }
+
+
   function close() {
+    if (showTranslation) {
+      setTranslationMode(null);
+      tabBar.current?.querySelector(`[data-tab="${baseTab}"]`)?.focus({ preventScroll: true });
+      return;
+    }
     setOpen(false);
     setExpanded(false);
     tabBar.current?.querySelector(`[data-tab="${panel}"]`)?.focus();
@@ -429,19 +484,19 @@ export default function TravelPreview({ night = false } = {}) {
     if (dragStart.current === null) return;
     const distance = event.clientY - dragStart.current;
     dragStart.current = null;
-    if (distance < -35) setExpanded(true);
+    if (distance < -35) setSheetExpanded(true);
     if (distance > 35) {
-      if (expanded) setExpanded(false);
+      if (sheetExpanded) setSheetExpanded(false);
       else close();
     }
   }
 
   return (
-    <main ref={root} className="travel-preview" data-night={night} data-page={profile ? "profile" : "map"} data-sheet={open ? "open" : "closed"} data-expanded={expanded}
-      data-compact-itinerary={!showChat && !showPreferences && !stops.length} data-region-picker={regionDraft !== null} lang={language}>
-      <div className="travel-shell" inert={profile} aria-hidden={profile}>
+    <main ref={root} className="travel-preview" data-night={night} data-page={page} data-sheet={sheetOpen ? "open" : "closed"} data-expanded={sheetExpanded}
+      data-compact-itinerary={!showTranslation && !showChat && !showPreferences && !stops.length} data-region-picker={regionDraft !== null} lang={language}>
+      <div className="travel-shell" inert={!isMap} aria-hidden={!isMap}>
         <BusanMap plan={plan} places={places} events={sampleEvents} onEventSelect={setEvent}
-          language={language} label={copy.map}
+          language={language} label={copy.map} locationCopy={copy.location}
           selectedId={selectedId} nextStopId={nextStop?.stop_id} onSelect={setSelectedId} focusRequest={mapFocus}
           regionPicker={regionDraft && {
             selected: regionDraft, onChange: setRegionDraft, copy: plannerCopy,
@@ -479,7 +534,7 @@ export default function TravelPreview({ night = false } = {}) {
         </div>
       )}
       {profile && <ProfilePage copy={copy} plannerCopy={plannerCopy} language={language} onLanguageChange={changeLanguage} />}
-      <aside id="travel-chat" className="travel-chat" hidden={!open} inert={!open} aria-hidden={!open} aria-labelledby="travel-panel-title"
+      <aside id="travel-chat" className="travel-chat" data-translation={showTranslation} hidden={!sheetOpen} inert={!sheetOpen} aria-hidden={!sheetOpen} aria-labelledby="travel-panel-title"
         onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
         <div className="chat-grab" aria-hidden="true"
           onPointerDown={(event) => {
@@ -488,15 +543,31 @@ export default function TravelPreview({ night = false } = {}) {
           }}
           onPointerUp={endDrag} onPointerCancel={() => { dragStart.current = null; }} />
         <header className="chat-heading">
-          <h1 id="travel-panel-title" ref={chatHeading} tabIndex={-1}>{showChat ? "Busan AI" : copy.itinerary}</h1>
-          <button type="button" className="chat-collapse" aria-label={collapseLabel} onClick={close}>
+          <h1 id="travel-panel-title" ref={chatHeading} tabIndex={-1}>{showTranslation ? translationCopy[translationMode] : showChat ? "Busan AI" : copy.itinerary}</h1>
+          {showTranslation && <button type="button" aria-label={sheetExpanded ? copy.reduce : copy.expand}
+            aria-expanded={sheetExpanded} onClick={() => setSheetExpanded(!sheetExpanded)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d={sheetExpanded ? "m6 9 6 6 6-6" : "m6 15 6-6 6 6"} /></svg>
+          </button>}
+          <button type="button" className="chat-collapse" aria-label={showTranslation ? translationCopy.close : collapseLabel} onClick={close}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
           </button>
-          <button type="button" className="chat-close" aria-label={closeLabel} onClick={close}>
+          <button type="button" className="chat-close" aria-label={showTranslation ? translationCopy.close : closeLabel} onClick={close}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
           </button>
+          {showTranslation && (
+            <div className="activity-chips translation-mode-chips" role="group" aria-label={translationCopy.title}>
+              {translationModes.map((mode) => (
+                <button key={mode} type="button" className="activity-chip" aria-pressed={mode === translationMode}
+                  onClick={() => setTranslationMode(mode)}>{translationCopy[mode]}</button>
+              ))}
+            </div>
+          )}
         </header>
-        <div className="chat-content" ref={log}>
+        {translationModes.map((mode) => (
+          <TranslationPage key={mode} mode={mode} active={mode === translationMode}
+            language={language} copy={translationCopy} onInputFocus={() => setTranslationExpanded(true)} />
+        ))}
+        <div className="chat-content" ref={log} hidden={showTranslation}>
           <div className="chat-messages" role="log" hidden={!showChat}>
             <p className="chat-bubble">{copy.greeting}</p>
             {!editStop && <p className="chat-bubble">{plannerCopy.pickStop}</p>}
@@ -549,13 +620,13 @@ export default function TravelPreview({ night = false } = {}) {
             </section>
           ))}
         </div>
-        {showChat && editStop && (
+        {!showTranslation && showChat && editStop && (
           <div className="edit-target">
             <strong>{editIndex + 1} · {resolvePlaceName(editStop, placesById, language).name}</strong>
             <button type="button" aria-label={plannerCopy.clearTarget} onClick={() => { setEditId(null); setReviewStatus(null); }}>×</button>
           </div>
         )}
-        <form className="chat-compose" hidden={!showChat} onSubmit={submit}>
+        <form className="chat-compose" hidden={showTranslation || !showChat} onSubmit={submit}>
           <textarea ref={composer} aria-label={copy.messageLabel} placeholder={copy.placeholder} rows={1}
             value={draft} maxLength={1000} onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
@@ -565,7 +636,7 @@ export default function TravelPreview({ night = false } = {}) {
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg>
           </button>
         </form>
-        {!showChat && !showPreferences && (
+        {!showTranslation && !showChat && !showPreferences && (
           <div className="trip-actions">
             {stops.length > 0 && (
               <button type="button" disabled={Boolean(pending)} onClick={() => changeTrip(!tripStarted)}>
@@ -581,20 +652,26 @@ export default function TravelPreview({ night = false } = {}) {
       <nav ref={tabBar} className="travel-tabs" data-active-tab={tab} aria-label={copy.navigation} inert={regionDraft !== null}>
         <span className="travel-tab-indicator" aria-hidden="true" />
         {Object.entries(tabIcons).map(([name, path]) => (
-          <button key={name} data-tab={name}
+          <button key={name} data-tab={name} ref={name === "translation" ? translationTrigger : undefined}
             type="button" aria-label={labels[name]} title={labels[name]}
             aria-current={tab === name ? "page" : undefined}
-            aria-controls={name === "chat" || name === "itinerary" ? "travel-chat" : undefined}
-            aria-expanded={name === "chat" || name === "itinerary" ? tab === name : undefined}
+            aria-controls={name === "translation" ? (translationMenu ? "translation-method-popover" : showTranslation ? "travel-chat" : undefined) : name === "chat" || name === "itinerary" ? "travel-chat" : undefined}
+            aria-expanded={name === "translation" ? translationMenu || showTranslation : name === "chat" || name === "itinerary" ? tab === name : undefined}
             onClick={() => {
+              if (name === "translation") {
+                setTranslationMenu(!translationMenu);
+                return;
+              }
+              setTranslationMenu(false);
+              setTranslationMode(null);
               if (name !== "home") setEvent(null);
               if (name === "profile") {
                 setOpen(false);
                 setExpanded(false);
-                navigateProfile(true);
+                navigatePage(name);
                 return;
               }
-              navigateProfile(false);
+              navigatePage("map");
               if (name === "home") {
                 setOpen(false);
                 setExpanded(false);
@@ -611,6 +688,13 @@ export default function TravelPreview({ night = false } = {}) {
             </svg>
           </button>
         ))}
+        {translationMenu && (
+          <div ref={translationPopover} id="translation-method-popover" className="translation-method-popover" role="group" aria-label={translationCopy.title}>
+            <button type="button" onClick={() => openTranslation("text")}><TextActionIcon />{translationCopy.text}</button>
+            <button type="button" onClick={() => openTranslation("photo")}><PhotoActionIcon camera />{translationCopy.photo}</button>
+            <button type="button" onClick={() => openTranslation("voice")}><MicIcon />{translationCopy.voice}</button>
+          </div>
+        )}
       </nav>
     </main>
   );
