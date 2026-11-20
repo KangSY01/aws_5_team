@@ -242,4 +242,18 @@ def test_main_rejects_baseline_without_ranking(mock_mode, tmp_path):
 
 
 def test_all_queries_load():
-    assert [q["id"] for q in run_eval.load_queries()] == list(range(1, 22))
+    assert [q["id"] for q in run_eval.load_queries()] == list(range(1, 34))
+
+
+def test_ranking_queries_are_plan_creation():
+    # 랭킹 비교용 22~33번: 새 일정만 만들고, 네 언어와 평일·주말이 섞여 있다
+    ranking = [q for q in run_eval.load_queries() if q["id"] >= 22]
+    assert len(ranking) == 12
+    assert all(q["category"] == "plan_create" and q["plan_id"] is None for q in ranking)
+    assert {q["profile"]["language"] for q in ranking} == {"en", "ja", "zh-Hans", "zh-Hant"}
+
+
+def test_plan_create_checks_apply_to_ranking_queries():
+    q = query(22, category="plan_create")
+    added = [{"stop_id": f"s{i}", "before": None, "after": stop(f"s{i}", "gamcheon-village", "10:00", "11:00")} for i in (1, 2, 3)]
+    assert run_eval.preservation_checks(q, chat_run(changes=added), SAMPLE) == {"3~5곳 생성": True, "전부 추가(before null)": True}

@@ -202,7 +202,7 @@ def preservation_checks(query: dict, run: dict, original: Plan) -> dict[str, boo
     locked = {s.stop_id: s.model_dump(mode="json") for s in original.stops if s.locked}
     locked_kept = all(_stop(run["final_plan"], sid) == stop for sid, stop in locked.items()) if run["final_plan"] else not (changed_ids & set(locked))
     qid = query["id"]
-    if qid == 1:
+    if query["category"] == "plan_create":  # 1번과 랭킹 비교용 22~33번
         return {"3~5곳 생성": 3 <= len(changes) <= 5, "전부 추가(before null)": bool(changes) and all(c["before"] is None for c in changes)}
     if qid == 3:
         return {"s4만 바뀜": changed_ids == {"s4"}, "고정 일정 유지": locked_kept}
