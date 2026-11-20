@@ -3,6 +3,7 @@
 뼈대 단계: 아래 TODO 가 남은 경로(/chat)는 app/data/ 의 샘플로 docs/api-contract.md 형식의 고정 응답을 돌려준다.
 GET·PUT /plan 은 app/storage 에서 읽고 쓴다 (USE_MOCK=1 이면 메모리, 아니면 DynamoDB).
 /plan/check, /plan/{plan_id}/delay 는 저장된 일정을 읽어 Guardian(app/guardian/service.py) 결과를 돌려준다.
+GET /alerts 는 예약 점검(app/scheduled_handler.py)이 저장한 마지막 결과를 읽기만 한다. 점검을 새로 하지 않는다.
 Guardian 해결안은 저장하지 않는다. 사용자가 고른 해결안을 프론트엔드가 PUT /plan/{plan_id} 로 저장한다.
 
 CORS 헤더는 여기서 붙이지 않는다. 배포에서는 Function URL 설정이,
@@ -164,6 +165,12 @@ def _route(event: dict) -> BaseModel:
             _check_stops(plan)
             _check_locked(stored, plan)
             return _plan_response(storage.update_plan(plan))
+
+        case "GET", ["alerts"]:
+            plan_id = ((event.get("queryStringParameters") or {}).get("plan_id") or "").strip()
+            if not plan_id:
+                raise ApiError(422, "validation_error", "plan_id 쿼리 파라미터가 필요합니다.")
+            return storage.get_alerts(plan_id)  # 없는 일정은 PlanNotFoundError → 404, 점검 전이면 checked_at null
 
         case _:
             raise ApiError(404, "not_found", f"{method} {event['rawPath']} 경로가 없습니다.")
