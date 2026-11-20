@@ -15,6 +15,8 @@ const osmAttribution = '© <a href="https://www.openstreetmap.org/copyright">Ope
 const tileOverrideAttribution = import.meta.env.VITE_MAP_TILE_ATTRIBUTION;
 const pinSize = 44;
 const pinAnchor = [22, 42];
+// 일정 마커는 둥근 사각 타일이라 가운데가 장소 위치다 (디자인 실험)
+const stopPinAnchor = [22, 22];
 const pinGap = pinSize + 4;
 const eventIcons = {
   festival: "m12 2 2.3 6.7L21 11l-6.7 2.3L12 20l-2.3-6.7L3 11l6.7-2.3z",
@@ -23,7 +25,12 @@ const eventIcons = {
   event: "M5 5h14v15H5zm3-3v6m8-6v6M5 10h14",
 };
 
-export default function BusanMap({ plan, places, events, onEventSelect, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, focusRequest, regionPicker, liveRoutes, returnPaths }) {
+// 마커 이름표에 넣는 장소 이름을 HTML 로 안전하게 만든다 (디자인 실험)
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+export default function BusanMap({ plan, places, events, onEventSelect, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, focusRequest, regionPicker, crowdLevels = null, liveRoutes, returnPaths }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const [locationControl, setLocationControl] = useState(null);
@@ -189,17 +196,18 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
 
     mappedStops.forEach(({ stop, coordinates }, index) => {
       if (!coordinates) return;
-      const title = `${index + 1}. ${resolvePlaceName(stop, placesById, language).name}`;
+      const placeName = resolvePlaceName(stop, placesById, language).name;
+      const title = `${index + 1}. ${placeName}`;
       const marker = L.marker(coordinates, {
         title,
         icon: L.divIcon({
           className: "busan-map-pin",
           iconSize: [pinSize, pinSize],
-          iconAnchor: pinAnchor,
+          iconAnchor: stopPinAnchor,
           html: `<svg viewBox="0 0 44 44" aria-hidden="true">
-            <path d="M22 42C15 34 7 25 7 18a15 15 0 1 1 30 0c0 7-8 16-15 24Z"/>
-            <text x="22" y="18" dy=".34em">${index + 1}</text>
-          </svg>`,
+            <rect x="8" y="8" width="28" height="28" rx="7"/>
+            <text x="22" y="22" dy=".34em">${index + 1}</text>
+          </svg><span class="busan-map-pin__label" aria-hidden="true">${escapeHtml(placeName)}</span>`,
         }),
       }).addTo(layer);
       const element = marker.getElement();
@@ -235,8 +243,8 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
         element.toggleAttribute("data-displaced", Boolean(x || y));
         element.style.setProperty("--pin-tether-length", `${Math.hypot(x, y)}px`);
         element.style.setProperty("--pin-tether-angle", `${Math.atan2(-y, -x)}rad`);
-        element.style.setProperty("--pin-origin-x", `${pinAnchor[0] - x}px`);
-        element.style.setProperty("--pin-origin-y", `${pinAnchor[1] - y}px`);
+        element.style.setProperty("--pin-origin-x", `${stopPinAnchor[0] - x}px`);
+        element.style.setProperty("--pin-origin-y", `${stopPinAnchor[1] - y}px`);
       }
     }
 
@@ -246,10 +254,26 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
       });
       fittedPlan.current = plan;
     }
+    // 이름표가 지도 오른쪽 끝을 넘으면 핀 왼쪽에 붙인다 (디자인 실험, 모바일에서 잘리지 않게)
+    function placeLabels() {
+      const width = map.getSize().x;
+      for (const marker of markers.values()) {
+        const element = marker.getElement();
+        const label = element?.querySelector(".busan-map-pin__label");
+        if (!label) continue;
+        const [x] = (element.style.translate || "0px").split(" ").map(parseFloat);
+        const right = map.latLngToContainerPoint(marker.getLatLng()).x + (x || 0) + pinSize / 2 + label.offsetWidth;
+        element.toggleAttribute("data-label-left", right > width - 8);
+      }
+    }
+
     separatePins();
+    placeLabels();
     map.on("zoomend", separatePins);
+    map.on("moveend zoomend resize", placeLabels);
     return () => {
       map.off("zoomend", separatePins);
+      map.off("moveend zoomend resize", placeLabels);
       layer.remove();
     };
   }, [plan, places, mappedStops, language, onSelect]);
@@ -285,7 +309,8 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
     function updateVisibility() {
       const itinerary = [...markersRef.current.values()].map((marker) => {
         const [x, y] = marker.getElement().style.translate.split(" ").map(parseFloat);
-        return map.project(marker.getLatLng()).add([x || 0, (y || 0) - 20]);
+        // 일정 마커는 타일 가운데가 장소 위치다 (디자인 실험, 예전 물방울 핀은 20px 위가 가운데)
+        return map.project(marker.getLatLng()).add([x || 0, y || 0]);
       });
       const visible = [];
       const zoom = map.getZoom();
@@ -332,8 +357,10 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
       if (id === nextStopId) element?.setAttribute("aria-current", "true");
       else element?.removeAttribute("aria-current");
       marker.setZIndexOffset(id === nextStopId ? 2000 : active ? 1000 : 0);
+      if (element && crowdLevels?.[id]) element.dataset.crowd = crowdLevels[id];
+      else element?.removeAttribute("data-crowd");
     }
-  }, [selectedId, nextStopId, plan, places, language, onSelect]);
+  }, [selectedId, nextStopId, plan, places, language, onSelect, crowdLevels]);
 
   useEffect(() => {
     if (!focusRequest) return;
