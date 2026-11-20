@@ -328,8 +328,10 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const profile = page === "profile";
   const isMap = page === "map";
   const translationCopy = getTranslationCopy(language);
-  const sidebar = wide && isMap;
-  const baseTab = isMap ? open || sidebar ? panel : "home" : page;
+  // 넓은 화면은 프로필 화면에서도 사이드바를 유지한다(하단 탭 위치가 바뀌지 않게). 지도 상세 카드는 홈 탭이 아니어도 보인다
+  const sidebar = wide;
+  const sidebarMap = sidebar && isMap;
+  const baseTab = isMap ? open || sidebarMap ? panel : "home" : page;
   const showTranslation = translationMode !== null;
   const sheetOpen = open || showTranslation || sidebar;
   const sheetExpanded = showTranslation ? translationExpanded : expanded;
@@ -1085,7 +1087,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
               <span className="travel-brand">Busan<span>Now</span></span>
               {tripStarted && <span className="trip-status">{copy.traveling}</span>}
             </div>
-            {tab === "home" && !regionDraft && (currentPlace || mapDetail) && (
+            {(tab === "home" || sidebarMap) && !regionDraft && (currentPlace || mapDetail) && (
               <div className="travel-map-cards">
                 {currentPlace && (
                   <div className="trip-next">

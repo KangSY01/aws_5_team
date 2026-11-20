@@ -351,3 +351,8 @@
   stroke-linecap: round;
   stroke-opacity: .9;
 }
+
+/* 데스크톱: 프로필 화면도 지도 자리(사이드바 오른쪽)에 띄운다 */
+@media (min-width: 900px) {
+  .travel-preview[data-sidebar="true"] .travel-profile { left: 380px; }
+}

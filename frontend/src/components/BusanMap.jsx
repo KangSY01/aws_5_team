@@ -269,7 +269,8 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
     function updateVisibility() {
       const itinerary = [...markersRef.current.values()].map((marker) => {
         const [x, y] = marker.getElement().style.translate.split(" ").map(parseFloat);
-        return map.project(marker.getLatLng()).add([x || 0, (y || 0) - 20]);
+        // 일정 마커는 타일 가운데가 장소 위치다 (디자인 실험, 예전 물방울 핀은 20px 위가 가운데)
+        return map.project(marker.getLatLng()).add([x || 0, y || 0]);
       });
       const visible = [];
       const zoom = map.getZoom();
