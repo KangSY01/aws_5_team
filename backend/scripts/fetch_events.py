@@ -16,6 +16,7 @@ events.json 의 행사 한 건
             행사 시간 원문이 "18:00~23:00" 같은 단순한 한 구간이면 첫날 18:00:00, 마지막 날 23:00:00 으로 쓴다
   playtime_raw  행사 시간 원문 (확인한 행사만)
   place_ids 행사 좌표에서 직선거리 1km 이내인 places.json 장소. 좌표가 없으면 빈 목록
+  main_place_id  place_ids 중 행사 좌표와 직선거리가 가장 가까운 장소 (같은 거리면 place_id 사전순). place_ids 가 비면 null
   contentid, addr1, lat, lng  출처 확인용
 API 에 없는 행사는 넣지 않는다. 값을 지어내지 않는다.
 """
@@ -62,9 +63,8 @@ def build_events(items: list[dict], places: list[dict], playtimes: dict[str, str
             lat, lng = float(item["mapy"]), float(item["mapx"])
         except (KeyError, TypeError, ValueError):
             lat = lng = None
-        near = [] if lat is None else [
-            p["place_id"] for p in places if fp.haversine_m(lat, lng, p["lat"], p["lng"]) <= EVENT_RADIUS_M
-        ]
+        dist = {} if lat is None else {p["place_id"]: fp.haversine_m(lat, lng, p["lat"], p["lng"]) for p in places}
+        near = [pid for pid, d in dist.items() if d <= EVENT_RADIUS_M]
         contentid = str(item.get("contentid", ""))
         playtime = (playtimes or {}).get(contentid, "")
         # 행사 시간 원문이 단순한 한 구간("18:00~23:00")일 때만 시각을 넣는다. 애매하면 날짜만 쓴다
@@ -74,6 +74,8 @@ def build_events(items: list[dict], places: list[dict], playtimes: dict[str, str
             "start": f"{start.isoformat()}T{opens or '00:00'}:00+09:00",
             "end": f"{end.isoformat()}T{closes + ':00' if closes else '23:59:59'}+09:00",
             "place_ids": near,
+            # 행사 대표 장소: place_ids 중 행사 좌표와 가장 가까운 곳 (같은 거리면 place_id 사전순, 없으면 null)
+            "main_place_id": min(near, key=lambda pid: (dist[pid], pid), default=None),
             "contentid": contentid,
             "addr1": str(item.get("addr1", "")),
             "lat": lat,
@@ -136,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
     if total is not None and int(total) > len(items):
         print(f"[경고] totalCount 가 받은 건수보다 많습니다. ROWS({ROWS})를 늘려 다시 받으세요.")
     for e in events:
-        print(f"  {e['start'][:10]} ~ {e['end'][:10]}  {e['name']}  {e['place_ids']}")
+        print(f"  {e['start'][:10]} ~ {e['end'][:10]}  {e['name']}  {e['place_ids']}  대표 {e['main_place_id']}")
         if "playtime_raw" in e:
             print(f"    행사 시간 원문: {e['playtime_raw']!r} → start {e['start']}, end {e['end']}")
     print(f"API 호출 {fp.API_CALLS}회")
