@@ -117,6 +117,7 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - `foreigner_friendly`(0~3): 다국어 관광정보 제공 언어 수(영어·일본어·중국어 중 이름이 있는 언어 수)입니다. 현장의 외국어 안내 수준이 아닙니다.
 - `crowd_alternatives`: 이동 시간 30분 이내이고 `indoor`를 뺀 `tags`가 하나 이상 겹치는 장소, 가까운 순 최대 3곳.
 - `rain_alternatives`: 이동 시간 30분 이내의 실내(`indoor=true`) 장소, 가까운 순 최대 3곳.
+- `rain_alternatives` 후보에서는 대형 상업·유료 시설 3곳(`sea-life-busan`, `busan-x-the-sky`, `shinsegae-centum-city`)을 뺍니다(`build_curation.RAIN_EXCLUDED`). 비 올 때마다 유료 수족관·전망대·백화점만 추천되는 것을 막기 위해서입니다. 이 장소 자체의 항목과 `crowd_alternatives`는 그대로입니다.
 - 사람이 고친 항목은 `curation_overrides.json`에 두면 다시 만들 때 덮어쓰고 `source`가 `"manual"`이 됩니다.
 - 도구: `get_place_info(place_id)`. `Place` + `curation` + `hours`를 한 번에 돌려줍니다. `search_places` 결과에는 큐레이션을 넣지 않습니다.
 - 대체 후보는 후보일 뿐입니다. 그 장소의 실제 혼잡·날씨는 `get_crowd`·`get_weather`로 확인하십시오.

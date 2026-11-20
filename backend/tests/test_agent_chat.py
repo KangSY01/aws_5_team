@@ -143,7 +143,7 @@ def test_alternatives_from_get_place_info_count_as_grounded(chat):
     # D 의 프롬프트 규칙: 이번 요청의 도구 결과에 나온 place_id 는 답변에 쓸 수 있다
     model = ScriptedModel([
         tool_turn(("get_place_info", {"place_id": "haeundae-beach"})),
-        text_turn("If [place:haeundae-beach] is crowded, [place:sea-life-busan] is an indoor option."),
+        text_turn("If [place:haeundae-beach] is crowded, [place:busan-museum-of-art] is an indoor option."),
     ])
 
     response = chat(model, demo=NOW_1128)
