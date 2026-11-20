@@ -326,7 +326,7 @@
 .stop-time-dialog::backdrop { background: #0006; }
 .stop-time-dialog h2 { margin: 0; font-size: 1.05rem; }
 .stop-time-dialog p { margin: 6px 0 14px; overflow-wrap: anywhere; }
-.stop-time-fields, .stop-time-actions, .stop-move-actions {
+.stop-time-fields, .stop-time-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
@@ -336,8 +336,8 @@
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  min-height: 44px;
-  padding-inline: 6px;
+  min-height: 38px;
+  padding: 3px 6px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface);
@@ -358,13 +358,43 @@
 }
 .stop-time-dialog button[type="submit"] { border-color: transparent; background: var(--trip-green); color: #fff; }
 .stop-time-dialog button:disabled { opacity: .55; }
-.stop-move-actions {
-  margin: 14px 0 0;
-  padding: 4px 0 0;
-  min-width: 0;
-  border: 0;
+.stop-editor-dialog .stop-editor-place {
+  margin: 3px 0 12px;
+  color: var(--color-muted);
+  font-size: .8rem;
 }
-.stop-move-actions legend { padding: 0; color: var(--color-muted); font-size: .875rem; }
+.stop-editor-dialog .stop-editor-overlap {
+  margin: 4px 0 0;
+  color: var(--stop-warning, #a33129);
+  font-size: .75rem;
+}
+.stop-move-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  min-width: 0;
+}
+.stop-move-actions > div { display: grid; gap: 2px; }
+.stop-move-actions span { color: var(--color-muted); font-size: .8rem; }
+.stop-move-actions strong { font-size: .875rem; }
+.stop-move-actions button {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+.stop-move-actions svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .guardian-stop-controls {
   display: flex;
   flex-wrap: wrap;

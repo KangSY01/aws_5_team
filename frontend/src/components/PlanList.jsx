@@ -39,22 +39,10 @@ export default function PlanList({ plan, places, displayLanguage, selected, trip
   const editorStop = stops[editorIndex];
   const overlaps = useMemo(() => overlappingStops(stops), [stops]);
 
-  function timeSave(start, end) {
-    if (editorStop.start === start && editorStop.end === end) return true;
-    return onSaveStops(stops.map((stop, index) => index === editorIndex ? { ...stop, start, end } : stop));
-  }
-
   function move(from, to) {
     if (busy) return false;
     const reordered = reorderStops(stops, from, to);
     return reordered !== stops && onSaveStops(reordered);
-  }
-
-  function moveFromEditor(to) {
-    if (!canMoveStop(stops, editorIndex, to)) return undefined;
-    return async () => {
-      if (await move(editorIndex, to)) setEditorTarget(null);
-    };
   }
 
   const { drag, handleProps, cancel } = useStopDrag(list, stops, onSaveStops && !busy ? move : undefined);
@@ -106,10 +94,9 @@ export default function PlanList({ plan, places, displayLanguage, selected, trip
         ))}
       </ol>
       {editorStop && (
-        <StopTimeEditor key={editorTarget} stop={editorStop} name={resolvePlaceName(editorStop, placesById, language).name}
+        <StopTimeEditor key={editorTarget} stops={stops} index={editorIndex} name={resolvePlaceName(editorStop, placesById, language).name}
           copy={copy} busy={busy} error={saveError} formatStopDate={formatStopDate}
-          onClose={() => setEditorTarget(null)} onSave={timeSave}
-          onUp={moveFromEditor(editorIndex - 1)} onDown={moveFromEditor(editorIndex + 1)} />
+          onClose={() => setEditorTarget(null)} onSave={onSaveStops} />
       )}
     </section>
   );
