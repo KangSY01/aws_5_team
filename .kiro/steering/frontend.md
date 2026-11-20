@@ -18,7 +18,8 @@ fileMatchPattern: ["frontend/**"]
 - 점검: 일정을 읽거나 바꾼 뒤 `POST /plan/check`를 호출해 배지를 갱신합니다.
 - 해결안 적용: 선택한 `RepairOption.changes`를 일정에 반영해 `PUT /plan/{plan_id}`로 저장합니다.
 - 되돌리기: 적용 직전 `Plan`을 화면 상태에 보관했다가 `PUT`으로 다시 저장합니다. 되돌리기 API는 없습니다.
-- `/chat` 응답은 스트리밍으로 받아 도착하는 대로 표시합니다. 이벤트 형식은 금 12:00 점검 1에서 확정한 뒤 `docs/api-contract.md`를 따릅니다.
+- `/chat`은 `Accept: text/event-stream` 헤더로 요청해 SSE로 받습니다. `delta`의 `text`를 도착하는 대로 이어 붙여 표시하고, `done`의 `ChatResponse`로 마무리합니다. 형식은 `docs/api-contract.md` 「스트리밍」을 따릅니다.
+- 브라우저 `EventSource`는 POST를 보낼 수 없으므로 `fetch` 응답 본문을 읽어 SSE를 직접 해석합니다.
 - 나머지 경로의 응답은 한 번에 옵니다. 기다리는 동안 진행 표시를 보여 줍니다.
 
 ## 지도
@@ -47,8 +48,8 @@ fileMatchPattern: ["frontend/**"]
 - 열차 시각은 "시간표 기준" 표기를 함께 표시합니다.
 
 ## 데모 스위치
-- API 계약에 요청별 데모 필드가 없습니다. 시간 이동 데모는 서버 환경 변수 `DEMO_NOW`로 재현합니다.
-- 화면에서 날짜·시각·날씨를 바꾸는 스위치가 필요하면 계약 변경 PR을 먼저 올립니다.
+- `/chat`, `/plan/check`, `/plan/{plan_id}/delay` 요청에 `demo`(`now`, `weather_preset`)를 넣어 그 요청에서만 시각과 날씨를 바꿉니다. 형식은 `docs/api-contract.md` 「데모 스위치」입니다.
+- 데모 스위치 패널(`frontend/src/features/demo-panel/`)은 D가 맡습니다.
 
 ## 접근성과 성능
 - 터치 영역 44px 이상
