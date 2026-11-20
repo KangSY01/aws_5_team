@@ -1481,7 +1481,8 @@ export default function TravelPreview({ night = false, demoMode = false, travele
                 return;
               }
               navigatePage("map");
-              if (name !== "home") setSidebarCollapsed(false);
+              // 넓은 화면: 홈 = 사이드바 접고 지도 전체 보기, 다른 탭 = 사이드바 펼치기
+              setSidebarCollapsed(name === "home");
               if (name === "home") {
                 setOpen(false);
                 setExpanded(false);

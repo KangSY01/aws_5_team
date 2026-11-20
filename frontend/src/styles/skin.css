@@ -223,7 +223,6 @@
 
   .travel-preview[data-sidebar="true"] .travel-brand-group > .travel-brand { display: none; }
   .travel-preview[data-sidebar="true"] .travel-tabs { left: calc(380px + (100% - 380px) / 2); }
-  .travel-preview[data-sidebar="true"] .travel-tabs [data-tab="home"] { display: none; }
   body:has(.travel-preview[data-sidebar="true"]) .demo-panel { left: 396px; bottom: 120px; }
 
   .travel-ask { display: none; }
