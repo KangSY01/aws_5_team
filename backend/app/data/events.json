@@ -25,6 +25,6 @@
     {"name": "부산종합민속예술제", "start": "2026-11-15T00:00:00+09:00", "end": "2026-11-15T23:59:59+09:00", "place_ids": ["busan-citizens-park"], "contentid": "3016659", "addr1": "부산광역시 부산진구 시민공원로 73 (범전동)", "lat": 35.1654110124, "lng": 129.0572087146},
     {"name": "게임문화축제", "start": "2026-11-19T00:00:00+09:00", "end": "2026-11-22T23:59:59+09:00", "place_ids": ["shinsegae-centum-city", "busan-museum-of-art", "busan-cinema-center"], "contentid": "3360113", "addr1": "부산광역시 해운대구 APEC로 30 (우동)", "lat": 35.1657825587, "lng": 129.1350266435},
     {"name": "크리스마스 빌리지 부산 2026", "start": "2026-11-26T00:00:00+09:00", "end": "2026-12-25T23:59:59+09:00", "place_ids": ["shinsegae-centum-city", "busan-cinema-center"], "contentid": "3437916", "addr1": "부산광역시 해운대구 수영강변대로 120 (우동)", "lat": 35.1709631305, "lng": 129.1270422473},
-    {"name": "해운대 빛축제", "start": "2026-11-28T00:00:00+09:00", "end": "2027-01-10T23:59:59+09:00", "place_ids": ["haeundae-beach", "the-bay-101", "haeridan-gil", "haeundae-market", "busan-x-the-sky", "sea-life-busan"], "contentid": "2048902", "addr1": "부산광역시 해운대구 중동 1411-14", "lat": 35.1592056511, "lng": 129.1615365475}
+    {"name": "해운대 빛축제", "start": "2026-11-28T18:00:00+09:00", "end": "2027-01-10T23:00:00+09:00", "place_ids": ["haeundae-beach", "the-bay-101", "haeridan-gil", "haeundae-market", "busan-x-the-sky", "sea-life-busan"], "contentid": "2048902", "addr1": "부산광역시 해운대구 중동 1411-14", "lat": 35.1592056511, "lng": 129.1615365475, "playtime_raw": "18:00~23:00"}
   ]
 }

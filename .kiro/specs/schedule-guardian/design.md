@@ -37,9 +37,9 @@ backend/app/guardian/
 
 | 이름 | 초기값 | 뜻 |
 |---|---|---|
-| `CROWD_MEDIUM_RATE` | 85 | 집중률이 이 값 이상이면 `medium` |
-| `CROWD_HIGH_RATE` | 95 | 집중률이 이 값 이상이고 주말이면 `high` |
-| `WEEKDAY_RULE_PLACES` | `gamcheon-village`, `haedong-yonggungsa`, `huinnyeoul-village`, `haeridan-gil`, `blueline-park` | 집중률에 없는 장소. 토 `medium`, 일 `low` |
+| `CROWD_MEDIUM_RATE` | 95 | 집중률이 이 값 이상이면 `medium`. 받아 둔 30일 안에서 토요일이 대부분 장소의 최고 시기라 85→95 (11/28 토: 85 이상 17곳, 95 이상 7곳) |
+| `CROWD_HIGH_RATE` | 98 | 집중률이 이 값 이상이고 주말이면 `high`. 95→98 (11/28 토: 98 이상 2곳). 해운대(96.8)는 `medium`, 빛축제 개막일 가중으로 `high` |
+| `WEEKDAY_RULE_PLACES` | `gamcheon-village`, `busan-tower`, `haedong-yonggungsa`, `shinsegae-centum-city`, `haeridan-gil`, `blueline-park`, `busan-x-the-sky`, `busan-cinema-center`, `lotte-outlet-dongbusan`, `huinnyeoul-village`, `busan-modern-history-museum`, `choryang-ibagu-gil` (12곳) | 집중률에 없는 장소. 토 `medium`, 일 `low` |
 | `RAIN_POP_MEDIUM` | 60 | 체류 시간대 최대 강수확률(%)이 이 값 이상이면 `medium` |
 | `RAIN_PTY_HIGH_RATIO` | 0.5 | 체류 시간의 50% 이상에 강수가 있으면 `high` |
 | `TRANSFER_BUFFER_MIN` | 10 | 이동 여유(분). 미만이면 `medium`, 0 미만이면 `high` |

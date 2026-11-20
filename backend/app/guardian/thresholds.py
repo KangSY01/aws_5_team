@@ -7,16 +7,25 @@
 from app.models.plan import Severity
 
 # 혼잡 (집중률은 장소마다 자기 최고 시기=100인 상대값. 장소끼리 비교하지 않는다)
-CROWD_MEDIUM_RATE = 85  # 집중률이 이 값 이상이면 medium
-CROWD_HIGH_RATE = 95  # 집중률이 이 값 이상이고 주말이면 high
+# 받아 둔 30일(11/18~12/17) 안에서는 토요일이 대부분 장소의 최고 시기라 85 기준이면 토요일 일정 거의 전부가 걸린다.
+# 11/28(토) 21곳 중 85 이상 17곳, 95 이상 7곳, 98 이상 2곳 → 95/98 (데모 장면 1 배지 3개)
+CROWD_MEDIUM_RATE = 95  # 집중률이 이 값 이상이면 medium
+CROWD_HIGH_RATE = 98  # 집중률이 이 값 이상이고 주말이면 high
 
 # 집중률 데이터에 없는 장소. 요일 규칙으로 판단한다 (places.json 에 있는 ID만, data-rules.md 「혼잡도」 목록)
 WEEKDAY_RULE_PLACES = frozenset({
     "gamcheon-village",
+    "busan-tower",
     "haedong-yonggungsa",
-    "huinnyeoul-village",
+    "shinsegae-centum-city",
     "haeridan-gil",
     "blueline-park",
+    "busan-x-the-sky",
+    "busan-cinema-center",
+    "lotte-outlet-dongbusan",
+    "huinnyeoul-village",
+    "busan-modern-history-museum",
+    "choryang-ibagu-gil",
 })
 # 요일 규칙 심각도. 키는 datetime.weekday() 값 (5=토, 6=일). 평일은 문제 없음
 WEEKDAY_RULE_SEVERITY: dict[int, Severity] = {5: "medium", 6: "low"}

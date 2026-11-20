@@ -104,10 +104,10 @@ def test_table_every_repair_keeps_jagalchi():
 
 # ---------- 데모 장면 (docs/demo-readiness.md) ----------
 
-# 장면 1·2: 해운대 빛축제(행사, 장소 haeundae-beach). 해운대 집중률 90 → 토요일 medium, 행사일 가중으로 high(🔴)
+# 장면 1·2: 해운대 빛축제(행사, 장소 haeundae-beach). 해운대 집중률 96 → 토요일 medium, 행사일 가중으로 high(🔴)
 FESTIVAL = Event(name="해운대 빛축제", start=at(18), end=at(22), place_ids=["haeundae-beach"])
 SCENE_1_CTX = make_context(
-    crowd=BASE_CROWD | {"haeundae-beach": 90.0},
+    crowd=BASE_CROWD | {"haeundae-beach": 96.0},
     events=[FESTIVAL],
     travel_min=BASE_TRAVEL_MIN | {("busan-tower", "gwangalli-beach"): 30},
 )

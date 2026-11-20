@@ -40,10 +40,11 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 ## 행사 (한국관광공사 행사정보)
 - API: `https://apis.data.go.kr/B551011/KorService2/searchFestival2` (`lDongRegnCd=26`, `eventStartDate`, `eventEndDate`)
 - `uv run --env-file .env python -m scripts.fetch_events`가 2026-11 기준으로 한 번 받아 `backend/app/data/events.json`에 저장합니다. `--offline`은 호출 없이 저장된 응답으로 다시 만듭니다.
-- `start`·`end`는 행사 기간의 첫날 00:00, 마지막 날 23:59입니다. API는 날짜만 주므로 하루 중 진행 시간은 모릅니다.
+- `start`·`end`는 행사 기간의 첫날 00:00, 마지막 날 23:59입니다. 행사 목록 API는 날짜만 주므로 하루 중 진행 시간은 모릅니다.
+- 행사 시간을 따로 확인한 행사(`fetch_events.PLAYTIME_CONTENT_IDS`, 지금은 해운대 빛축제)는 `detailIntro2`(`contentTypeId=15`)의 `playtime` 원문을 `playtime_raw`에 둡니다. 원문이 `18:00~23:00` 같은 한 구간이면 `start`는 첫날 18:00, `end`는 마지막 날 23:00으로 씁니다(기간 중 매일 그 시간). 애매하면 시각은 바꾸지 않습니다.
 - `place_ids`는 행사 좌표에서 직선거리 1km 이내인 `places.json` 장소입니다.
 - `events.json`에는 받은 행사를 모두 둡니다(행사 레이어 표시용).
-- 도구: `get_events(date)`. 행사일만 돌려줍니다. 기간이 7일 이하(첫날·마지막 날 포함)인 행사는 기간 전체(`kind: "short"`), 7일보다 긴 행사는 개막일에만(`kind: "opening_day"`) 나옵니다. 상설 행사가 매일 행사 가중을 받지 않게 하기 위한 규칙입니다.
+- 도구: `get_events(date)`. 행사일만 돌려줍니다. 기간이 7일 이하(첫날·마지막 날 포함)인 행사는 기간 전체(`kind: "short"`), 7일보다 긴 행사는 개막일에만(`kind: "opening_day"`) 나옵니다. 상설 행사가 매일 행사 가중을 받지 않게 하기 위한 규칙입니다. 반환값의 `start`·`end`는 요청한 날짜의 행사 시간대입니다(행사 시간을 아는 행사는 그 시간, 모르면 그날 00:00~23:59). 원래 기간은 `period_start`·`period_end`로 함께 돌려줍니다. `kind`는 원래 기간으로 정합니다.
 - 목록에 없는 행사는 있다고 말하지 마십시오.
 
 ## 날씨 샘플 (`backend/app/data/weather/`)

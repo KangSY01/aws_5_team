@@ -4,6 +4,7 @@ import datetime as dt
 
 import pytest
 
+from app.guardian import thresholds as th
 from app.guardian.context import Event, OpeningHours
 from app.guardian.rules import check_closed, check_crowded, check_rain, check_tight_transfer
 from guardian_fixtures import at, hourly_weather, load_sample_plan, make_context
@@ -43,7 +44,7 @@ class TestCrowded:
     def test_weekday_rule_weekdays_no_issue(self, days):
         assert check_crowded(on_day(S1, days), make_context()) is None
 
-    @pytest.mark.parametrize("rate, severity", [(96, "high"), (95, "high"), (90, "medium"), (85, "medium"), (84, None)])
+    @pytest.mark.parametrize("rate, severity", [(99, "high"), (98, "high"), (97, "medium"), (95, "medium"), (94, None)])
     def test_rate_on_saturday(self, rate, severity):
         issue = check_crowded(S4, make_context(crowd={"haeundae-beach": rate}))
         assert (issue.severity if issue else None) == severity
@@ -58,7 +59,7 @@ class TestCrowded:
         assert check_crowded(S4, make_context(crowd={})) is None
 
     def test_event_raises_one_level(self):
-        ctx = make_context(crowd={"haeundae-beach": 90}, events=[festival("haeundae-beach")])
+        ctx = make_context(crowd={"haeundae-beach": 96}, events=[festival("haeundae-beach")])
         issue = check_crowded(S4, ctx)
         assert issue.severity == "high"
         assert "행사일 가중" in issue.detail
@@ -180,11 +181,11 @@ def test_sample_plan_baseline():
     assert [(i.issue_id, i.severity) for i in found] == [("s1-crowded", "medium")]
 
 
-@pytest.mark.parametrize("place_id", ["huinnyeoul-village", "haeridan-gil", "blueline-park"])
+@pytest.mark.parametrize("place_id", sorted(th.WEEKDAY_RULE_PLACES - {"gamcheon-village"}))
 def test_weekday_rule_places_added_with_places_json(place_id):
     # data-rules.md 「혼잡도」: 집중률에 없는 장소는 요일 규칙 (토 medium, 일 low, 평일 없음)
     stop = S1.model_copy(update={"place_id": place_id})
-    ctx = make_context()
+    ctx = make_context(crowd={})  # 실제 데이터처럼 집중률 없음
     assert place_id in ctx.places  # places.json 에 있는 ID
     assert check_crowded(stop, ctx).severity == "medium"
     assert check_crowded(on_day(stop, 1), ctx).severity == "low"

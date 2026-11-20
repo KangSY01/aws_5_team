@@ -49,8 +49,10 @@ BASE_TRAVEL_MIN = {
     ("busan-tower", "haeundae-beach"): 40,
 }
 
-# 집중률은 장소마다 상대값이다. 모두 CROWD_MEDIUM_RATE(85) 미만으로 두어 기본 상태에서는 문제가 없게 한다.
+# 집중률은 장소마다 상대값이다. 모두 CROWD_MEDIUM_RATE(95) 미만으로 두어 기본 상태에서는 문제가 없게 한다.
 # 감천문화마을은 집중률 데이터에 없는 장소라 넣지 않는다 (요일 규칙 대상).
+# 부산타워도 실제로는 요일 규칙 대상이지만, 규칙별 단위 테스트가 s3 의 혼잡에 영향받지 않게 가상의 값을 둔다.
+# 집중률 값이 있으면 요일 규칙보다 먼저 쓰인다 (rules._base_crowd).
 BASE_CROWD = {
     "jagalchi-market": 60.0,
     "busan-tower": 50.0,
