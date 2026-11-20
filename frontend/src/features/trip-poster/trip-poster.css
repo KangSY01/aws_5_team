@@ -4,12 +4,12 @@
   left: -2000px;
   pointer-events: none;
 }
-.trip-album { padding: 14px; border-block-start: 1px solid var(--color-border); }
+.trip-album { padding: 12px; border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-bg); }
 .trip-album h2 { margin: 0 0 8px; font-size: 1rem; }
 .trip-album p { margin: 0 0 8px; color: var(--color-muted); font-size: .875rem; }
 .trip-album-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 108px), 1fr));
   gap: 8px;
 }
 .album-thumbnail {
@@ -29,7 +29,16 @@
   background: var(--color-bg);
   color: var(--color-text);
 }
-.trip-album-record button { padding: 5px 10px; }
+.trip-album .trip-album-record button {
+  max-width: 100%;
+  padding: 5px 10px;
+  border-color: var(--trip-green);
+  background: var(--trip-green);
+  color: var(--color-on-action);
+  font-size: .8rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
 
 .travel-preview .trip-poster-dialog {
   width: min(440px, calc(100% - 24px));

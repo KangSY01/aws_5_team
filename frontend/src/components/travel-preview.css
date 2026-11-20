@@ -1002,27 +1002,35 @@
   overflow: auto;
   background: var(--color-bg);
   color: var(--color-text);
-  padding: calc(24px + env(safe-area-inset-top)) 20px
-    calc(var(--nav-bottom) + var(--mobile-nav-height) + 24px);
+  padding: calc(16px + env(safe-area-inset-top)) 16px
+    calc(var(--nav-bottom) + var(--mobile-nav-height) + 28px);
 }
-.profile-content { max-width: 520px; margin-inline: auto; }
-.profile-content h1 { margin: 0; font-size: 1.8rem; letter-spacing: -.025em; }
+.travel-preview:not([data-night="true"]) .travel-profile {
+  --color-bg: var(--panel-white);
+  --color-border: var(--panel-divider);
+  --color-text: #24292e;
+  --color-muted: #555b60;
+  --color-selected: var(--selection-mint);
+}
+.profile-content { max-width: 520px; margin-inline: auto; display: grid; gap: 12px; }
+.profile-content > header { text-align: start; }
+.profile-content h1 { margin: 0; font-size: 1.4rem; letter-spacing: -.025em; }
 .profile-content h1:focus { outline: none; }
-.profile-content header p { margin: 4px 0 0; color: var(--color-muted); }
+.profile-content > header p { margin: 2px 0 0; color: var(--color-muted); font-size: .8rem; }
 .profile-settings {
-  margin-top: 28px;
   border: 1px solid var(--color-border);
   border-radius: 16px;
   background: var(--color-bg);
 }
+.profile-settings h2 { margin: 0; padding: 10px 12px 0; font-size: 1rem; }
 .profile-language-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto 18px;
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: 54px;
-  padding: 10px 14px;
+  min-height: 44px;
+  padding: 8px 12px;
   background: transparent;
   border: 0;
   border-radius: 15px;
@@ -1031,7 +1039,7 @@
 }
 .profile-language-value { color: var(--color-muted); }
 .profile-language-row svg { width: 18px; height: 18px; }
-.profile-language-row[aria-expanded="true"] svg { transform: rotate(180deg); }
+.profile-language-row[aria-expanded="true"] svg { transform: rotate(90deg); }
 .profile-language-options { padding: 0 6px 6px; }
 .profile-language-options button {
   display: grid;
@@ -1047,9 +1055,14 @@
   text-align: start;
 }
 .profile-language-options button[aria-pressed="true"] { background: var(--color-selected); }
-.profile-account { border-top: 1px solid var(--color-border); padding: 14px; }
-.profile-account h2 { margin: 0; font-size: 1rem; }
-.profile-account p { margin: 4px 0 0; color: var(--color-muted); font-size: .875rem; }
+.profile-account { margin: 0; border-top: 1px solid var(--color-border); padding: 9px 12px; color: var(--color-muted); font-size: .78rem; }
+
+@media (max-width: 899px) {
+  .travel-preview[data-page="profile"]:not([data-night="true"])::after {
+    background: var(--panel-white);
+    border-color: var(--panel-divider);
+  }
+}
 
 @media (min-width: 900px) {
   .travel-tabs [data-tab="translation"],

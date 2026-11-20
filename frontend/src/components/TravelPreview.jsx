@@ -185,26 +185,25 @@ function ProfilePage({ copy, plannerCopy, language, onLanguageChange, demoMode, 
           <h1 id="profile-heading" ref={heading} tabIndex={-1}>{copy.profile}</h1>
           <p>{plannerCopy.demoAccount}</p>
         </header>
-        <div className="profile-settings">
+        <TripAlbum language={language} demoMode={demoMode} revision={albumRevision} archiveError={archiveError}
+          formatDate={(date) => formatDate(date, language)} />
+        <section className="profile-settings" aria-labelledby="profile-settings-title">
+          <h2 id="profile-settings-title">{copy.settings}</h2>
           <button type="button" className="profile-language-row" aria-expanded={languageOpen}
             aria-controls="profile-languages" onClick={() => setLanguageOpen(!languageOpen)}>
             <span>{copy.languageLabel}</span>
             <span className="profile-language-value" lang={language}>{languages[language]}</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
               strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="m6 9 6 6 6-6" />
+              <path d="m9 6 6 6-6 6" />
             </svg>
           </button>
           <div id="profile-languages" className="profile-language-options" hidden={!languageOpen}
             role="group" aria-label={copy.languageLabel}>
             <LanguageOptions language={language} onSelect={onLanguageChange} />
           </div>
-          <TripAlbum language={language} demoMode={demoMode} revision={albumRevision} archiveError={archiveError} />
-          <section className="profile-account">
-            <h2>{copy.account}</h2>
-            <p>{copy.accountUnavailable}</p>
-          </section>
-        </div>
+          <p className="profile-account">{copy.accountUnavailable}</p>
+        </section>
       </div>
     </section>
   );

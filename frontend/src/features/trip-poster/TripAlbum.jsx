@@ -36,11 +36,11 @@ function download(png, date) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function AlbumThumbnail({ entry, onOpen }) {
+function AlbumThumbnail({ entry, onOpen, formatDate }) {
   const url = useImageUrl(entry.png);
   return <button className="album-thumbnail" type="button" onClick={onOpen}>
     {url && <img src={url} alt="부산네컷" />}
-    <span>{entry.date}</span>
+    <time dateTime={entry.date}>{formatDate(entry.date)}</time>
   </button>;
 }
 
@@ -174,7 +174,7 @@ function PosterDialog({ entry, language, labels, onClose, onSaved }) {
   );
 }
 
-export default function TripAlbum({ language, demoMode, revision, archiveError }) {
+export default function TripAlbum({ language, demoMode, revision, archiveError, formatDate }) {
   const [entries, setEntries] = useState([]);
   const [opened, setOpened] = useState(null);
   const [loadError, setLoadError] = useState(false);
@@ -201,11 +201,11 @@ export default function TripAlbum({ language, demoMode, revision, archiveError }
       {loaded && !loadError && !entries.length && <p>{empty}</p>}
       <div className="trip-album-grid">
         {entries.filter(({ kind }) => kind === "poster").map((entry) =>
-          <AlbumThumbnail key={entry.id} entry={entry} onOpen={() => setOpened(entry)} />)}
+          <AlbumThumbnail key={entry.id} entry={entry} formatDate={formatDate} onOpen={() => setOpened(entry)} />)}
       </div>
       {entries.filter(({ kind }) => kind === "trip").map((entry) => (
         <div className="trip-album-record" key={entry.id}>
-          <time dateTime={entry.date}>{entry.date}</time>
+          <time dateTime={entry.date}>{formatDate(entry.date)}</time>
           <button type="button" onClick={() => setOpened(entry)}>{make}</button>
         </div>
       ))}
