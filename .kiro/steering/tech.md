@@ -20,11 +20,17 @@ fileMatchPattern: ["backend/**", "frontend/package.json"]
 - 의존성은 `uv add <패키지>`(개발용은 `uv add --dev`)로 추가해 `pyproject.toml`과 `uv.lock`을 함께 커밋합니다.
 
 ## 배포 구성
-- API: Lambda 하나(`app.handler.handler`)가 모든 경로를 처리합니다. Function URL로 시작하고 이후 API Gateway HTTP API(payload v2.0)로 옮깁니다.
+- 배포는 SAM + AgentCore를 먼저 시도합니다. 금 12:00 점검 1까지 AgentCore가 안 되면 지금 뼈대 구조로 전환합니다: Lambda 하나(`app.handler.handler`)가 모든 경로를 처리하고, Function URL로 시작해 이후 API Gateway HTTP API(payload v2.0)로 옮깁니다. 경로별 배치는 배포 담당(A)이 정합니다.
+- 배포 도구는 SAM입니다. 템플릿과 배포 설정은 `infra/`(A)에 둡니다.
 - CORS 헤더는 핸들러가 붙이지 않습니다. 배포에서는 Function URL 설정, 로컬에서는 `scripts/local_server.py`가 담당합니다.
 - 프론트엔드: S3 + CloudFront. 저장소: DynamoDB.
-- 배포 도구(SAM, CDK 등)는 인프라 담당이 정합니다. 정해지기 전에는 배포 설정 파일을 만들지 마십시오.
-- FastAPI, Django, Firebase, LangChain은 쓰지 않습니다. 응답 스트리밍도 쓰지 않습니다.
+- FastAPI, Django, Firebase, LangChain은 쓰지 않습니다.
+
+## 응답 스트리밍
+- `/chat`만 스트리밍합니다. 나머지 경로는 한 번에 돌려줍니다.
+- 방식과 이벤트 형식은 금 12:00 점검 1에서 배포 구성에 맞춰 확정하고, 계약 변경 PR로 `docs/api-contract.md`에 적습니다.
+  - AgentCore Runtime은 SSE 스트리밍을 지원합니다. ([AgentCore 응답 스트리밍](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/response-streaming.html))
+  - Lambda 관리형 런타임에서 응답 스트리밍을 기본 지원하는 것은 Node.js뿐입니다. Python Lambda는 사용자 지정 런타임이나 Lambda Web Adapter가 필요합니다. ([Lambda 응답 스트리밍](https://docs.aws.amazon.com/lambda/latest/dg/configuration-response-streaming.html))
 
 ## Bedrock
 - 모델 ID는 `config.MODEL_ID`(환경 변수 `BEDROCK_MODEL_ID`), 리전은 `config.BEDROCK_REGION`(환경 변수 `AWS_REGION`, 기본 `ap-northeast-2`)으로 읽습니다. 코드에 직접 쓰지 마십시오.
@@ -54,6 +60,7 @@ fileMatchPattern: ["backend/**", "frontend/package.json"]
 - 외부 API는 타임아웃 5초, 재시도 1회입니다.
 - 프론트엔드는 React + Vite + JavaScript입니다. TypeScript로 바꾸지 마십시오.
 - 주석·로그·문서는 한국어, 식별자는 영어로 씁니다.
+- 모델이 읽는 문장(시스템 프롬프트, `@tool` docstring과 `Args:`)은 영어로 씁니다. Strands `@tool`은 docstring을 도구 설명으로 모델에 보냅니다. 기존 도구의 한국어 docstring은 그 도구를 구현할 때 함께 바꿉니다.
 
 ## 계획 중인 AWS 기능
-메뉴판 사진 번역(Textract), 한국어 음성(Polly)은 `product.md`의 4순위 기능입니다. 아직 API 계약에 없으므로 `contract.md` 규칙대로 계약 변경 PR을 먼저 올립니다.
+음성 입력(Transcribe)·여행 중 음성 출력(Polly)은 `product.md`의 3순위, 메뉴판·간판 사진 인식(Textract)·현지인 카드 한국어 음성(Polly)은 5순위 기능입니다. 모두 필수입니다. 아직 API 계약에 없으므로 `contract.md` 규칙대로 계약 변경 PR을 먼저 올립니다.

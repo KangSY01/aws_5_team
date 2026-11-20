@@ -2,11 +2,11 @@
 - 
 
 ## 변경 영역
-- [ ] 에이전트·도구 (`backend/app/agent.py`, `prompts.py`, `tools/`)
-- [ ] Guardian (`backend/app/guardian/`)
-- [ ] 데이터·저장 (`backend/app/data/`, `storage/`)
-- [ ] 프론트 (`frontend/`)
-- [ ] 인프라·배포
+- [ ] 에이전트 (A: `backend/app/agent.py`, `tools/plan_edit.py`, `storage/`, `voice/`)
+- [ ] 데이터·도구 (B: `backend/app/data/`, `tools/lookup.py`, `speech/`)
+- [ ] 프론트 (C: `frontend/`)
+- [ ] Guardian·프롬프트·사진 인식·평가 (D: `backend/app/guardian/`, `prompts.py`, `photo/`, `backend/eval/`, `frontend/src/features/local-card/`, `demo-panel/`)
+- [ ] 인프라·배포 (A: `infra/`)
 - [ ] 문서·Kiro 설정 (`docs/`, `.kiro/`, `README.md` 등)
 - [ ] 공용 파일 (`backend/app/models/`, `docs/api-contract.md`, `backend/app/handler.py`, `.kiro/steering/team.md`) → 뼈대 담당자 리뷰 필요, 팀 채팅 공지
 

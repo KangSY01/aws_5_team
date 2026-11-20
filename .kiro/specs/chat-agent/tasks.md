@@ -7,7 +7,7 @@
 ## Tasks
 
 - [ ] 1. 모델과 고정 응답 경로
-  - `agent.py`의 `build_model()` 구현 (`config.MODEL_ID`, `config.BEDROCK_REGION`, `max_tokens`, 스트리밍 끔)
+  - `agent.py`의 `build_model()` 구현 (`config.MODEL_ID`, `config.BEDROCK_REGION`, `max_tokens`, 스트리밍 설정은 점검 1에서 확정한 방식에 맞춤)
   - `FAKE_LLM=1`이면 `run_chat`이 고정 `ChatResponse`를 돌려주도록 구현
   - `AWS_REGION`이 `ap-northeast-2`가 아니면 한국어 오류 로그를 남기고 예외 발생
   - Bedrock 호출에 타임아웃 5초, 재시도 1회 적용
@@ -31,7 +31,7 @@
   - _요구사항: 3.1, 3.3, 3.7, 4.5_
 
 - [ ] 4. 시스템 프롬프트와 `run_chat`
-  - `prompts.py` 작성, Agent는 요청마다 생성, 도구 반복 5회
+  - D가 작성한 `prompts.py`의 시스템 프롬프트 사용, Agent는 요청마다 생성, 도구 반복 5회
   - `sources`, `plan_changes` 모으기, 장소 ID 검증
   - 도구 반복 5회에 도달하면 추가 호출 없이 확보한 결과로 `ChatResponse` 생성
   - `sources`: 같은 `tool`·`id`는 처음 순서로 한 번만, 성공한 도구 결과에 있는 항목만, `title`은 프로필 언어 우선·없으면 다른 언어나 ID로 대체
@@ -58,7 +58,9 @@
 
 - [ ] 7. `handler.py` 연결 PR (공용 파일, 뼈대 담당자 리뷰)
   - `TODO(에이전트 담당)` 자리를 `run_chat(request)` 호출로 교체
+  - `/chat` 스트리밍 응답 연결 (점검 1에서 확정한 방식, 계약 변경 PR 먼저)
   - `uv run python -m scripts.local_server`로 프론트엔드에서 확인
+  - _요구사항: 6.1_
 
 - [ ] 8. 평가
   - `backend/eval/queries.json` 작성, `run_eval.py` 실행, 결과 CSV를 발표 자료에 반영

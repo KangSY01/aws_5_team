@@ -4,7 +4,8 @@
 
 요청·응답 형식은 `docs/api-contract.md`와 `backend/app/models/`를 따릅니다. 이 문서에는 내부 구조만 적습니다.
 
-- 스트리밍은 쓰지 않습니다. 프론트엔드는 응답을 기다리는 동안 진행 표시를 보여 줍니다.
+- `/chat` 응답은 스트리밍합니다(11/20 결정). 방식과 이벤트 형식은 금 12:00 점검 1에서 배포 구성(AgentCore 또는 Lambda)에 맞춰 확정하고 계약 변경 PR로 `docs/api-contract.md`에 적습니다. 아래 구성도는 스트리밍 방식이 정해지면 고칩니다.
+- 시스템 프롬프트(`prompts.py`)는 D가 작성합니다. 이 스펙은 그 프롬프트를 Agent에 넣는 부분만 다룹니다.
 - `handler.py`의 `TODO(에이전트 담당)` 자리를 `run_chat(request)` 호출로 바꾸는 작업은 공용 파일 수정이라 별도 PR로 올립니다.
 
 ## Architecture
@@ -26,7 +27,7 @@
 ```
 
 ### 모델 (`build_model`)
-- `BedrockModel(model_id=config.MODEL_ID, region_name=config.BEDROCK_REGION, max_tokens=..., streaming=False)`
+- `BedrockModel(model_id=config.MODEL_ID, region_name=config.BEDROCK_REGION, max_tokens=...)`. 스트리밍 설정은 점검 1에서 확정한 `/chat` 스트리밍 방식에 맞춥니다.
 - 정확한 인자 이름은 MCP `strands` 서버로 공식 문서를 확인한 뒤 씁니다.
 - `config.FAKE_LLM`이면 모델을 만들지 않고, `run_chat`이 `backend/app/data/chat_response.json` 형식의 고정 응답을 돌려줍니다.
 - 리전은 `ap-northeast-2`만 허용합니다. `config.BEDROCK_REGION`이 다른 값이면 한국어 오류 로그를 남기고 예외를 발생시킵니다.
@@ -62,7 +63,7 @@
 | 파일 | 내용 |
 |---|---|
 | `backend/app/agent.py` | `build_model()`, `run_chat()` |
-| `backend/app/prompts.py` | 시스템 프롬프트 (영어) |
+| `backend/app/prompts.py` | 시스템 프롬프트 (영어, D 작성) |
 | `backend/app/tools/lookup.py` | `search_places`, `get_weather`, `get_crowd` (+ 영업 정보, 이동 시간 추가 예정) |
 | `backend/app/tools/plan_edit.py` | `replace_stop`, `add_stop`, `remove_stop`, `move_stop` |
 | `backend/app/storage/` | 일정 읽기·쓰기 (데이터 담당) |
@@ -86,6 +87,7 @@
   - 모델 출력이 `ChatResponse` 검증을 통과하는지. 통과하지 못하면 그 출력을 반환하지 않고 오류 형식으로 답하며, 이 요청으로 일정을 저장하지 않습니다.
 
 ### 시스템 프롬프트 (`prompts.py`)
+D가 작성합니다. 아래는 초안이며, 확정본은 `backend/app/prompts.py`를 따릅니다.
 ```txt
 You are a friendly local guide helping foreign visitors explore Busan, Korea.
 Answer in {language}. Use the place name for that language from tool results.
