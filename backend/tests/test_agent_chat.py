@@ -224,7 +224,9 @@ def test_search_then_create_plan_saves_a_plan_built_by_build_plan(chat, api_stor
     assert all(c.before is None for c in response.plan_changes)
     assert [c.after for c in response.plan_changes] == stored.stops
     assert "[place:" not in response.answer and "Gamcheon" in response.answer  # 표식은 이름으로 바뀐다
-    in_search_order = [pid for pid in load_places() if pid in IDS]  # sources 는 도구 결과에 나온 순서다 (요구사항 4.6)
+    # sources 는 도구 결과에 나온 순서다 (요구사항 4.6). search_places 결과는 rank_places 순위로 정렬되어 있다 (app/chat/ranking.py)
+    searched = [p["place_id"] for p in json.loads(model.tool_results()[0][1])]
+    in_search_order = [pid for pid in searched if pid in IDS]
     assert [(s.tool, s.id) for s in response.sources] == [("search_places", pid) for pid in in_search_order]
     assert response.sources[0].title == load_places()[in_search_order[0]].names["en"]
     assert len(model.requests) == 3  # 검색 → 일정 생성 → 답변

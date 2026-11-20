@@ -29,17 +29,55 @@ def _all_names(place_id: str) -> list[str]:
     return sorted((n for n in place.names.values() if n), key=len, reverse=True)
 
 
-def render_answer(text: str, language: Language, grounded: set[str]) -> str:
+def restaurant_names(outputs: list[ToolOutput]) -> dict[str, dict[str, str]]:
+    """이번 요청의 get_restaurants 결과에 실제로 나온 음식점: restaurant_id → 이름들 ({"ko": name_ko, 언어: 이름}).
+
+    restaurant_id("kto-…")는 places.json 의 place_id 가 아니다. 답변 표식으로만 쓸 수 있고 일정에는 넣을 수 없다
+    (일정 도구는 places.json 의 ID 만 받는다).
+    """
+    found: dict[str, dict[str, str]] = {}
+    for out in outputs:
+        if out.name != "get_restaurants" or not isinstance(out.data, dict):
+            continue
+        for item in out.data.get("restaurants") or []:
+            if not isinstance(item, dict) or not isinstance(item.get("restaurant_id"), str):
+                continue
+            names = {k: v for k, v in (item.get("names") or {}).items() if isinstance(v, str) and v}
+            if isinstance(item.get("name_ko"), str) and item["name_ko"]:
+                names["ko"] = item["name_ko"]
+            if names:
+                found[item["restaurant_id"]] = names
+    return found
+
+
+def _restaurant_name(names: dict[str, str], language: Language) -> str:
+    """프로필 언어 이름, 없으면 한국어 원래 이름 (get_restaurants docstring: 언어가 없으면 name_ko)."""
+    return names.get(language) or names.get("ko") or next(iter(names.values()))
+
+
+def render_answer(text: str, language: Language, grounded: set[str],
+                  restaurants: dict[str, dict[str, str]] | None = None) -> str:
     """[place:ID] 를 프로필 언어 이름으로 바꾼다. 근거 없는 장소가 있으면 InvalidAnswer.
 
     grounded: 이번 요청에서 근거가 있는 place_id (성공한 도구 결과에 나온 장소, 현재 일정, 만든 일정).
+    restaurants: 이번 요청의 get_restaurants 가 돌려준 음식점 (restaurant_names). 그 restaurant_id 표식만 음식점 이름으로 바꾼다.
     표식 없이 쓴 장소 이름도 검사한다: places.json 의 장소인데 grounded 가 아니면 모델이 기억에서 꺼낸 것으로 본다.
     """
     places = load_places()
-    bad = [pid for pid in referenced_ids(text) if pid not in grounded or pid not in places]
+    restaurants = restaurants or {}
+
+    def known(pid: str) -> bool:
+        return (pid in grounded and pid in places) or pid in restaurants
+
+    bad = [pid for pid in referenced_ids(text) if not known(pid)]
     if bad:
         raise InvalidAnswer(f"근거 없는 place_id 가 답변에 있습니다: {', '.join(bad)}")
-    rendered = TOKEN.sub(lambda m: place_name(places[m.group(1)], language), text).strip()
+
+    def name(match: re.Match) -> str:
+        pid = match.group(1)
+        return place_name(places[pid], language) if pid in places else _restaurant_name(restaurants[pid], language)
+
+    rendered = TOKEN.sub(name, text).strip()
 
     remaining = rendered
     for pid in grounded & places.keys():  # 근거 있는 이름을 먼저 지워 다른 장소 이름의 일부와 겹쳐도 오탐하지 않는다

@@ -115,17 +115,20 @@ def create_script(ids, text):
     ]
 
 
-def test_the_model_sees_the_ranking_and_the_plan_is_built_normally(chat, api_storage):
+def test_the_model_sees_the_ranking_and_the_plan_is_built_normally(chat, api_storage, caplog):
     ids = ["gwangalli-beach", "jagalchi-market", "gukje-market"]
     model = ScriptedModel(create_script(ids, "[place:gwangalli-beach] is less crowded today."))
 
-    response = chat(model)
+    with caplog.at_level(logging.INFO, logger="app.chat.ranking"):
+        response = chat(model)
+
+    assert "장소 순위 반영: 상위 5곳" in caplog.text  # 배포 로그(CloudWatch)에서 찾는 문장
 
     status, text = model.tool_results()[0]  # 모델이 받은 search_places 결과
     seen = json.loads(text)
     assert status == "success" and "ranking" in seen[0] and seen[0]["ranking"]["rank"] == 1
     assert ranking.RANKING_NOTE in text and len(seen) == len(load_places())
-    assert set(response.model_dump()) == FIELDS and "ranking" not in json.dumps(response.model_dump())  # 응답 형식 그대로
+    assert set(response.model_dump()) == FIELDS and "ranking" not in response.model_dump_json()  # 응답 형식 그대로
     stored = api_storage.get_plan(response.plan_id)
     assert sorted(s.place_id for s in stored.stops) == sorted(ids)  # build_plan 이 시각을 정했다
     assert [(s.tool, s.id) for s in response.sources if s.tool == "search_places"] == [
@@ -169,12 +172,27 @@ def test_edit_mode_ranks_for_the_plan_date(chat, api_storage, monkeypatch):
         return real(results, profile, day, demo_now, **kwargs)
 
     monkeypatch.setattr(ranking, "rank_search_results", spy)
-    session = api_storage.create_session(Profile(language="ja"), plan_id="plan-1")
+    session = api_storage.create_session(Profile(language="ja"), plan_id="plan-1").session_id
     model = ScriptedModel([tool_turn(("search_places", {"query": "gwangalli"})), text_turn("Nothing changes.")])
 
     chat(model, session_id=session, plan_id="plan-1")
 
     assert seen == [api_storage.get_plan("plan-1").date]  # 샘플 일정의 방문일 (오늘이 아니라)
+
+
+def test_place_ranker_is_registered_after_the_tool_recorder(chat, monkeypatch):
+    captured = {}
+    real_agent = agent.Agent
+
+    def capture(*args, **kwargs):
+        captured["hooks"] = kwargs.get("hooks")
+        return real_agent(*args, **kwargs)
+
+    monkeypatch.setattr(agent, "Agent", capture)
+    chat(ScriptedModel([text_turn("ok")]))
+
+    hooks = captured["hooks"]
+    assert [type(h).__name__ for h in hooks] == ["ToolRecorder", "PlaceRanker"]  # AfterToolCallEvent 는 역순: 순위가 먼저
 
 
 # ---- 데모 캐시·FAKE_LLM 은 순위를 거치지 않는다 ----
