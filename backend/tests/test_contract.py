@@ -28,6 +28,7 @@ from app.models.api import (
     VoiceUrlRequest,
     VoiceUrlResponse,
 )
+from app.tools.events_map import EventsResponse
 
 CONTRACT = (Path(__file__).parents[2] / "docs" / "api-contract.md").read_text(encoding="utf-8")
 
@@ -46,6 +47,7 @@ def _json_blocks(title: str) -> list[dict]:
 # 절 제목 → 그 절의 JSON 예시를 순서대로 검증할 모델
 CASES: dict[str, list[type[BaseModel]]] = {
     "데모 스위치": [DemoOverride],
+    "GET /events?date=YYYY-MM-DD": [EventsResponse],
     "POST /plan/{plan_id}/delay": [DelayRequest, DelayResponse],
     "GET /alerts?plan_id=": [AlertsResponse],
     "POST /photo/upload-url": [PhotoUploadUrlRequest, PhotoUploadUrlResponse],

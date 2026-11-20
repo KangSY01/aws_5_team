@@ -672,7 +672,8 @@ def test_fetch_events_build_events():
     events = fetch_events.build_events(items, places)
     assert [e["name"] for e in events] == ["좌표 없는 행사", "빛축제"]  # 시작일 순, 읽을 수 없는 항목은 뺀다
     assert events[0]["place_ids"] == [] and events[0]["lat"] is None and events[0]["main_place_id"] is None
-    assert events[1] == {"name": "빛축제", "start": "2026-11-28T00:00:00+09:00", "end": "2027-01-17T23:59:59+09:00",
+    assert events[1] == {"name": "빛축제", "names": {"ko": "빛축제"}, "type": "event",
+                         "start": "2026-11-28T00:00:00+09:00", "end": "2027-01-17T23:59:59+09:00",
                          "place_ids": ["near"], "main_place_id": "near", "contentid": "1", "addr1": "부산광역시 해운대구", "lat": 35.165, "lng": 129.1604}
     assert json.loads(fetch_events.dump_events({"api": "x"}, events)) == {"source": {"api": "x"}, "events": events}
 

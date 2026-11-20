@@ -1,6 +1,7 @@
 """귀가 분산 도구(app/tools/return_options.py)와 역 표(scripts/build_stations.py) 테스트. 네트워크를 쓰지 않는다."""
 
 import csv
+import datetime as dt
 import json
 import re
 import shutil
@@ -40,6 +41,8 @@ def data_dir(monkeypatch, tmp_path):
     """실제 데이터를 복사한 폴더를 도구가 읽게 한다. 반환한 함수로 파일을 바꿔 쓴다."""
     for name in ("places.json", "stations.json", "travel_times.json", "events.json"):
         shutil.copy(REAL_DATA / name, tmp_path / name)
+    if (REAL_DATA / "last_trains.json").exists():
+        shutil.copy(REAL_DATA / "last_trains.json", tmp_path / "last_trains.json")
     monkeypatch.setattr(lookup, "DATA_DIR", tmp_path)
 
     def write(name: str, data) -> None:
@@ -64,8 +67,9 @@ def test_도구는_Strands_도구이고_설명은_영어로_가정을_밝힌다(
     text = " ".join(get_return_options.__doc__.split())  # 줄바꿈을 무시하고 문구를 찾는다
     assert not re.search("[가-힣]", text)  # 모델이 읽는 문장은 영어 (tech.md)
     for phrase in ("after a festival or event ends", "rule-based estimate", "not measured or real-time",
-                   "assumption made without supporting data", "station coordinates", "last train time is unknown",
-                   "defaults to Seomyeon", "destination_place_id", "is_default"):
+                   "assumption made without supporting data", "station coordinates", "stored standard timetable",
+                   "last_train_missed", "last_train_unknown", "defaults to Seomyeon", "destination_place_id",
+                   "is_default"):
         assert phrase in text, phrase
 
 
@@ -81,7 +85,9 @@ def test_장면7_행사_이름만_주면_대표_장소에서_서면역까지_제
             "travel_time_rule": {"route_factor": 1.3, "subway_kmh": 25, "subway_overhead_min": 10, "walk_kmh": 4.5},
             "note": "Rule-based estimate, not measured or real-time crowding. The crowded window (30 min before to "
                     "60 min after the event end) is an assumption. Travel times are estimated from station "
-                    "coordinates, not routes or timetables, and exclude walking to and from stations.",
+                    "coordinates, not routes, and exclude walking to and from stations. Last-train warnings use the "
+                    "stored Busan Metro standard timetable when the requested station and direction are available; "
+                    "actual train times can differ.",
         },
         "event": {"name": FESTIVAL, "start": "2026-11-28T18:00:00+09:00", "end": "2026-11-28T23:00:00+09:00",
                   "main_place_id": "sea-life-busan"},
@@ -95,7 +101,11 @@ def test_장면7_행사_이름만_주면_대표_장소에서_서면역까지_제
             {"type": "shift_earlier", "depart_at": "2026-11-28T22:20:00+09:00", "station": "Haeundae", "walk_min": 0,
              "extra_min": 0, "avoids_congestion": True, "warnings": ["leaves_before_event_end"]},
             {"type": "shift_later", "depart_at": "2026-11-29T00:00:00+09:00", "station": "Haeundae", "walk_min": 0,
-             "extra_min": 0, "avoids_congestion": True, "warnings": ["last_train_unknown"]},
+             "extra_min": 0, "avoids_congestion": True,
+             "warnings": ro.last_train_warnings(
+                 dt.date.fromisoformat(DAY), "Haeundae", "Seomyeon",
+                 dt.datetime.fromisoformat("2026-11-29T00:00:00+09:00"),
+             )},
             # 설계 「장면 7 어림값」: 동백 도보 18 + 지하철 36 − 39 = +15, 중동 17 + 42 − 39 = +20
             {"type": "walk_to_station", "depart_at": "2026-11-28T23:00:00+09:00", "station": "Dongbaek",
              "walk_min": 18, "extra_min": 15, "avoids_congestion": True, "warnings": []},
@@ -105,6 +115,36 @@ def test_장면7_행사_이름만_주면_대표_장소에서_서면역까지_제
     }
     assert json.loads(json.dumps(result)) == result  # JSON 으로 그대로 나간다
     assert "ratio" not in json.dumps(result)  # 집중률·혼잡 등급을 넣지 않는다
+
+
+def test_막차_시간표가_있으면_출발_시각과_비교하고_없으면_unknown(data_dir, tmp_path):
+    def save(last_train: str, toward: str = "Seomyeon") -> None:
+        data_dir("last_trains.json", {"stations": {
+            "Haeundae": {"scode": "203", "toward": toward, "updown": 1,
+                           "last_train": {"1": last_train, "2": last_train, "3": last_train}}
+        }})
+
+    save("24:00")
+    on_time = get_return_options(date=DAY, event_name=FESTIVAL)
+    assert next(o for o in on_time["options"] if o["type"] == "shift_later")["warnings"] == []  # 같은 시각은 이후가 아니다
+
+    save("23:59")
+    missed = get_return_options(date=DAY, event_name=FESTIVAL)
+    assert next(o for o in missed["options"] if o["type"] == "shift_later")["warnings"] == ["last_train_missed"]
+
+    save("24:10", toward="다른 방향")
+    wrong_direction = get_return_options(date=DAY, event_name=FESTIVAL)
+    assert next(o for o in wrong_direction["options"] if o["type"] == "shift_later")["warnings"] == ["last_train_unknown"]
+
+    (tmp_path / "last_trains.json").unlink()
+    unavailable = get_return_options(date=DAY, event_name=FESTIVAL)
+    assert next(o for o in unavailable["options"] if o["type"] == "shift_later")["warnings"] == ["last_train_unknown"]
+
+
+def test_막차_요일_코드는_평일_토요일_일요일을_구분한다():
+    assert ro._service_day_code(dt.date(2026, 11, 27)) == "1"
+    assert ro._service_day_code(dt.date(2026, 11, 28)) == "2"
+    assert ro._service_day_code(dt.date(2026, 11, 29)) == "3"
 
 
 def test_장면7_place_id만_주면_그_장소가_출발_장소다():

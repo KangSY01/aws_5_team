@@ -41,14 +41,16 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - 카카오 경로 API는 지금 쓰지 않습니다. 쓰게 되더라도 결과를 저장하지 않습니다(아래 금지 사항).
 
 ## 행사 (한국관광공사 행사정보)
-- API: `https://apis.data.go.kr/B551011/KorService2/searchFestival2` (`lDongRegnCd=26`, `eventStartDate`, `eventEndDate`)
-- `uv run --env-file .env python -m scripts.fetch_events`가 2026-11 기준으로 한 번 받아 `backend/app/data/events.json`에 저장합니다. `--offline`은 호출 없이 저장된 응답으로 다시 만듭니다.
+- API: 한국어·영어·일본어·중국어 간체·번체 TourAPI `searchFestival2` (`lDongRegnCd=26`, `eventStartDate`, `eventEndDate`). 서비스는 `KorService2`, `EngService2`, `JpnService2`, `ChsService2`, `ChtService2`입니다.
+- `uv run --env-file .env python -m scripts.fetch_events --reuse-raw`가 2026-11 기준 목록을 언어별 1회씩 받아 `backend/app/data/events.json`에 저장합니다. 같은 요청의 raw는 재사용하고, `--offline`은 호출 없이 다시 만듭니다.
+- `names.ko`는 국문 행사명입니다. 외국어 이름은 `fetch_places`와 같은 규칙으로 외국어 제목에 붙은 한국어와 국문 제목을 비교하고, 300m 우선·1km 보충 거리 안에서 일치할 때만 넣습니다. 못 찾은 언어는 생략하며 번역해서 만들지 않습니다.
+- `type`은 TourAPI 원본 `lclsSystm2`·`lclsSystm3`(없으면 `cat2`·`cat3`)를 `festival` / `performance` / `exhibition` / `event`로 바꾼 값입니다. EV01은 축제, EV02는 공연, EV0302는 전시·박람회, 나머지 EV03은 행사입니다.
 - `start`·`end`는 행사 기간의 첫날 00:00, 마지막 날 23:59입니다. 행사 목록 API는 날짜만 주므로 하루 중 진행 시간은 모릅니다.
 - 행사 시간을 따로 확인한 행사(`fetch_events.PLAYTIME_CONTENT_IDS`, 지금은 해운대 빛축제)는 `detailIntro2`(`contentTypeId=15`)의 `playtime` 원문을 `playtime_raw`에 둡니다. 원문이 `18:00~23:00` 같은 한 구간이면 `start`는 첫날 18:00, `end`는 마지막 날 23:00으로 씁니다(기간 중 매일 그 시간). 애매하면 시각은 바꾸지 않습니다.
 - `place_ids`는 행사 좌표에서 직선거리 1km 이내인 `places.json` 장소입니다.
 - `main_place_id`(행사 대표 장소)는 `place_ids` 중 행사 좌표와 직선거리가 가장 가까운 장소입니다. 거리가 같으면 `place_id` 사전순이고, `place_ids`가 비면 `null`입니다. `get_events`도 이 값을 돌려줍니다.
-- `events.json`에는 받은 행사를 모두 둡니다(행사 레이어 표시용).
-- 도구: `get_events(date)`. 행사일만 돌려줍니다. 기간이 7일 이하(첫날·마지막 날 포함)인 행사는 기간 전체(`kind: "short"`), 7일보다 긴 행사는 개막일에만(`kind: "opening_day"`) 나옵니다. 상설 행사가 매일 행사 가중을 받지 않게 하기 위한 규칙입니다. 반환값의 `start`·`end`는 요청한 날짜의 행사 시간대입니다(행사 시간을 아는 행사는 그 시간, 모르면 그날 00:00~23:59). 원래 기간은 `period_start`·`period_end`로 함께 돌려줍니다. `kind`는 원래 기간으로 정합니다.
+- `events.json`에는 받은 행사를 모두 둡니다. 지도는 `GET /events?date=YYYY-MM-DD`(`app/tools/events_map.py`)를 쓰며, 조회 날짜가 전체 기간에 포함된 행사를 장·단기와 관계없이 모두 돌려줍니다.
+- Guardian 도구 `get_events(date)`는 별도 규칙을 유지합니다. 기간이 7일 이하(첫날·마지막 날 포함)인 행사는 기간 전체(`kind: "short"`), 7일보다 긴 행사는 개막일에만(`kind: "opening_day"`) 나옵니다. 상설 행사가 매일 행사 가중을 받지 않게 하기 위한 규칙입니다. 반환값의 `start`·`end`는 요청한 날짜의 행사 시간대입니다(행사 시간을 아는 행사는 그 시간, 모르면 그날 00:00~23:59). 원래 기간은 `period_start`·`period_end`로 함께 돌려줍니다. `kind`는 원래 기간으로 정합니다.
 - 목록에 없는 행사는 있다고 말하지 마십시오.
 
 ## 역 표 (부산교통공사 도시철도 역 정보)
@@ -59,11 +61,19 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - CSV의 `name_en` 5개(교대, 부산대, 경성대부경대, 국제금융센터부산은행, 부산대양산캠퍼스)는 원본의 이중 이스케이프(`Nat''''''''l`)를 작은따옴표 1개로 복원했습니다(`Pusan Nat'l Univ.` 등). 다른 값은 원본 그대로입니다.
 - 도구: `get_return_options` (`backend/app/tools/return_options.py`). 역 사이 시간은 이 표의 좌표와 `travel_times.json`의 `rule`로 계산한 추정이며, 역 혼잡과 혼잡 시간대는 규칙 기반 가정입니다(실측·실시간 아님).
 
+## 막차 시각 (부산교통공사 표준 열차시각표)
+- API: [공공데이터포털 15000522 부산 도시철도 열차시각표 조회 서비스](https://www.data.go.kr/data/15000522/openapi.do), 서비스 URL `https://data.humetro.busan.kr/voc/api/open_api_process.tnn`.
+- 파라미터: `serviceKey`, `scode`(CSV 역번호), `day`(`1` 평일 / `2` 토요일 / `3` 일요일·공휴일), `updown`(`0` 상행 / `1` 하행), `act=json`. 응답의 `hour`·`time` 중 가장 늦은 값을 막차로 씁니다.
+- `uv run --env-file .env python -m scripts.fetch_last_trains --reuse-raw`가 Haeundae·Dongbaek·Jung-dong의 Seomyeon 방향과 Seomyeon의 Haeundae 방향을 요일 구분별로 받아 `backend/app/data/last_trains.json`에 막차만 저장합니다. 같은 raw는 다시 호출하지 않으며 `--offline`도 지원합니다.
+- 역번호는 `backend/scripts/busan_stations.csv`의 2호선 행(203·204·202·219)만 읽습니다. 방향은 2호선 역번호가 작아지는 상행(`0`, 해운대 방향)과 커지는 하행(`1`, 서면 방향)으로 정합니다.
+- `get_return_options`의 `shift_later`는 해당 역·방향·요일 데이터가 있으면 제안 출발 시각과 막차를 비교합니다. 막차 뒤면 `last_train_missed`, 막차 시각과 같거나 앞이면 막차 경고가 없습니다. 행이나 파일이 없으면 `last_train_unknown`입니다.
+- 평일 공휴일을 식별할 휴일 달력은 저장하지 않았습니다. 코드는 월~금은 평일, 토요일은 토요일, 일요일은 일요일·공휴일 표를 고릅니다. 표준 도착시각이므로 실제 운행 시각과 다를 수 있습니다.
+
 ## 대중교통 (역 표와 좌표 기반 추정)
 - 도구: `get_transit_info(from_place_id, to_place_id=None, to_station=None)` (`backend/app/tools/transit.py`). `to_station`(영문 역 이름)이 `to_place_id`보다 우선합니다. 파일(`places.json`, `stations.json`, `travel_times.json`의 `rule`)만 읽고 외부 API를 부르지 않습니다.
 - 돌려주는 값: 양쪽의 가까운 역(`nearest_station`), 역에 서는 호선(`lines`), 장소↔역 도보 분, 역 사이 지하철 추정 분, 합계(`total_min`). 계산은 `return_options.py`의 `walk_minutes`·`subway_minutes`와 같습니다(직선거리 × 1.3, 도보 시속 4.5km, 지하철 시속 25km + 10분, 올림).
 - 모두 추정입니다. "약 N분"으로 말하고, 타는 호선·환승 여부·환승 횟수를 단정하지 마십시오. `lines`는 참고 값입니다.
-- 시간표, 실시간 도착, 첫차·막차, 배차 간격, 요금, 환승 도보는 데이터에 없습니다(`basis.not_included`). 지어내지 마십시오.
+- 제한된 막차 표는 `last_trains.json`에 있는 네 역·두 방향에만 씁니다. 그 밖의 시간표, 실시간 도착, 첫차, 배차 간격, 요금, 환승 도보는 데이터에 없습니다(`basis.not_included`). 지어내지 마십시오.
 - 역 표에는 1~4호선만 있습니다. 동해선·경전철 역이 가까운 장소(해동용궁사 등)와 `nearest_station`이 `null`인 장소는 `no_station` 오류입니다.
 - 역까지 걷는 추정이 20분을 넘으면 그쪽 `warnings`에 `far_from_station`이 붙습니다.
 
