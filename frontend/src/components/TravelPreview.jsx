@@ -12,6 +12,8 @@ import EmptyState from "./EmptyState.jsx";
 import sampleEvents from "../mocks/events.js";
 import { buildPlacesById, resolvePlaceName } from "../lib/resolvePlaceName.js";
 import BusanMap from "./BusanMap.jsx";
+import EmergencyHelp from "./EmergencyHelp.jsx";
+import "./emergency-help.css";
 import PlanList from "./PlanList.jsx";
 import TravelPreferences from "./TravelPreferences.jsx";
 import "./travel-preview.css";
@@ -450,6 +452,7 @@ export default function TravelPreview({ night = false } = {}) {
             <span className="travel-brand">Busan<span>Now</span></span>
             {tripStarted && <span className="trip-status">{copy.traveling}</span>}
           </div>
+          <EmergencyHelp copy={copy.emergency} />
           <LanguageTrigger className="travel-language-trigger" label={languageLabel} />
           <div id="travel-language-menu" className="travel-language-menu" ref={languageMenu}
             popover="auto" role="group" aria-label={copy.languageLabel}>

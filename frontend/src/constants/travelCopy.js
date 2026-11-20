@@ -46,6 +46,39 @@ const tripCopy = {
   "zh-Hant": ["開始旅行", "結束旅行", "旅行中", "下一站", "請 AI 推薦行程"],
 };
 
+const emergencyCopy = {
+  ko: {
+    trigger: "긴급 도움", title: "긴급 신고",
+    warning: "실제 긴급 상황에서만 이용해 주세요. 장난 전화는 실제로 도움이 필요한 사람의 신고를 지연시킬 수 있어요.",
+    notice: "신고처를 누르면 휴대전화의 전화 앱이 열립니다.",
+    police: "경찰 112에 전화", rescue: "소방·구급 119에 전화", cancel: "취소",
+  },
+  en: {
+    trigger: "Emergency help", title: "Emergency calls",
+    warning: "Use this only in a real emergency. Prank calls can delay help for people who need it.",
+    notice: "Selecting a service opens your phone app.",
+    police: "Call police (112)", rescue: "Call fire or ambulance (119)", cancel: "Cancel",
+  },
+  ja: {
+    trigger: "緊急時の連絡", title: "緊急通報",
+    warning: "実際の緊急時にのみご利用ください。いたずら電話は、本当に助けが必要な方への対応を遅らせるおそれがあります。",
+    notice: "通報先を選ぶと、電話アプリが開きます。",
+    police: "警察（112）に電話", rescue: "消防・救急（119）に電話", cancel: "キャンセル",
+  },
+  "zh-Hans": {
+    trigger: "紧急求助", title: "紧急呼叫",
+    warning: "仅在真正的紧急情况下使用。恶作剧电话可能会延误真正需要帮助的人获得救援。",
+    notice: "选择紧急服务后，手机将打开电话应用。",
+    police: "拨打报警电话 112", rescue: "拨打消防和急救电话 119", cancel: "取消",
+  },
+  "zh-Hant": {
+    trigger: "緊急求助", title: "緊急通報",
+    warning: "僅在真正的緊急情況下使用。惡作劇電話可能會延誤真正需要幫助的人獲得救援。",
+    notice: "選擇緊急服務後，手機會開啟電話應用程式。",
+    police: "撥打報警電話 112", rescue: "撥打消防及救護電話 119", cancel: "取消",
+  },
+};
+
 export function getTravelCopy(language) {
   const [intro, prompt, example, submit, title, edit, itinerary, map, schematic, locked, languageLabel, night, loading, empty, network, timeout, http, invalidResponse, retry] = copy[language];
   const [ask, send, close, expand, reduce, ready, messageLabel, sampleTitle, home, chat, navigation] = chatCopy[language];
@@ -54,6 +87,7 @@ export function getTravelCopy(language) {
   const [profile, guest, account, accountUnavailable] = profileCopy[language];
   const [startTrip, endTrip, traveling, nextPlace, askForRoute] = tripCopy[language];
   return {
+    emergency: emergencyCopy[language],
     startTrip, endTrip, traveling, nextPlace, askForRoute,
     profile, guest, account, accountUnavailable,
     collapseItinerary, closeItinerary,
