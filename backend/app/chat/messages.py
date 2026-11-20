@@ -82,6 +82,22 @@ MESSAGES: dict[str, dict[Language, str]] = {
         "zh-Hans": "交通时间估算：{origin} → {destination}",
         "zh-Hant": "交通時間估算：{origin} → {destination}",
     },
+    # get_transit_info 출처 (부산교통공사 역 정보와 좌표 기반 추정, data-rules.md). 역 이름은 도구가 준 영어 이름 그대로 넣는다.
+    # 번역은 초안이라 D 검수가 필요하다
+    "source_transit": {
+        "en": "Metro estimate (Busan Transportation Corporation station data): {origin} → {destination}",
+        "ja": "地下鉄の目安（釜山交通公社の駅データ）：{origin} → {destination}",
+        "zh-Hans": "地铁估算（釜山交通公社车站数据）：{origin} → {destination}",
+        "zh-Hant": "地鐵估算（釜山交通公社車站資料）：{origin} → {destination}",
+    },
+    # get_restaurants 출처 (한국관광공사 TourAPI 음식점 정보, 공공데이터포털). area 는 장소 이름(프로필 언어) 또는 영어 역 이름.
+    # 번역은 초안이라 D 검수가 필요하다
+    "source_restaurants": {
+        "en": "Restaurants near {area} (Korea Tourism Organization TourAPI)",
+        "ja": "{area}周辺の飲食店（韓国観光公社 TourAPI）",
+        "zh-Hans": "{area}附近的餐厅（韩国观光公社 TourAPI）",
+        "zh-Hant": "{area}附近的餐廳（韓國觀光公社 TourAPI）",
+    },
     # get_return_options 출처. 역 이름은 도구가 준 영어 이름 그대로 넣는다. 번역은 초안이라 D 검수가 필요하다
     "source_return": {
         "en": "Return trip estimate after the event: {origin} → {destination}",

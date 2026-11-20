@@ -290,8 +290,8 @@ def test_place_ids_in_ignores_errors_and_malformed_items():
 def test_tool_limit_is_five():
     assert MAX_TOOL_CALLS == 5
     assert json.dumps(sorted(t.tool_name for t in chat_tools.LOOKUP_TOOLS)) == json.dumps(
-        ["get_crowd", "get_events", "get_hours", "get_place_info", "get_return_options", "get_travel_time", "get_weather",
-         "search_places"]
+        ["get_crowd", "get_events", "get_hours", "get_place_info", "get_restaurants", "get_return_options",
+         "get_transit_info", "get_travel_time", "get_weather", "search_places"]
     )
 
 
@@ -359,5 +359,67 @@ def test_return_options_without_a_route_are_not_a_source():
         out("get_return_options", {"error": {"code": "event_not_found", "message": "x"}}),
         out("get_return_options", {"date": "2026-11-28", "baseline": {}, "destination": {"station": "Seomyeon"}}),
         out("get_return_options", ["not", "a", "dict"]),
+    ]
+    assert chat_answer.build_sources(broken, set(), "en") == []
+
+
+# ---- 지하철 정보·주변 음식점 (get_transit_info, get_restaurants, B 의 PR #55) ----
+# 결과는 B 의 실제 도구로 만든다 (파일만 읽고 외부 API 를 부르지 않는다)
+
+from app.tools.restaurants import get_restaurants  # noqa: E402
+from app.tools.transit import get_transit_info  # noqa: E402
+
+
+def test_transit_places_nested_in_from_and_to_are_grounded():
+    data = get_transit_info(from_place_id="haeundae-beach", to_place_id="jagalchi-market")
+    assert data["from"]["place_id"] == "haeundae-beach"  # 장소 ID 가 from·to 안에 중첩되어 있다
+    assert chat_tools.grounded_place_ids([out("get_transit_info", data)]) == {"haeundae-beach", "jagalchi-market"}
+    to_station = get_transit_info(from_place_id="haeundae-beach", to_station="Seomyeon")  # 도착이 역이면 place_id 가 null
+    assert chat_tools.grounded_place_ids([out("get_transit_info", to_station)]) == {"haeundae-beach"}
+
+
+def test_restaurant_ids_are_not_place_ids():
+    data = get_restaurants(place_id="haeundae-beach", limit=3)
+    assert data["restaurants"] and all(r["restaurant_id"].startswith("kto-") for r in data["restaurants"])
+    assert "restaurant_id" not in chat_tools.PLACE_ID_KEYS
+    assert chat_tools.grounded_place_ids([out("get_restaurants", data)]) == {"haeundae-beach"}  # 검색 기준 장소만
+    by_station = get_restaurants(station="Seomyeon", limit=3)
+    assert chat_tools.grounded_place_ids([out("get_restaurants", by_station)]) == set()
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
+def test_transit_info_becomes_a_source_with_the_stations(language):
+    data = get_transit_info(from_place_id="haeundae-beach", to_place_id="jagalchi-market")
+
+    sources = chat_answer.build_sources([out("get_transit_info", data)], set(), language)
+
+    assert [(s.tool, s.id) for s in sources] == [("get_transit_info", "Haeundae>Jagalchi")]
+    assert sources[0].title == message("source_transit", language, origin="Haeundae", destination="Jagalchi")
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
+def test_restaurants_become_a_source_named_after_the_area(language):
+    by_place = get_restaurants(place_id="haeundae-beach", limit=2)
+    by_station = get_restaurants(station="Seomyeon", limit=2)
+
+    sources = chat_answer.build_sources([out("get_restaurants", by_place), out("get_restaurants", by_station)], set(), language)
+
+    area = place_name(load_places()["haeundae-beach"], language)
+    assert [(s.tool, s.id, s.title) for s in sources] == [
+        ("get_restaurants", "haeundae-beach", message("source_restaurants", language, area=area)),
+        ("get_restaurants", "station:Seomyeon", message("source_restaurants", language, area="Seomyeon")),
+    ]
+    assert "TourAPI" in sources[0].title  # 공공데이터 출처를 표기한다 (data-rules.md)
+
+
+def test_transit_and_restaurant_results_without_data_are_not_sources():
+    empty = get_restaurants(place_id="haeundae-beach", radius_m=1)  # 반경 안에 음식점이 없다
+    assert empty["restaurants"] == []
+    broken = [
+        out("get_transit_info", get_transit_info(from_place_id="haeundae-beach", to_place_id="haeundae-beach")),  # same_place
+        out("get_transit_info", {"from": {"station": "Haeundae"}, "to": None}),
+        out("get_restaurants", get_restaurants(place_id="busan-tower")),  # restaurants_not_collected
+        out("get_restaurants", empty),
+        out("get_restaurants", ["not", "a", "dict"]),
     ]
     assert chat_answer.build_sources(broken, set(), "en") == []

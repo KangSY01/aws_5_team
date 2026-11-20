@@ -30,20 +30,26 @@ from app.tools.lookup import (
     get_weather,
     search_places,
 )
+from app.tools.restaurants import get_restaurants
 from app.tools.return_options import get_return_options
 from app.tools.schedule import PlanBuildError, build_plan
+from app.tools.transit import get_transit_info
 
 logger = logging.getLogger(__name__)
 
 MAX_TOOL_CALLS = 5  # 한 요청에서 실행할 수 있는 도구 호출 총수 (team.md)
 MIN_PLACES, MAX_PLACES = 3, 5  # 새 일정의 장소 수 (요구사항 2.1)
 
-# B 가 구현한 조회 도구 전부. get_return_options 는 행사 뒤 귀가 분산 (데모 장면 7)
+# B 가 구현한 조회 도구 전부. get_return_options 는 행사 뒤 귀가 분산 (데모 장면 7),
+# get_transit_info·get_restaurants 는 지하철 정보·주변 음식점 (PR #55, .kiro/specs/info-tools)
 LOOKUP_TOOLS = [
     search_places, get_place_info, get_crowd, get_weather, get_hours, get_travel_time, get_events, get_return_options,
+    get_transit_info, get_restaurants,
 ]
 
-# 도구 결과에서 장소 ID 가 들어 있는 키 (get_place_info 의 대안 장소, get_events·get_return_options 의 대표 장소 등)
+# 도구 결과에서 장소 ID 가 들어 있는 키 (get_place_info 의 대안 장소, get_events·get_return_options 의 대표 장소 등).
+# get_transit_info 의 from.place_id·to.place_id 는 중첩된 place_id 로 읽힌다.
+# get_restaurants 의 restaurant_id 는 places.json 의 장소가 아니라서 넣지 않는다
 PLACE_ID_KEYS = frozenset({
     "place_id", "place_ids", "from_place_id", "to_place_id", "crowd_alternatives", "rain_alternatives", "main_place_id",
 })
