@@ -173,6 +173,10 @@ const placeStationLabel = {
   "zh-Hans": "最近车站", "zh-Hant": "最近車站",
 };
 
+const tripStartLabels = {
+  ko: "시작 시간", en: "Start time", ja: "開始時刻", "zh-Hans": "开始时间", "zh-Hant": "開始時間",
+};
+
 export function getPlannerCopy(language) {
   const [durations, areasList] = choices[language];
   const [chatPlanUnchanged, chatPlanUpdated, chatStopReplaced] = chatOutcomeCopy[language];
@@ -199,7 +203,7 @@ export function getPlannerCopy(language) {
     additionNoTime: additionTiming[language],
     chatPlanUnchanged, chatPlanUpdated, chatStopReplaced: (place) => chatStopReplaced.replace("{place}", () => place),
     emptyRecommendation: emptyRecommendationCopy[language],
-    requiredAnswer, optionalAnswer, durationRequired, changeAreas, noAreaSelection,
+    requiredAnswer, optionalAnswer, durationRequired, changeAreas, noAreaSelection, tripStart: tripStartLabels[language],
     foodLabels: Object.fromEntries(foodPreferenceIds.map((id, index) => [id, food[index]])),
     transportLabels: Object.fromEntries(transportPreferenceIds.map((id, index) => [id, transport[index]])),
     foodEditor: { openCustom, customLabel, addCustom, removeCustom, duplicate } };

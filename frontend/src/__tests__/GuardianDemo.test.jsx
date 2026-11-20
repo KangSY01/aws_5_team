@@ -1,7 +1,7 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import App from "../App.jsx";
-import { resetDemo } from "../features/demo-panel/demoStore.js";
+import { getDemoState, resetDemo, setDemo } from "../features/demo-panel/demoStore.js";
 
 beforeEach(() => localStorage.setItem("busannow.traveler-profile", "{}"));
 
@@ -205,15 +205,15 @@ it("opens the offline demo course at a demo time and restores the normal course 
 
   expect(screen.getByRole("button", { name: "1. Ordinary stop" })).toBeInTheDocument();
   click(/^DEMO/);
-  fireEvent.click(screen.getByRole("checkbox", { name: "데모 스위치 켜기" }));
+  fireEvent.click(screen.getByRole("switch", { name: "데모 스위치 켜기" }));
   await screen.findByRole("button", { name: "1. Haeundae Dongbaekseom Island" });
   expect(screen.queryByRole("button", { name: "1. Ordinary stop" })).not.toBeInTheDocument();
   click("Itinerary");
   click("Start trip");
-  fireEvent.change(screen.getByLabelText("기준 시각 (한국 시각)"), { target: { value: "2026-11-28T14:30" } });
+  act(() => setDemo({ now: "2026-11-28T14:30:00+09:00" }));
   expect(await screen.findByText("Haeundae Beach", { selector: ".trip-next strong" })).toBeVisible();
   expect(screen.getByRole("button", { name: "3. Haeundae Beach", current: true })).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("checkbox", { name: "데모 스위치 켜기" }));
+  fireEvent.click(screen.getByRole("switch", { name: "데모 스위치 켜기" }));
   expect(screen.getByRole("button", { name: "1. Ordinary stop" })).toBeInTheDocument();
   expect(JSON.parse(localStorage.getItem("busannow.course"))).toEqual(ordinary);
   expect(JSON.parse(localStorage.getItem("busannow.course.demo")).plan.date).toBe("2026-11-28");
@@ -264,8 +264,23 @@ it("refreshes a previously saved demo itinerary when the demo is opened again", 
   vi.stubGlobal("fetch", requests);
   render(<App />);
   fireEvent.click(screen.getByRole("button", { name: /^DEMO/ }));
-  fireEvent.click(screen.getByRole("checkbox", { name: "데모 스위치 켜기" }));
+  fireEvent.click(screen.getByRole("switch", { name: "데모 스위치 켜기" }));
   await screen.findByRole("button", { name: "1. Updated demo beach" });
   expect(JSON.parse(localStorage.getItem("busannow.course.demo")).plan.plan_id).toBe("fresh-demo");
   expect(requests.mock.calls.filter(([url]) => url.endsWith("/chat"))).toHaveLength(1);
+});
+
+it("can regenerate a cleared demo itinerary from another scene without changing its time", async () => {
+  vi.stubEnv("VITE_API_BASE_URL", "");
+  localStorage.setItem("busannow.course.demo", JSON.stringify({ plan: { stops: [] }, places: [] }));
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: /^DEMO/ }));
+  fireEvent.click(screen.getByRole("button", { name: "장면 5 오후 비" }));
+  fireEvent.click(screen.getByRole("button", { name: "Itinerary", exact: true }));
+  expect(screen.queryByRole("button", { name: "1. Haeundae Dongbaekseom Island" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "장면 1·2 데모 일정 만들기" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Get an AI itinerary" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create itinerary" }));
+  expect(await screen.findByRole("button", { name: "1. Haeundae Dongbaekseom Island" })).toBeInTheDocument();
+  expect(getDemoState().now).toBe("2026-11-28T13:00:00+09:00");
 });

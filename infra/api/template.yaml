@@ -40,6 +40,11 @@ Parameters:
     NoEcho: true
     Default: ""
     Description: 공공데이터포털 Decoding 키 (기상청 단기예보). 비어 있으면 날씨 도구가 missing_key 오류를 돌려주고 대화는 계속된다. Lambda 환경 변수로만 들어간다
+  TmapAppKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: TMAP pedestrian routing app key
   KakaoRestApiKey:
     Type: String
     NoEcho: true
@@ -155,6 +160,10 @@ Resources:
                 Effect: Allow
                 Action: polly:SynthesizeSpeech
                 Resource: "*"
+              - Sid: TextTranslation
+                Effect: Allow
+                Action: translate:TranslateText
+                Resource: "*"
 
   ApiFunction:
     Type: AWS::Serverless::Function
@@ -187,6 +196,7 @@ Resources:
           UPLOADS_BUCKET: !Ref UploadsBucket
           DATA_GO_KR_KEY_DECODING: !Ref DataGoKrKey
           KAKAO_REST_API_KEY: !Ref KakaoRestApiKey
+          TMAP_APP_KEY: !Ref TmapAppKey
           DEMO_NOW: !Ref DemoNow
           DEMO_CACHE_ENABLED: !Ref DemoCacheEnabled
       FunctionUrlConfig:

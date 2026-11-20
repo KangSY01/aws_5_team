@@ -43,6 +43,26 @@ class PlaceScoreBreakdown(BaseModel):
     notes: list[str] = []  # 근거 코드. 예: "crowd:high", "interest:sea", "travel_min:15", "dispersal:west"
 
 
+class ReturnStation(BaseModel):
+    names: dict[str, str]
+    lat: float
+    lng: float
+
+
+class ReturnRouteOption(BaseModel):
+    station: ReturnStation
+    travel_min: int
+    walk_min: int
+    depart_at: AwareDatetime
+    time_source: Literal["kakao", "estimate"]
+
+
+class ChatReturnRoutes(BaseModel):
+    origin_place_id: str
+    destination: ReturnStation
+    options: list[ReturnRouteOption]
+
+
 class ChatResponse(BaseModel):
     session_id: str
     plan_id: str
@@ -50,6 +70,7 @@ class ChatResponse(BaseModel):
     language: Language
     sources: list[Source]
     plan_changes: list[StopChange]
+    return_routes: ChatReturnRoutes | None = None
     score_breakdown: list[PlaceScoreBreakdown] = []  # v0.3. 랭킹을 쓰지 않은 응답은 빈 목록
 
     @model_serializer(mode="wrap")
@@ -58,6 +79,8 @@ class ChatResponse(BaseModel):
         data = handler(self)
         if not data.get("score_breakdown"):
             data.pop("score_breakdown", None)
+        if data.get("return_routes") is None:
+            data.pop("return_routes", None)
         return data
 
 
@@ -155,8 +178,21 @@ class SpeakResponse(BaseModel):
     audio_base64: str  # Polly 결과 mp3 를 base64 로 인코딩한 값
 
 
+TranslationLanguage = Literal["ko", "en", "ja", "zh-Hans", "zh-Hant"]
+
+
 class VoiceUrlRequest(BaseModel):
-    language: Language  # 사용자가 말하는 언어
+    language: TranslationLanguage  # 사용자가 말하는 언어
+
+
+class TextTranslationRequest(BaseModel):
+    q: str = Field(min_length=1, max_length=2500)
+    source: TranslationLanguage
+    target: TranslationLanguage
+
+
+class TextTranslationResponse(BaseModel):
+    translatedText: str
 
 
 class VoiceUrlResponse(BaseModel):

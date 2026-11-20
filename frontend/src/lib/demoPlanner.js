@@ -83,7 +83,7 @@ function kstTime(date, minutes) {
   return localTime + "+09:00";
 }
 
-export async function recommendDemo(preferences, language, travelerNotes = "") {
+export async function recommendDemo(preferences, language, travelerNotes = "", demoTime = NaN) {
   await demoResponse();
   const areaIds = (preferences.regions.length ? preferences.regions : Object.keys(areas))
     .flatMap((key) => areas[key] ?? []);
@@ -109,7 +109,12 @@ export async function recommendDemo(preferences, language, travelerNotes = "") {
   }
   const days = { half: 1, day: 1, overnight: 2, long: 3 }[preferences.duration];
   const perDay = Math.max(1, Math.min(preferences.duration === "half" ? 3 : 4, Math.floor(candidates.length / days)));
-  const capacity = days * perDay;
+  const firstHour = priorities.has("night") || priorities.has("sunset") ? (preferences.duration === "half" ? 17 : 13) : 10;
+  const [hour, minute] = preferences.startTime ? preferences.startTime.split(":").map(Number) : [firstHour, 0];
+  const firstMinute = hour * 60 + minute;
+  const step = Math.floor((preferences.duration === "half" ? 180 : 420) / perDay);
+  const dailyStops = Math.min(perDay, Math.ceil((1440 - firstMinute) / step));
+  const capacity = days * dailyStops;
   const reserved = new Set();
   for (const region of preferences.regions) {
     if (reserved.size === capacity) break;
@@ -118,16 +123,14 @@ export async function recommendDemo(preferences, language, travelerNotes = "") {
   }
   const filled = new Set([...reserved, ...candidates.filter((place) => !reserved.has(place)).slice(0, capacity - reserved.size)]);
   const chosen = candidates.filter((place) => filled.has(place));
-  const seoulToday = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+  const seoulToday = new Date(Number.isFinite(demoTime) ? demoTime : Date.now()).toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
   const start = new Date(seoulToday + "T00:00:00Z");
-  const firstHour = priorities.has("night") || priorities.has("sunset") ? (preferences.duration === "half" ? 17 : 13) : 10;
-  const step = Math.floor((preferences.duration === "half" ? 180 : 420) / perDay);
   const stops = chosen.map((place, index) => {
-    const date = new Date(start.getTime() + Math.floor(index / perDay) * 86400000);
-    const minutes = firstHour * 60 + (index % perDay) * step;
+    const date = new Date(start.getTime() + Math.floor(index / dailyStops) * 86400000);
+    const minutes = firstMinute + (index % dailyStops) * step;
     return {
       stop_id: "stop-" + (index + 1), place_id: place.place_id, locked: false,
-      start: kstTime(date, minutes), end: kstTime(date, minutes + Math.min(60, step - 20)),
+      start: kstTime(date, minutes), end: kstTime(date, Math.min(1440, minutes + Math.min(60, step - 20))),
     };
   });
   return {

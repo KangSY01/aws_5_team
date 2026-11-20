@@ -5,6 +5,7 @@ import { DemoPanel, useDemoSwitch } from "./features/demo-panel";
 
 export default function App() {
   const { enabled } = useDemoSwitch();
+  const [demoSettingsOpen, setDemoSettingsOpen] = useState(false);
   const [traveler, setTraveler] = useState(() => {
     try {
       return JSON.parse(window.localStorage.getItem(travelerProfileKey));
@@ -35,6 +36,7 @@ export default function App() {
       </section>
     </main>;
   }
-  return <><TravelPreview key={enabled ? "demo" : "normal"} demoMode={enabled} traveler={traveler}
-    onTravelerSave={saveTraveler} /><DemoPanel /></>;
+  return <TravelPreview key={enabled ? "demo" : "normal"} demoMode={enabled} traveler={traveler}
+    onTravelerSave={saveTraveler}
+    demoSettings={<DemoPanel open={demoSettingsOpen} onOpenChange={setDemoSettingsOpen} />} />;
 }

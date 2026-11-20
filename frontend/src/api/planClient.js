@@ -168,6 +168,12 @@ export async function sendTravelMessage(message, language, session, profile = {}
   return chat;
 }
 
+export async function fetchTravelAlerts(planId, signal) {
+  const body = await requestJson("/alerts?" + new URLSearchParams({ plan_id: planId }), { signal });
+  if (body?.plan_id !== planId || !Array.isArray(body.issues)) throw new PlanClientError("invalid_response");
+  return body;
+}
+
 export async function checkTravelPlan(planId, signal) {
   const body = await requestJson("/plan/check", { signal, request: jsonRequest("POST", withDemo({ plan_id: planId })) });
   if (body?.plan_id !== planId || !Array.isArray(body.issues) || !body.repairs || !Array.isArray(body.places)) {

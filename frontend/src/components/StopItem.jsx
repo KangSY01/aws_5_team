@@ -71,7 +71,7 @@ export default function StopItem({ stop, place, language, number, active, tripTa
   );
   return (
     <li className="stop-item" data-insert={insertion}>
-      {day && <time className="stop-day" dateTime={day}>{formatStopDate(day)}</time>}
+      {day && <h3 className="stop-day"><time dateTime={day}>{formatStopDate(day)}</time></h3>}
       {onSelect ? (
         <div className="stop-track">
           <div className="stop-row" data-editable-time={Boolean(timing)} data-has-lock={Boolean(lock)} data-dragging={dragging || undefined}>

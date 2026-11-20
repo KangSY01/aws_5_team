@@ -64,37 +64,39 @@ describe("demoStore", () => {
 });
 
 describe("DemoPanel", () => {
-  it("opens, applies a scene shortcut and shows the summary", async () => {
+  it("shows only the enabled state on the button and applies the scene preset", async () => {
     const user = userEvent.setup();
     render(<DemoPanel />);
     const toggle = screen.getByRole("button", { name: /DEMO/ });
-    expect(toggle).toHaveTextContent("꺼짐");
+    expect(toggle).toHaveTextContent(/^DEMO · 꺼짐$/);
     expect(toggle).toHaveAttribute("aria-expanded", "false");
 
     await user.click(toggle);
     await user.click(screen.getByRole("button", { name: "장면 5 오후 비" }));
 
-    expect(screen.getByRole("checkbox", { name: "데모 스위치 켜기" })).toBeChecked();
-    expect(screen.getByLabelText("기준 시각 (한국 시각)")).toHaveValue("2026-11-28T13:00");
-    expect(screen.getByLabelText("날씨")).toHaveValue("rain-afternoon");
-    expect(toggle).toHaveTextContent("11/28 13:00 · 11/28 13~15시 비");
+    expect(screen.getByRole("switch", { name: "데모 스위치 켜기" })).toBeChecked();
+    expect(getDemoOverride()).toEqual({ now: "2026-11-28T13:00:00+09:00", weather_preset: "rain-afternoon" });
+    expect(screen.queryByLabelText("기준 시각 (한국 시각)")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("날씨")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "초기화" })).not.toBeInTheDocument();
+    expect(toggle).toHaveTextContent(/^DEMO · 켜짐$/);
   });
 
-  it("edits time and weather and can switch off", async () => {
+  it("applies all scene shortcuts and can switch off and resume the chosen scene", async () => {
     const user = userEvent.setup();
     render(<DemoPanel defaultOpen />);
-    await user.click(screen.getByRole("checkbox", { name: "데모 스위치 켜기" }));
-    await user.selectOptions(screen.getByLabelText("날씨"), "rain-afternoon");
-    expect(getDemoOverride()).toEqual({ now: "2026-11-28T09:00:00+09:00", weather_preset: "rain-afternoon" });
-
-    await user.selectOptions(screen.getByLabelText("날씨"), "");
+    const toggle = screen.getByRole("switch", { name: "데모 스위치 켜기" });
+    await user.click(screen.getByRole("button", { name: /장면 1·2/ }));
     expect(getDemoOverride()).toEqual({ now: "2026-11-28T09:00:00+09:00" });
-
+    await user.click(screen.getByRole("button", { name: "장면 5 오후 비" }));
+    expect(getDemoOverride()).toEqual({ now: "2026-11-28T13:00:00+09:00", weather_preset: "rain-afternoon" });
+    await user.click(screen.getByRole("button", { name: "장면 6 늦었어요" }));
+    expect(getDemoOverride()).toEqual({ now: "2026-11-28T14:00:00+09:00" });
     await user.click(screen.getByRole("button", { name: "장면 7 귀가" }));
-    await user.click(screen.getByRole("checkbox", { name: "데모 스위치 켜기" }));
+    expect(getDemoOverride()).toEqual({ now: "2026-11-28T22:00:00+09:00" });
+    await user.click(toggle);
     expect(getDemoOverride()).toBeNull();
-
-    await user.click(screen.getByRole("button", { name: "초기화" }));
-    expect(getDemoState()).toEqual({ enabled: false, now: null, weatherPreset: null });
+    await user.click(toggle);
+    expect(getDemoOverride()).toEqual({ now: "2026-11-28T22:00:00+09:00" });
   });
 });

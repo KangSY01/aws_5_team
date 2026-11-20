@@ -110,7 +110,6 @@ export default function TravelPreferences({ value, onChange, onSubmit, onBack, b
 
   return (
     <form className="planner-form" noValidate onSubmit={submit}>
-      <small>{copy.demoCourse}</small>
       <fieldset ref={durationQuestion} className="duration-section" disabled={busy}>
         <legend>{copy.stay} <span className="planner-answer-type planner-answer-required">{copy.requiredAnswer}</span></legend>
         <div className="activity-chips">
@@ -124,6 +123,10 @@ export default function TravelPreferences({ value, onChange, onSubmit, onBack, b
         </div>
         {durationMissing && <p id="planner-duration-error" className="planner-duration-error" role="alert">{copy.durationRequired}</p>}
       </fieldset>
+      <label className="planner-start-time">
+        <span>{copy.tripStart} {optional}</span>
+        <input type="time" name="startTime" value={value.startTime ?? ""} onChange={update} disabled={busy} />
+      </label>
       <fieldset className="region-section" disabled={busy}>
         <legend>{copy.areas} {optional}</legend>
         <RegionChoices selected={value.regions} onChange={(regions) => onChange({ ...value, regions })} copy={copy} />
