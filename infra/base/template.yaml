@@ -1,0 +1,395 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  busan-guide 공용 AWS 리소스 스택 (S3 3개, DynamoDB 3개, Bedrock Guardrail, CloudFront, 데이터 접근 IAM 정책).
+  A의 AgentCore 스택(infra/template.yaml)과 별개로 배포한다.
+
+Parameters:
+  AllowedOrigin:
+    Type: String
+    Default: '*'
+    Description: uploads 버킷 CORS에서 허용할 오리진 (브라우저 presigned PUT용). 운영에서는 CloudFront 도메인으로 좁힌다.
+
+Resources:
+  # ---------------------------------------------------------------
+  # S3 버킷 3개 (퍼블릭 차단, SSE-S3, HTTPS만 허용)
+  # ---------------------------------------------------------------
+  WebBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub busan-guide-web-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  WebBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource:
+              - !GetAtt WebBucket.Arn
+              - !Sub ${WebBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+          - Sid: AllowCloudFrontOACRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub ${WebBucket.Arn}/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${WebDistribution}
+
+  UploadsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub busan-guide-uploads-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods:
+              - PUT
+              - GET
+            AllowedOrigins:
+              - !Ref AllowedOrigin
+            AllowedHeaders:
+              - '*'
+            ExposedHeaders:
+              - ETag
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-after-1-day
+            Status: Enabled
+            ExpirationInDays: 1
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+
+  UploadsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref UploadsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource:
+              - !GetAtt UploadsBucket.Arn
+              - !Sub ${UploadsBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub busan-guide-data-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  DataBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DataBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource:
+              - !GetAtt DataBucket.Arn
+              - !Sub ${DataBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+
+  # ---------------------------------------------------------------
+  # DynamoDB 테이블 3개 (온디맨드, pk/sk, TTL 속성 ttl)
+  # ---------------------------------------------------------------
+  SessionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: busan-guide-sessions
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  PlansTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: busan-guide-plans
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  CacheTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: busan-guide-cache
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  # ---------------------------------------------------------------
+  # Bedrock Guardrail + 버전
+  # ---------------------------------------------------------------
+  Guardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      Name: busan-guide-guardrail
+      Description: 근거 검사와 개인정보 익명화
+      BlockedInputMessaging: Sorry, I can't help with that request.
+      BlockedOutputsMessaging: Sorry, I can't provide that response.
+      ContextualGroundingPolicyConfig:
+        FiltersConfig:
+          - Type: GROUNDING
+            Threshold: 0.7
+          - Type: RELEVANCE
+            Threshold: 0.5
+      SensitiveInformationPolicyConfig:
+        PiiEntitiesConfig:
+          - Type: EMAIL
+            Action: ANONYMIZE
+          - Type: PHONE
+            Action: ANONYMIZE
+          - Type: CREDIT_DEBIT_CARD_NUMBER
+            Action: ANONYMIZE
+
+  GuardrailVersion:
+    Type: AWS::Bedrock::GuardrailVersion
+    Properties:
+      GuardrailIdentifier: !GetAtt Guardrail.GuardrailId
+      Description: busan-guide-guardrail 고정 버전
+
+  # ---------------------------------------------------------------
+  # CloudFront (web 버킷, OAC)
+  # ---------------------------------------------------------------
+  WebOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub busan-guide-web-oac-${AWS::AccountId}
+        Description: busan-guide web 버킷 OAC
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  WebDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: busan-guide web
+        DefaultRootObject: index.html
+        PriceClass: PriceClass_200
+        HttpVersion: http2and3
+        Origins:
+          - Id: web-s3-origin
+            DomainName: !GetAtt WebBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt WebOriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+        DefaultCacheBehavior:
+          TargetOriginId: web-s3-origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # Managed-CachingOptimized
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 0
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 0
+
+  # ---------------------------------------------------------------
+  # IAM 관리형 정책 (역할에는 붙이지 않고 ARN만 내보낸다)
+  # ---------------------------------------------------------------
+  DataAccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: busan-guide-data-access
+      Description: busan-guide 버킷·테이블 읽기/쓰기, Polly, Transcribe, Guardrail 적용
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: S3ObjectReadWrite
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+            Resource:
+              - !Sub ${WebBucket.Arn}/*
+              - !Sub ${UploadsBucket.Arn}/*
+              - !Sub ${DataBucket.Arn}/*
+          - Sid: S3ListBuckets
+            Effect: Allow
+            Action: s3:ListBucket
+            Resource:
+              - !GetAtt WebBucket.Arn
+              - !GetAtt UploadsBucket.Arn
+              - !GetAtt DataBucket.Arn
+          - Sid: DynamoDbReadWrite
+            Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:BatchGetItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+              - dynamodb:BatchWriteItem
+              - dynamodb:DescribeTable
+            Resource:
+              - !GetAtt SessionsTable.Arn
+              - !GetAtt PlansTable.Arn
+              - !GetAtt CacheTable.Arn
+          - Sid: PollySynthesize
+            Effect: Allow
+            Action: polly:SynthesizeSpeech
+            Resource: '*'
+          - Sid: TranscribeStreaming
+            Effect: Allow
+            Action:
+              - transcribe:StartStreamTranscription
+              - transcribe:StartStreamTranscriptionWebSocket
+            Resource: '*'
+          - Sid: ApplyThisGuardrail
+            Effect: Allow
+            Action: bedrock:ApplyGuardrail
+            Resource: !GetAtt Guardrail.GuardrailArn
+
+Outputs:
+  WebBucketName:
+    Description: 프론트 정적 파일 버킷 이름
+    Value: !Ref WebBucket
+    Export:
+      Name: busan-guide-base-WebBucketName
+  UploadsBucketName:
+    Description: 사진·녹음·Polly 음성 업로드 버킷 이름
+    Value: !Ref UploadsBucket
+    Export:
+      Name: busan-guide-base-UploadsBucketName
+  DataBucketName:
+    Description: 사전 수집 공공데이터 버킷 이름
+    Value: !Ref DataBucket
+    Export:
+      Name: busan-guide-base-DataBucketName
+  SessionsTableName:
+    Description: sessions 테이블 이름
+    Value: !Ref SessionsTable
+    Export:
+      Name: busan-guide-base-SessionsTableName
+  PlansTableName:
+    Description: plans 테이블 이름
+    Value: !Ref PlansTable
+    Export:
+      Name: busan-guide-base-PlansTableName
+  CacheTableName:
+    Description: cache 테이블 이름
+    Value: !Ref CacheTable
+    Export:
+      Name: busan-guide-base-CacheTableName
+  GuardrailId:
+    Description: Bedrock Guardrail ID
+    Value: !GetAtt Guardrail.GuardrailId
+    Export:
+      Name: busan-guide-base-GuardrailId
+  GuardrailVersion:
+    Description: Bedrock Guardrail 고정 버전
+    Value: !GetAtt GuardrailVersion.Version
+    Export:
+      Name: busan-guide-base-GuardrailVersion
+  CloudFrontDomain:
+    Description: CloudFront 도메인 이름
+    Value: !GetAtt WebDistribution.DomainName
+    Export:
+      Name: busan-guide-base-CloudFrontDomain
+  DistributionId:
+    Description: CloudFront 배포 ID (캐시 무효화용)
+    Value: !Ref WebDistribution
+    Export:
+      Name: busan-guide-base-DistributionId
+  DataAccessPolicyArn:
+    Description: busan-guide-data-access 관리형 정책 ARN (역할에는 각자 붙인다)
+    Value: !Ref DataAccessPolicy
+    Export:
+      Name: busan-guide-base-DataAccessPolicyArn
