@@ -96,6 +96,15 @@
   overflow-wrap: anywhere;
 }
 .chat-place-card :is(h3, p, figure) { margin: 0; }
+.chat-place-card .chat-place-reason {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--color-selected);
+  color: var(--color-selected-text);
+  font-size: .85rem;
+}
 .chat-place-card h3 { font-size: 1.05rem; }
 .chat-place-card p { font-size: .875rem; }
 .chat-place-card img { display: block; width: 100%; height: 126px; object-fit: cover; border-radius: 9px; }
@@ -158,7 +167,7 @@
   .chat-grab { display: none; }
   .chat-heading { padding: 10px 14px; }
 }
-.travel-panel .plan-list__stops { gap: 3px; }
+.travel-panel .plan-list__stops { gap: 3px; padding-inline: 2px; }
 .travel-panel .stop-item {
   display: block;
   padding: 0;
@@ -173,7 +182,7 @@
   font-size: .75rem;
 }
 .stop-item:first-child .stop-day { padding-top: 2px; }
-.stop-track { position: relative; }
+.stop-track { position: relative; --stop-number-inset: 8px; --stop-number-size: 24px; }
 .stop-row {
   position: relative;
   display: grid;
@@ -186,7 +195,7 @@
   content: "";
   position: absolute;
   inset-block: 25px -17px;
-  inset-inline-start: 19px;
+  inset-inline-start: calc(var(--stop-number-inset) + var(--stop-number-size) / 2 - 1px);
   width: 2px;
   background: var(--color-border);
   z-index: 1;
@@ -195,7 +204,7 @@
 .travel-preview:not([data-trip-active="true"]) .stop-row:has(.stop-select[aria-pressed="true"]),
 .stop-row:has(.stop-select[aria-current="true"]) {
   background: #EDF7F2;
-  box-shadow: inset 0 0 0 1px var(--trip-green);
+  box-shadow: inset 0 0 0 1px #b4d7ca;
   color: #16362c;
   --color-muted: #465951;
   --stop-warning: #a33129;
@@ -222,8 +231,8 @@
   align-self: start;
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: var(--stop-number-size);
+  height: var(--stop-number-size);
   border-radius: 50%;
   background: var(--trip-green);
   color: #fff;
@@ -251,7 +260,7 @@
 .stop-item[data-insert="before"]::after { top: 0; }
 .stop-item[data-insert="after"]::after { bottom: 0; }
 .stop-row[data-editable-time="true"] .stop-select { padding-block-start: 44px; }
-.stop-row:is([data-editable-time="true"], [data-has-lock="true"]) .stop-number { position: absolute; inset: 13px auto auto 8px; }
+.stop-row:is([data-editable-time="true"], [data-has-lock="true"]) .stop-number { position: absolute; inset-block-start: 13px; inset-inline-start: var(--stop-number-inset); }
 .stop-row[data-has-lock="true"] .stop-select { align-content: start; }
 .stop-row[data-has-lock="true"][data-editable-time="false"] .stop-select { padding-block-start: 14px; }
 .travel-preview .stop-time {
@@ -414,8 +423,12 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
-  padding-inline: 40px 8px;
+  grid-area: 2 / 1;
+  min-width: 0;
+  padding: 0 0 8px calc(var(--stop-number-inset) + var(--stop-number-size) + 8px);
 }
+.stop-row:has(.guardian-stop-controls) .stop-actions { grid-row: 1 / span 2; }
+.stop-row:has(.guardian-stop-controls) .stop-select { padding-block-end: 6px; }
 .guardian-stop-controls .guardian-badge,
 .guardian-review button {
   border: 1px solid var(--color-border);
@@ -425,8 +438,9 @@
   color: var(--color-text);
   font-size: .8rem;
 }
-.guardian-stop-controls .guardian-badge { display: inline-flex; gap: 6px; align-items: center; text-align: start; }
-.guardian-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: #c83d3d; }
+.guardian-stop-controls .guardian-badge { display: inline-flex; gap: 5px; align-items: center; text-align: start; }
+.travel-preview .guardian-stop-controls .guardian-badge[data-crowding="true"] { min-height: 28px; font-size: .75rem; line-height: 1.3; }
+.guardian-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; background: #c83d3d; }
 .guardian-review { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-block: 8px; }
 .guardian-review p { flex-basis: 100%; margin: 0; font-size: .85rem; }
 .guardian-delay { display: grid; gap: 8px; }
@@ -1641,6 +1655,7 @@
   background: var(--coast-coral-surface);
   color: var(--coast-coral);
 }
+.chat-course-status { margin: 0; color: var(--color-muted); font-size: .85rem; }
 .chat-pending {
   margin: 0;
   padding: 10px 13px;
@@ -1746,3 +1761,133 @@
 }
 .itinerary-options-popover button:focus-visible { outline-offset: -2px; }
 .itinerary-reset-dialog .itinerary-reset-confirm { background: #a63822; color: #fff; border-color: transparent; }
+
+.chat-place-rail { align-items: start; }
+
+@media (max-width: 899px) {
+  .travel-preview[data-sheet="open"]:not([data-night="true"]):has(> .travel-tabs[data-active-tab="itinerary"]):has(.travel-chat .travel-panel) {
+    --itinerary-surface: #fff;
+    --itinerary-divider: #d6d9dd;
+    --itinerary-scrollbar: #aeb5bd;
+
+    &::after {
+      background: var(--itinerary-surface);
+      border-color: var(--itinerary-divider);
+    }
+
+    & .travel-chat > :is(.chat-heading, .chat-content, .trip-actions) {
+      background: var(--itinerary-surface);
+    }
+
+    & .chat-heading { border-block-end-color: var(--itinerary-divider); }
+    & .chat-content { scrollbar-color: var(--itinerary-scrollbar) transparent; }
+    & .stop-track::before { background: var(--itinerary-divider); }
+    & .stop-number[data-drag-handle] {
+      box-shadow: 0 0 0 2px var(--itinerary-surface), 0 0 0 3px var(--itinerary-divider);
+    }
+
+    & .travel-panel > section.guardian-review {
+      padding: 0;
+      background: transparent;
+    }
+
+    & :is(.travel-panel > section.guardian-review button, .trip-actions[data-has-stops="true"] button:first-child) {
+      background: var(--itinerary-surface);
+      border-color: var(--itinerary-divider);
+    }
+  }
+}
+
+.travel-preview .guardian-alternatives[data-delay="false"] {
+  --color-border: #dce0e3;
+  --color-text: #24292e;
+  --color-muted: #525b64;
+  background: #fff;
+  color: var(--color-text);
+}
+.guardian-alternatives[data-delay="false"] header { align-items: flex-start; }
+.travel-preview .guardian-alternatives[data-delay="false"] header button {
+  flex: none;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 1.25rem;
+}
+.guardian-alternatives[data-delay="false"] .guardian-alternative-place {
+  margin: 5px 0 9px;
+  color: var(--color-muted);
+  font-size: .85rem;
+}
+.guardian-alternatives[data-delay="false"] .guardian-alternative-place span,
+.guardian-new-time { white-space: nowrap; }
+.guardian-alternatives[data-delay="false"] article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding-block: 10px;
+}
+.guardian-alternatives[data-delay="false"] .guardian-replacement-heading { margin-block: 12px 6px; }
+.guardian-alternatives[data-delay="false"] .guardian-apply {
+  min-height: 44px;
+  border: 0;
+  padding-inline: 10px;
+  font-size: .8rem;
+}
+.guardian-alternatives[data-delay="false"] .guardian-repair-description .guardian-new-time { margin: 2px 0 0; }
+
+.guardian-check-results {
+  display: grid;
+  gap: 6px;
+  flex-basis: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.guardian-check-results button { text-align: start; overflow-wrap: anywhere; }
+
+.guardian-current-label { display: block; margin-block-end: 2px; font-size: .75rem; }
+.guardian-alternatives[data-delay="false"] .guardian-reason {
+  margin-block: 2px 10px;
+  color: var(--color-muted);
+  font-size: .77rem;
+}
+.guardian-alternatives[data-delay="false"] .guardian-candidate {
+  display: block;
+  padding-block: 0;
+}
+.travel-preview .guardian-candidate .guardian-candidate-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 2px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text);
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+.guardian-candidate-toggle:focus-visible { outline-offset: -2px; }
+.guardian-candidate-toggle svg {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+.guardian-candidate-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.guardian-candidate-card { margin-block: 0 10px; background: #fff; }
+.guardian-candidate-card .guardian-apply {
+  justify-self: end;
+  max-width: 100%;
+  border-radius: 999px;
+  background: var(--trip-green);
+  color: var(--color-on-action);
+}

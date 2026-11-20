@@ -17,8 +17,11 @@ it("opens general AI chat without an itinerary and continues the same conversati
   vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
   const fetchMock = vi.fn()
     .mockResolvedValueOnce(new Response(JSON.stringify({ session_id: "general", plan_id: "chat-plan", language: "en", answer: "Try Gwangalli Beach." })))
-    .mockResolvedValueOnce(new Response(JSON.stringify({ session_id: "general", plan_id: "chat-plan", language: "en", answer: "An evening walk is an option." })));
-  vi.stubGlobal("fetch", fetchMock);
+    .mockResolvedValueOnce(new Response(JSON.stringify({ session_id: "general", plan_id: "chat-plan", language: "en", answer: "An evening walk is an option." })))
+    .mockResolvedValueOnce(Response.json({ error: { code: "internal_error", message: "Server error" } }, { status: 500 }));
+  vi.stubGlobal("fetch", (url, request) => String(url).includes("/events?")
+    ? Promise.resolve(Response.json({ date: String(url).split("=").at(-1), events: [] }))
+    : fetchMock(url, request));
   render(<App />);
   fireEvent.click(screen.getByRole("button", { name: "Chat", exact: true }));
 
@@ -30,13 +33,21 @@ it("opens general AI chat without an itinerary and continues the same conversati
   }
 
   send("Where can I see the sea?");
+  const loading = within(screen.getByRole("log")).getByRole("status");
+  expect(loading).toHaveClass("chat-course-status");
+  expect(loading).toHaveTextContent("Finding your route…");
   expect(await screen.findByText("Try Gwangalli Beach.")).toBeVisible();
+  expect(screen.queryByText("Finding your route…")).not.toBeInTheDocument();
   send("What about the evening?");
   expect(await screen.findByText("An evening walk is an option.")).toBeVisible();
   expect(fetchMock.mock.calls.map(([, request]) => JSON.parse(request.body))).toEqual([
     expect.objectContaining({ message: "Where can I see the sea?", session_id: null, plan_id: null }),
     expect.objectContaining({ message: "What about the evening?", session_id: "general", plan_id: "chat-plan" }),
   ]);
+  send("Find another route.");
+  expect(within(screen.getByRole("log")).getByRole("status")).toHaveTextContent("Finding your route…");
+  expect(await screen.findByRole("alert")).toHaveTextContent("POST /chat · HTTP 500");
+  expect(screen.queryByText("Finding your route…")).not.toBeInTheDocument();
   expect(localStorage.getItem("busannow.course")).toBeNull();
 });
 
@@ -89,6 +100,8 @@ it.each([
 
   const card = within(await screen.findByRole("article"));
   expect(card.getByRole("heading", { name: "부산시민공원" })).toBeVisible();
+  expect(card.getByText("추천 이유")).toBeVisible();
+  expect(card.getByText("채팅에서 요청하신 장소예요.")).toBeVisible();
   expect(card.getByLabelText("시작 시간")).toHaveValue(start);
   expect(card.getByLabelText("종료 시간")).toHaveValue(end);
   if (conflict) expect(card.getByText(/다른 가능한 시간/)).toBeVisible();
@@ -116,6 +129,7 @@ it("renders multiple cafe recommendations in a single scrollable card group", as
   const rail = await screen.findByRole("group", { name: "Suggested places" });
   expect(rail).toHaveAttribute("data-multiple", "true");
   expect(within(rail).getAllByRole("article")).toHaveLength(2);
+  expect(within(rail).getAllByText("This café matches your request.")).toHaveLength(2);
   expect(within(rail).queryByRole("button", { name: /Confirm/ })).not.toBeInTheDocument();
 });
 
@@ -361,4 +375,78 @@ it("confirms itinerary reset, preserves preferences, and permits a new course wi
   click("Chat");
   expect(screen.queryByRole("button", { name: "Apply to itinerary" })).not.toBeInTheDocument();
   expect(document.querySelectorAll(".busan-map-pin").length).toBeGreaterThan(0);
+});
+
+it("shows API events on the map and falls back to their Korean names", async () => {
+  vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+  localStorage.setItem("busannow.language", "ja");
+  const fetchEvents = vi.fn(async (url) => {
+    const date = new URL(url, "https://api.example.test").searchParams.get("date");
+    return Response.json({ date, events: [{
+      contentid: "2048902", name: "해운대 빛축제", names: { ko: "해운대 빛축제", en: "Haeundae Light Festival" },
+      type: "festival", lat: 35.1592056511, lng: 129.1615365475,
+      main_place_id: null, place_ids: [],
+      start: date + "T18:00:00+09:00", end: date + "T23:00:00+09:00",
+      period_start: "2026-11-28T18:00:00+09:00", period_end: "2027-01-10T23:00:00+09:00",
+    }] });
+  });
+  vi.stubGlobal("fetch", (url) => String(url).includes("/events?") ? fetchEvents(url) : Promise.reject(new Error()));
+  render(<App />);
+  const marker = await screen.findByLabelText("해운대 빛축제");
+  expect(marker).toHaveClass("busan-event-festival");
+  expect(fetchEvents).toHaveBeenCalledWith(expect.stringMatching(/\/events\?date=\d{4}-\d{2}-\d{2}$/));
+  fireEvent.click(marker);
+  expect(screen.getByRole("heading", { name: "해운대 빛축제" })).toBeVisible();
+  expect(screen.getByText("18:00 – 23:00")).toBeVisible();
+});
+
+it("turns grounded chat recommendations into cards and keeps weather guidance in the reply", async () => {
+  vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+  vi.stubGlobal("fetch", async (url) => {
+    if (!String(url).endsWith("/chat")) return Response.json({});
+    return Response.json({
+      session_id: "recommendations", plan_id: "chat-plan", language: "en",
+      answer: "Try these places. - **Haeundae Beach**: Walk along the sand. - **Jagalchi Market**: Browse seafood stalls. The forecast starts at 6 p.m.",
+      sources: [
+        { tool: "search_places", id: "haeundae-beach", title: "Haeundae Beach" },
+        { tool: "get_place_info", id: "jagalchi-market", title: "Jagalchi Market" },
+        { tool: "get_weather", id: "busan", title: "Weather" },
+      ],
+    });
+  });
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Chat", exact: true }));
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "Suggest afternoon activities in Busan" } });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  const rail = await screen.findByRole("group", { name: "Suggested places" });
+  expect(rail).toHaveAttribute("data-multiple", "true");
+  expect(within(rail).getAllByRole("article")).toHaveLength(2);
+  expect(within(rail).getByRole("heading", { name: "Haeundae Beach" })).toBeVisible();
+  expect(within(rail).getByText("Browse seafood stalls.")).toBeVisible();
+  expect(screen.getByText(/The forecast starts at 6 p.m./)).toHaveClass("chat-bubble");
+});
+
+it("shows live activity details without itinerary controls even when a course exists", async () => {
+  vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+  const course = await recommendDemo({ regions: ["oldtown"], duration: "half", activities: [] }, "en");
+  localStorage.setItem("busannow.course", JSON.stringify(course));
+  const activityCalls = [];
+  vi.stubGlobal("fetch", async (url) => {
+    const parsed = new URL(url, "https://api.example.test");
+    if (!parsed.pathname.endsWith("/activities")) return Response.json({});
+    activityCalls.push(parsed.searchParams);
+    return Response.json({ places: [{ id: "123", name: "Test Escape Room", address: "Test street",
+      phone: "051-000-0000", category: "Entertainment > Escape Room", url: "https://place.map.kakao.com/123" }] });
+  });
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Chat", exact: true }));
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "해운대에 있는 방탈출 찾아줘" } });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  const card = within(await screen.findByRole("article"));
+  expect(card.getByRole("heading", { name: "Test Escape Room" })).toBeVisible();
+  expect(card.getByText("Test street")).toBeVisible();
+  expect(card.getByRole("link", { name: "Place details" })).toHaveAttribute("href", "https://place.map.kakao.com/123");
+  expect(card.queryByLabelText("Start time")).not.toBeInTheDocument();
+  expect(card.queryByRole("button", { name: /add to itinerary/i })).not.toBeInTheDocument();
+  expect(activityCalls.map((params) => Object.fromEntries(params))).toEqual([{ area: "해운대", kind: "escape_room" }]);
 });

@@ -152,9 +152,32 @@ const placeCardLabels = {
   "zh-Hant": ["推薦地點", "想把這次造訪安排在幾點到幾點？", "開始時間", "結束時間", "確認並新增到行程", "已新增到行程。", "已顯示另一個可用時段，確認前可以修改。", "地點詳情", "結束時間必須晚於開始時間。"],
 };
 
+const placeRecommendationCopy = {
+  ko: ["추천 이유", "채팅에서 요청하신 장소예요.", "요청하신 카페를 찾았어요.", "요청하신 공원 유형에 맞아요.", "요청하신 해변 유형에 맞아요."],
+  en: ["Why this place", "This is the place you asked about.", "This café matches your request.", "This park matches your request.", "This beach matches your request."],
+  ja: ["おすすめの理由", "チャットで指定された場所です。", "ご希望に合うカフェです。", "ご希望に合う公園です。", "ご希望に合うビーチです。"],
+  "zh-Hans": ["推荐理由", "这是你在聊天中提到的地点。", "这家咖啡馆符合你的需求。", "这座公园符合你的需求。", "这片海滩符合你的需求。"],
+  "zh-Hant": ["推薦理由", "這是你在聊天中提到的地點。", "這家咖啡館符合你的需求。", "這座公園符合你的需求。", "這片海灘符合你的需求。"],
+};
+
+const activitySearchCopy = {
+  ko: ["조건에 맞는 놀거리를 찾지 못했어요. 다른 지역이나 유형으로 검색해 보세요.", "지금은 놀거리 정보를 불러올 수 없어요. 잠시 후 다시 시도해 주세요."],
+  en: ["No activities matched. Try a different area or type.", "Activity search is unavailable. Please try again shortly."],
+  ja: ["条件に合う体験が見つかりませんでした。別のエリアや種類でお試しください。", "現在、体験を検索できません。しばらくしてからお試しください。"],
+  "zh-Hans": ["没有找到符合条件的活动。请试试其他地区或类型。", "暂时无法搜索活动，请稍后再试。"],
+  "zh-Hant": ["找不到符合條件的活動。請試試其他地區或類型。", "暫時無法搜尋活動，請稍後再試。"],
+};
+
+const placeStationLabel = {
+  ko: "가까운 역", en: "Nearest station", ja: "最寄り駅",
+  "zh-Hans": "最近车站", "zh-Hant": "最近車站",
+};
+
 export function getPlannerCopy(language) {
   const [durations, areasList] = choices[language];
   const [chatPlanUnchanged, chatPlanUpdated, chatStopReplaced] = chatOutcomeCopy[language];
+  const [searchEmpty, searchUnavailable] = activitySearchCopy[language];
+  const [reasonLabel, name, cafe, park, beach] = placeRecommendationCopy[language];
   const [results, prompt, start, end, confirm, added, adjusted, details, invalidEnd] = placeCardLabels[language];
   const [addArea, closeArea, removeArea, showAreas, doneAreas, cancelAreas, changeAreas, noAreaSelection] = areaActions[language];
   const [extraNames, extraDescriptions, limitedPlaces] = additionalAreas[language];
@@ -171,8 +194,8 @@ export function getPlannerCopy(language) {
     activityCopy: getActivityCopy(language), addArea, areaAdded, closeArea, removeArea, showAreas, doneAreasLabel, cancelAreas, limitedPlaces,
     planServerError: planServerErrors[language],
     generalChatDemo: generalChatDemo[language],
-    placeCards: { results, prompt, start, end, confirm, added, adjusted, details, invalidEnd,
-      noItinerary: addNeedsItinerary[language], stale: text.stale },
+    placeCards: { results, prompt, start, end, confirm, added, adjusted, details, invalidEnd, nearestStation: placeStationLabel[language],
+      searchEmpty, searchUnavailable, reasonLabel, reasons: { name, cafe, park, beach }, noItinerary: addNeedsItinerary[language], stale: text.stale },
     additionNoTime: additionTiming[language],
     chatPlanUnchanged, chatPlanUpdated, chatStopReplaced: (place) => chatStopReplaced.replace("{place}", () => place),
     emptyRecommendation: emptyRecommendationCopy[language],

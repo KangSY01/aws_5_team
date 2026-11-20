@@ -79,8 +79,13 @@ it("runs the demo script, refreshes issue badges, locks a stop, applies a repair
   click(/^DEMO/);
   click(/장면 1·2 일정·혼잡/);
   click("Itinerary");
-  await screen.findByRole("button", { name: "High crowding · Caution · Haeundae" });
-  expect(screen.getAllByRole("button", { name: /^High crowding/ })).toHaveLength(2);
+  await screen.findByRole("button", { name: "High crowding · Haeundae" });
+  const badges = screen.getAllByRole("button", { name: /^High crowding/ });
+  expect(badges).toHaveLength(2);
+  for (const badge of badges) {
+    expect(badge.closest(".stop-row")?.querySelector(".stop-item__name")).toHaveTextContent(badge.getAttribute("aria-label").split(" · ")[1]);
+    expect(badge.getAttribute("aria-description")).toMatch(/\d{2}:\d{2} – \d{2}:\d{2}/);
+  }
   expect(screen.queryByText("Beach crowds")).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /^Itinerary warning/ })).not.toBeInTheDocument();
   expect(chatBodies).toEqual([expect.objectContaining({
@@ -88,21 +93,39 @@ it("runs the demo script, refreshes issue badges, locks a stop, applies a repair
     profile: { language: "ja" }, demo: { now: "2026-11-28T09:00:00+09:00" },
   })]);
   expect(checkBodies.at(-1).demo.now).toBe("2026-11-28T09:00:00+09:00");
+  await waitFor(() => expect(screen.getByRole("button", { name: "Check itinerary", exact: true })).toBeEnabled());
+  click("Check itinerary");
+  const manualResult = await screen.findByRole("button", { name: "Haeundae · High crowding · View alternatives" });
+  fireEvent.click(manualResult);
+  const manualDialog = within(screen.getByRole("dialog"));
+  expect(manualDialog.getByText("Beach crowds")).toBeVisible();
+  fireEvent.click(manualDialog.getByRole("button", { name: "Close alternatives" }));
   click("Lock stop · Light Festival");
   await screen.findByRole("button", { name: "Unlock stop · Light Festival" });
-  await screen.findByRole("button", { name: "High crowding · Caution · Haeundae" });
-  expect(screen.queryByRole("button", { name: "High crowding · Caution · Light Festival" })).not.toBeInTheDocument();
+  await screen.findByRole("button", { name: "High crowding · Haeundae" });
+  expect(screen.queryByRole("button", { name: "High crowding · Light Festival" })).not.toBeInTheDocument();
   expect(saves.at(-1).stops[1].locked).toBe(true);
-  click("High crowding · Caution · Haeundae");
+  click("High crowding · Haeundae");
   const sheet = within(screen.getByRole("dialog"));
   expect(sheet.getByText("Beach crowds")).toBeVisible();
-  expect(sheet.getByText(/Gwangalli/)).toBeVisible();
-  fireEvent.click(sheet.getByRole("button", { name: "Apply" }));
+  const candidate = sheet.getByRole("button", { name: "Gwangalli", expanded: false });
+  expect(sheet.queryByRole("button", { name: "Switch to Gwangalli" })).not.toBeInTheDocument();
+  const savedBeforePreview = saves.length;
+  fireEvent.click(candidate);
+  expect(candidate).toHaveAttribute("aria-expanded", "true");
+  expect(sheet.getByRole("link", { name: "Place details" })).toBeVisible();
+  expect(saves).toHaveLength(savedBeforePreview);
+  fireEvent.click(candidate);
+  expect(candidate).toHaveAttribute("aria-expanded", "false");
+  fireEvent.click(candidate);
+  const switchButton = sheet.getByRole("button", { name: "Switch to Gwangalli" });
+  expect(switchButton).toHaveTextContent("Switch here");
+  fireEvent.click(switchButton);
   const undo = await screen.findByRole("button", { name: "Undo" });
   expect(saves.at(-1).stops[0].place_id).toBe("gwangalli");
-  expect(screen.queryByRole("button", { name: "High crowding · Caution · Haeundae" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "High crowding · Haeundae" })).not.toBeInTheDocument();
   fireEvent.click(undo);
-  await screen.findByRole("button", { name: "High crowding · Caution · Haeundae" });
+  await screen.findByRole("button", { name: "High crowding · Haeundae" });
   expect(saves.at(-1)).toEqual({ ...original, stops: [original.stops[0], { ...original.stops[1], locked: true }] });
   click(/장면 5 오후 비/);
   await waitFor(() => expect(checkBodies.at(-1).demo).toEqual({ now: "2026-11-28T13:00:00+09:00", weather_preset: "rain-afternoon" }));
@@ -183,7 +206,9 @@ it("opens travel phrases independently of emergency help and sends Korean text t
   vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
   const fetchMock = vi.fn().mockResolvedValue(Response.json({ content_type: "audio/mpeg", audio_base64: "eA==" }));
   const play = vi.fn().mockResolvedValue(undefined);
-  vi.stubGlobal("fetch", fetchMock);
+  vi.stubGlobal("fetch", (url, request) => String(url).includes("/events?")
+    ? Promise.resolve(Response.json({ date: String(url).split("=").at(-1), events: [] }))
+    : fetchMock(url, request));
   vi.stubGlobal("Audio", class {
     play = play;
     pause() {}

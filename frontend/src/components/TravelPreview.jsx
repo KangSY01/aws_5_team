@@ -9,7 +9,12 @@ import { activityTextKey, normalizeActivities } from "../lib/activityPreferences
 import { getTripStop, insertStopAfter, insertUnselectedStop, suggestLaterStop } from "../lib/itineraryTiming.js";
 import { localeFlags } from "../constants/localeFlags.js";
 import EmptyState from "./EmptyState.jsx";
-import sampleEvents from "../mocks/events.js";
+import { mapEventName } from "../api/eventsClient.js";
+import { useMapEvents } from "../hooks/useMapEvents.js";
+import { activitySearch, fetchActivities } from "../api/activitiesClient.js";
+import { formatTime } from "../lib/formatTime.js";
+import catalogPlaces from "../mocks/places.json";
+import regionalPlaces from "../mocks/regionalPlaces.json";
 import { buildPlacesById, resolvePlaceName } from "../lib/resolvePlaceName.js";
 import BusanMap from "./BusanMap.jsx";
 import TranslationPage, { PhotoActionIcon, MicIcon, TextActionIcon } from "./TranslationPage.jsx";
@@ -27,6 +32,48 @@ import { SCENES, useDemoSwitch } from "../features/demo-panel";
 import { demoItineraryPrompt, makeLocalDemoCourse } from "../features/demo-panel/demoCourse.js";
 import TravelPreferences from "./TravelPreferences.jsx";
 import "./travel-preview.css";
+
+const recommendationCatalog = buildPlacesById([...catalogPlaces, ...regionalPlaces]);
+
+function chatRecommendations(answer, sources, placesById, language) {
+  const candidates = new Map();
+  for (const source of Array.isArray(sources) ? sources : []) {
+    if (!["search_places", "get_place_info"].includes(source?.tool) || !source.id || !source.title) continue;
+    const place = placesById.get(source.id) ?? recommendationCatalog.get(source.id) ??
+      { place_id: source.id, names: { en: source.title } };
+    candidates.set(source.id, { place, sourceTitle: source.title });
+  }
+
+  const nameKey = (name) => activityTextKey(name).replace(/\s/g, "").replace(/해수욕장$/, "해변");
+  const remaining = [];
+  for (const line of answer.replace(/[ \t]+(?=[-•]\s+\*\*)/g, "\n").split(/\r?\n/)) {
+    const bullet = line.match(/^\s*(?:[-•*]|\d+[.)])\s+\*\*([^*]+)\*\*(.*)$/) ??
+      line.match(/^\s*(?:[-•*]|\d+[.)])\s+([^:–—]+)[:–—]\s*(.*)$/);
+    if (!bullet) {
+      remaining.push(line);
+      continue;
+    }
+    const heading = nameKey(bullet[1]);
+    const option = [...candidates.values()].find(({ place, sourceTitle }) => {
+      const names = [sourceTitle, ...Object.values(place.names), resolvePlaceName(place,
+        new Map([[place.place_id, place]]), language).name];
+      return names.some((name) => nameKey(name) === heading);
+    });
+    const detail = bullet[2].replace(/^\s*[:–—-]?\s*/, "").trim();
+    if (!option || !detail || option.reason) {
+      remaining.push(line);
+      continue;
+    }
+    const sentenceEnd = detail.search(/[.!?。！？](?=\s)/u);
+    option.reason = sentenceEnd < 0 ? detail : detail.slice(0, sentenceEnd + 1);
+    if (sentenceEnd >= 0) remaining.push(detail.slice(sentenceEnd + 1).trim());
+  }
+  return { options: [...candidates.values()], text: remaining.join("\n").replace(/\*\*([^*]+)\*\*/g, "$1").trim() };
+}
+
+function issueAlternative(result, plan, demo, issue, target) {
+  return { plan, demo, issue, target, repairs: result.repairs[issue.issue_id] ?? [], places: result.places };
+}
 
 function readTravelRoute() {
   const page = window.location.hash.slice(1);
@@ -193,7 +240,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const [tripTime, setTripTime] = useState(Date.now);
   const [preferences, setPreferences] = useState(() => loadPreferences(preferencesKey));
   const [showPreferences, setShowPreferences] = useState(false);
-  const [mapDetail, setMapDetail] = useState(null);
+  const [selectedMapDetail, setMapDetail] = useState(null);
   const [regionDraft, setRegionDraft] = useState(null);
   const regionSession = useRef(null);
   const restorePreferencesScroll = useRef(null);
@@ -209,6 +256,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const [messages, setMessages] = useState([]);
   const [guardian, setGuardian] = useState(null);
   const [guardianRefresh, setGuardianRefresh] = useState(0);
+  const manualGuardianCheck = useRef(null);
   const [guardianLoading, setGuardianLoading] = useState(false);
   const [guardianActionError, setGuardianActionError] = useState(false);
   const [alternative, setAlternative] = useState(null);
@@ -241,6 +289,12 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const placesById = useMemo(() => buildPlacesById(places), [places]);
   const stops = plan.stops;
   const demoTime = demoMode ? Date.parse(demo.now ?? SCENES[0].now) : NaN;
+  const events = useMapEvents(liveApi, demoTime, placesById);
+  const mapDetail = selectedMapDetail?.contentid
+    ? events.find((event) => event.contentid === selectedMapDetail.contentid)
+    : selectedMapDetail;
+  const mapDetailName = mapDetail && mapEventName(mapDetail, language);
+  const eventHours = mapDetail?.contentid && [formatTime(mapDetail.start), formatTime(mapDetail.end)];
   const travelTime = Number.isFinite(demoTime) ? demoTime : tripTime;
   const nextStop = tripStarted ? getTripStop(stops, travelTime) : null;
   const currentPlace = nextStop && Date.parse(nextStop.start) <= travelTime
@@ -299,9 +353,19 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
     const request = new AbortController();
     setGuardianLoading(true);
     checkTravelPlan(plan.plan_id, request.signal).then((result) => {
-      if (!request.signal.aborted) setGuardian({ ...result, plan });
+      if (request.signal.aborted) return;
+      const manual = manualGuardianCheck.current?.plan === plan && manualGuardianCheck.current.demo === demo;
+      manualGuardianCheck.current = null;
+      setGuardian({ ...result, plan, manual });
+      if (manual && result.issues.length === 1) {
+        const [issue] = result.issues;
+        const target = plan.stops.find((stop) => stop.stop_id === issue.stop_id);
+        setAlternative(issueAlternative(result, plan, demo, issue, target));
+      }
     }).catch(() => {
-      if (!request.signal.aborted) setGuardian({ error: true, plan });
+      if (request.signal.aborted) return;
+      manualGuardianCheck.current = null;
+      setGuardian({ error: true, plan });
     }).finally(() => {
       if (!request.signal.aborted) setGuardianLoading(false);
     });
@@ -666,6 +730,19 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
     setDraft("");
     let requestStage = "POST /chat";
     try {
+      const activity = !editStop && activitySearch(message);
+      if (activity) {
+        let options = [];
+        let unavailable = !liveApi;
+        if (liveApi) {
+          const result = await fetchActivities(activity);
+          ({ options, unavailable } = result);
+        }
+        setMessages((previous) => [...previous, options.length
+          ? { options, readOnly: true, lang: language }
+          : { role: "assistant", text: unavailable ? plannerCopy.placeCards.searchUnavailable : plannerCopy.placeCards.searchEmpty, lang: language }]);
+        return;
+      }
       const addition = findStopAddition(message, places);
       if (addition?.places.length) {
         const options = addition.places.map((place) => {
@@ -673,9 +750,9 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
           const suggested = inserted
             ? inserted.find((stop) => !stops.includes(stop))
             : stops.length && suggestLaterStop(plan, place.place_id, addition.startMinutes, editIndex);
-          return { place, suggested, requestedUnavailable: Boolean(stops.length && !inserted && addition.startMinutes) };
+          return { place, suggested, match: addition.match, requestedUnavailable: Boolean(stops.length && !inserted && addition.startMinutes) };
         });
-        setMessages((previous) => [...previous, { options, plan, anchorIndex: editIndex }]);
+        setMessages((previous) => [...previous, { options, plan, anchorIndex: editIndex, readOnly: editIndex < 0 && !addition.adding }]);
         return;
       }
       if (addition) {
@@ -696,7 +773,12 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
               // Keep the reply available when translation fails.
             }
           }
-          setMessages((previous) => [...previous, { text: answer, lang: answerLanguage, role: "assistant" }]);
+          const { options, text } = chatRecommendations(answer, chat.sources, placesById, language);
+          setMessages((previous) => [
+            ...previous,
+            ...(options.length ? [{ options, readOnly: true, lang: answerLanguage }] : []),
+            ...(text ? [{ text, lang: answerLanguage, role: "assistant" }] : []),
+          ]);
         } else {
           const query = activityTextKey(message).replace(/\s/g, "");
           const landmark = mapLandmarks.find(({ names }) => Object.values(names)
@@ -851,11 +933,11 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
         {issues?.map((issue) => {
           const label = issue.type === "crowded" ? copy.guardian.crowdingWarning : copy.guardian.warning;
           return (
-            <button key={issue.issue_id} type="button" className="guardian-badge"
-              aria-label={label + " · " + name} aria-haspopup="dialog" disabled={Boolean(pending)}
+            <button key={issue.issue_id} type="button" className="guardian-badge" data-crowding={issue.type === "crowded"}
+              aria-label={label + " · " + name} aria-description={formatTime(stop.start) + " – " + formatTime(stop.end)} aria-haspopup="dialog" disabled={Boolean(pending)}
               onClick={() => {
                 setGuardianActionError(false);
-                setAlternative({ plan, demo, detail: issue.detail, repairs: guardian.repairs[issue.issue_id] ?? [], places: guardian.places });
+                setAlternative(issueAlternative(guardian, plan, demo, issue, stop));
               }}>
               <span className="guardian-dot" aria-hidden="true" />
               {label}
@@ -933,7 +1015,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
     <main ref={root} className="travel-preview" data-trip-active={tripStarted} data-night={night} data-page={page} data-sheet={sheetOpen ? "open" : "closed"} data-expanded={sheetExpanded}
       data-compact-itinerary={!showTranslation && !showChat && !showPreferences && !stops.length} data-region-picker={regionDraft !== null} lang={language}>
       <div className="travel-shell" inert={!isMap} aria-hidden={!isMap}>
-        <BusanMap plan={plan} places={places} events={sampleEvents} onEventSelect={setMapDetail} onLandmarkSelect={setMapDetail}
+        <BusanMap plan={plan} places={places} events={events} onEventSelect={setMapDetail} onLandmarkSelect={setMapDetail}
           language={language} label={copy.map} locationCopy={copy.location}
           selectedId={selectedId} nextStopId={nextStop?.stop_id} onSelect={setSelectedId} focusRequest={mapFocus}
           regionPicker={regionDraft && {
@@ -955,14 +1037,15 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
                   </div>
                 )}
                 {mapDetail && (
-                  <section id="busan-map-detail" className="map-event-card" data-landmark={Boolean(mapDetail.description)} aria-label={mapDetail.names[language]}>
+                  <section id="busan-map-detail" className="map-event-card" data-landmark={Boolean(mapDetail.description)} aria-label={mapDetailName}>
                     <button type="button" aria-label={mapDetail.description ? closeLandmark[language] : plannerCopy.closeEvent} onClick={() => setMapDetail(null)}>×</button>
-                    {!mapDetail.description && <small>{plannerCopy.sampleEvent}</small>}
-                    <h2>{mapDetail.names[language]}</h2>
+                    <h2>{mapDetailName}</h2>
                     {mapDetail.description ? <p>{mapDetail.description[language]}</p> : (
                       <>
-                        <p>{formatDate(mapDetail.from, language)}{mapDetail.from !== mapDetail.to && " – " + formatDate(mapDetail.to, language)}</p>
-                        <p>{mapDetail.place.names[language] ?? mapDetail.place.names.en}</p>
+                        <p>{formatDate(mapDetail.period_start.slice(0, 10), language)}{mapDetail.period_start.slice(0, 10) !== mapDetail.period_end.slice(0, 10) &&
+                          " – " + formatDate(mapDetail.period_end.slice(0, 10), language)}</p>
+                        {eventHours && !eventHours.includes("--:--") && eventHours.join() !== "00:00,23:59" && <p>{eventHours.join(" – ")}</p>}
+                        {mapDetail.place && <p>{mapDetail.place.names[language] ?? mapDetail.place.names.ko ?? mapDetail.place.names.en}</p>}
                       </>
                     )}
                   </section>
@@ -1088,7 +1171,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
               );
             })}
             {pending === "edit" && <p className="chat-pending" role="status">{plannerCopy.editing}</p>}
-            {pending === "chat" && <p className="chat-pending" role="status">{copy.loading}</p>}
+            {(pending === "chat" || pending === "recommend") && <p className="chat-course-status" role="status">{copy.loading}</p>}
             {reviewStatus && <p role={reviewStatus === "applied" ? "status" : "alert"}>{plannerCopy[reviewStatus]}</p>}
           </div>
 
@@ -1124,16 +1207,38 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
               {liveCourse && (
                 <section className="guardian-review" aria-label={copy.guardian.check}>
                   <button type="button" disabled={Boolean(pending) || guardianLoading}
-                    onClick={() => { setGuardianActionError(false); setGuardianRefresh((count) => count + 1); }}>
+                    onClick={() => {
+                      manualGuardianCheck.current = { plan, demo };
+                      setGuardianActionError(false);
+                      setGuardianRefresh((count) => count + 1);
+                    }}>
                     {guardianLoading ? copy.loading : copy.guardian.check}
                   </button>
                   {undoRepair?.applied === plan && <button type="button" disabled={Boolean(pending)} onClick={undoGuardianRepair}>{copy.guardian.undo}</button>}
                   {(guardian?.error || (guardianActionError && !alternative && !showDelay)) && <p role="alert">{plannerCopy.requestFailed}</p>}
                   {guardian?.issues?.length === 0 && <p role="status">{copy.guardian.clear}</p>}
+                  {guardian?.plan === plan && guardian.manual && guardian.issues.length > 0 && (
+                    <ul className="guardian-check-results">
+                      {guardian.issues.map((issue) => {
+                        const target = stops.find((stop) => stop.stop_id === issue.stop_id);
+                        const name = target && resolvePlaceName(target, placesById, language).name;
+                        const label = issue.type === "crowded" ? copy.guardian.crowdingWarning : copy.guardian.warning;
+                        return <li key={issue.issue_id}>
+                          <button type="button" aria-haspopup="dialog" disabled={Boolean(pending)}
+                            aria-description={target && formatTime(target.start) + " – " + formatTime(target.end)} onClick={() => {
+                            setGuardianActionError(false);
+                            setAlternative(issueAlternative(guardian, plan, demo, issue, target));
+                          }}>
+                            {[name, label, copy.guardian.options].filter(Boolean).join(" · ")}
+                          </button>
+                        </li>;
+                      })}
+                    </ul>
+                  )}
                 </section>
               )}
               {alternative && alternative.plan === plan && alternative.demo === demo && (
-                <GuardianAlternatives alternative={alternative} copy={copy.guardian} language={language}
+                <GuardianAlternatives alternative={alternative} copy={copy.guardian} placeCopy={plannerCopy.placeCards} language={language} events={events}
                   placesById={buildPlacesById([...places, ...alternative.places])} busy={Boolean(pending)}
                   error={guardianActionError ? plannerCopy.requestFailed : undefined}
                   onApply={applyRepair} onClose={() => setAlternative(null)} />

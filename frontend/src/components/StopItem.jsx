@@ -102,8 +102,8 @@ export default function StopItem({ stop, place, language, number, active, tripTa
                 </button>
               )}
             </div>}
+            {checks}
           </div>
-          {checks}
         </div>
       ) : content}
     </li>

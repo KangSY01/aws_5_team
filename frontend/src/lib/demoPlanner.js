@@ -50,7 +50,7 @@ export function findStopAddition(message, itineraryPlaces) {
     : /공원|\bparks?\b|公園|公园/u.test(query) ? "park"
     : /해수욕장|해변|\bbeach(?:es)?\b|ビーチ|海滩|海灘/u.test(query) ? "beach" : null;
   const results = matches.length ? matches : [...candidates.values()].filter((place) => place.category === category);
-  return results.length || adding ? { places: results.slice(0, 6), startMinutes } : null;
+  return results.length || adding ? { places: results.slice(0, 6), startMinutes, adding, match: matches.length ? "name" : category } : null;
 }
 const distance = (a, b) => Math.hypot((a.lat - b.lat) * 111, (a.lng - b.lng) * 91);
 const demoResponse = () => new Promise((resolve) => setTimeout(resolve, 180));

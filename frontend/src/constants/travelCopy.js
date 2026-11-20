@@ -103,12 +103,28 @@ const guardianLabels = {
   "zh-Hant": ["檢查行程", "未發現問題。", "套用", "調整時間", "調整順序", "替換地點", "移除"],
 };
 
+const guardianReasonCopy = {
+  ko: ["대체 장소", "{day}에는 혼잡이 예상돼요.", "요일 기준으로 혼잡이 예상돼요.", "근처에서 {event} 행사가 열려요.", "방문 시간에 비가 예보돼요.", "방문 시간이 운영시간과 맞지 않아요.", "이전 장소에서 이동할 시간이 부족해요."],
+  en: ["Alternative places", "Crowds are expected on {day}.", "Crowds are expected based on the day of the week.", "{event} is taking place nearby.", "Rain is forecast during this visit.", "This visit falls outside opening hours.", "There is too little time to get here from the previous stop."],
+  ja: ["代替の訪問先", "{day}は混雑が予想されます。", "曜日による傾向から混雑が予想されます。", "近くで「{event}」が開催されます。", "訪問時間帯に雨の予報があります。", "訪問時間が営業時間と合いません。", "前の訪問先からの移動時間が足りません。"],
+  "zh-Hans": ["备选地点", "预计{day}人流较多。", "根据每周人流规律，预计会比较拥挤。", "附近将举办{event}。", "预计到访时段有雨。", "到访时间与营业时间不符。", "从上一站到这里的时间不足。"],
+  "zh-Hant": ["備選地點", "預計{day}人流較多。", "根據每週人流規律，預計會比較擁擠。", "附近將舉辦{event}。", "預計到訪時段有雨。", "到訪時間與營業時間不符。", "從上一站到這裡的時間不足。"],
+};
+
+const guardianReplacementCopy = {
+  ko: ["현재 일정", "이곳으로 변경", "{place}으로 변경"],
+  en: ["Current stop", "Switch here", "Switch to {place}"],
+  ja: ["現在の訪問先", "ここに変更", "{place}に変更"],
+  "zh-Hans": ["当前行程", "改为此处", "改为{place}"],
+  "zh-Hant": ["目前行程", "改為此處", "改為{place}"],
+};
+
 const guardianActions = {
-  ko: ["대안 보기", "대안 닫기", "가능한 대안이 없어요.", "되돌리기", "일정 고정", "일정 고정 해제", "혼잡도 높음 · 주의", "일정 주의", "지연 시간(분)", "지연 대안 보기"],
-  en: ["View alternatives", "Close alternatives", "No alternatives available.", "Undo", "Lock stop", "Unlock stop", "High crowding · Caution", "Itinerary warning", "Delay in minutes", "View delay alternatives"],
-  ja: ["代替案を見る", "代替案を閉じる", "代替案がありません。", "元に戻す", "予定を固定", "固定を解除", "混雑度が高い・注意", "日程に注意", "遅延時間（分）", "遅延の代替案を見る"],
-  "zh-Hans": ["查看备选方案", "关闭备选方案", "没有可用的备选方案。", "撤销", "锁定行程", "解锁行程", "拥挤程度高 · 注意", "行程提醒", "延迟分钟数", "查看延迟方案"],
-  "zh-Hant": ["查看替代方案", "關閉替代方案", "沒有可用的替代方案。", "復原", "鎖定行程", "解鎖行程", "擁擠程度高 · 注意", "行程提醒", "延遲分鐘數", "查看延遲方案"],
+  ko: ["대안 보기", "대안 닫기", "가능한 대안이 없어요.", "되돌리기", "일정 고정", "일정 고정 해제", "혼잡도 높음", "일정 주의", "지연 시간(분)", "지연 대안 보기"],
+  en: ["View alternatives", "Close alternatives", "No alternatives available.", "Undo", "Lock stop", "Unlock stop", "High crowding", "Itinerary warning", "Delay in minutes", "View delay alternatives"],
+  ja: ["代替案を見る", "代替案を閉じる", "代替案がありません。", "元に戻す", "予定を固定", "固定を解除", "混雑度が高い", "日程に注意", "遅延時間（分）", "遅延の代替案を見る"],
+  "zh-Hans": ["查看备选方案", "关闭备选方案", "没有可用的备选方案。", "撤销", "锁定行程", "解锁行程", "拥挤程度高", "行程提醒", "延迟分钟数", "查看延迟方案"],
+  "zh-Hant": ["查看替代方案", "關閉替代方案", "沒有可用的替代方案。", "復原", "鎖定行程", "解鎖行程", "擁擠程度高", "行程提醒", "延遲分鐘數", "查看延遲方案"],
 };
 
 const stopLockCopy = {
@@ -146,16 +162,27 @@ export function getTravelCopy(language) {
   const [profile, guest, account, accountUnavailable] = profileCopy[language];
   const [startTrip, endTrip, traveling, currentPlace, askForRoute] = tripCopy[language];
   const [check, clear, apply, move_time, reorder, replace, remove] = guardianLabels[language];
+  const [currentStop, switchPlace, switchPlaceLabel] = guardianReplacementCopy[language];
+  const [replacementPlaces, crowdDay, crowdWeekday, nearbyEvent, rain, closed, tightTransfer] = guardianReasonCopy[language];
   const [options, closeOptions, noOptions, undo, lock, unlock, crowdingWarning, warning, delayMinutes, delay] = guardianActions[language];
   const [lockHint, lockStop, unlockStop] = stopLockCopy[language];
   const [delayQuestion, delayCustom, delayUnit, delayInvalid, delayClose] = delayFormCopy[language];
   const [delayTitle, delayTimeChange, delayRemove, delayApplyTime, delayApplyRemove] = delayAlternativeCopy[language];
   const [find, pending, denied, unavailable] = locationLabels[language];
+  const switchLabel = (place) => {
+    const last = place.charCodeAt(place.length - 1) - 0xac00;
+    const ending = last % 28;
+    const label = language === "ko" && last >= 0 && last <= 11171 && (ending === 0 || ending === 8)
+      ? switchPlaceLabel.replace("으로", "로") : switchPlaceLabel;
+    return label.replace("{place}", () => place);
+  };
   return {
     location: { find, pending, denied, unavailable },
     guardian: { check, clear, apply, options, close: closeOptions, noOptions, undo, lock, unlock, crowdingWarning, warning, delayMinutes, delay, late: runningLate[language],
       delayQuestion, delayCustom, delayUnit, delayInvalid, delayClose,
       delayTitle, delayTimeChange, delayRemove, delayApplyTime, delayApplyRemove,
+      currentStop, switchPlace, switchPlaceLabel: switchLabel,
+      replacementPlaces, reasons: { crowdDay, crowdWeekday, nearbyEvent, rain, closed, tight_transfer: tightTransfer },
       actions: { move_time, reorder, replace, remove } },
     stopLock: { hint: lockHint, label: (place, locked) => (locked ? unlockStop : lockStop).replace("{place}", () => place) },
     emergency: emergencyCopy[language],

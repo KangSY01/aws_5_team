@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { buildPlacesById, resolvePlaceName } from "../lib/resolvePlaceName.js";
+import { mapEventName } from "../api/eventsClient.js";
 import { stopDate } from "../lib/itineraryTiming.js";
 import RegionMap from "./RegionMap.jsx";
 import { addLandmarkLayer } from "./mapLandmarkLayer.js";
@@ -18,7 +19,7 @@ const eventIcons = {
   festival: "m12 2 2.3 6.7L21 11l-6.7 2.3L12 20l-2.3-6.7L3 11l6.7-2.3z",
   performance: "M10 17V6l10-2v11M10 17a3 2 0 1 1-6 0 3 2 0 0 1 6 0Zm10-2a3 2 0 1 1-6 0 3 2 0 0 1 6 0Z",
   exhibition: "M4 4h16v16H4zM4 16l5-5 4 4 3-2 4 4M15 8h1",
-  market: "M4 10h16l-2-5H6zm2 0v9h12v-9m-7 9v-5h4",
+  event: "M5 5h14v15H5zm3-3v6m8-6v6M5 10h14",
 };
 
 export default function BusanMap({ plan, places, events, onEventSelect, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, focusRequest, regionPicker }) {
@@ -234,17 +235,19 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
     const map = mapRef.current;
     const layer = L.layerGroup().addTo(map);
     const markers = events.map((event) => {
-      const marker = L.marker([event.place.lat, event.place.lng], {
-        title: event.names[language],
+      const name = mapEventName(event, language);
+      const type = Object.hasOwn(eventIcons, event.type) ? event.type : "event";
+      const marker = L.marker([event.lat, event.lng], {
+        title: name,
         zIndexOffset: -10000,
         icon: L.divIcon({
-          className: `busan-event-pin busan-event-${event.type}`,
+          className: `busan-event-pin busan-event-${type}`,
           iconSize: [44, 44],
           iconAnchor: [22, 22],
-          html: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${eventIcons[event.type]}"/></svg>`,
+          html: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${eventIcons[type]}"/></svg>`,
         }),
       }).addTo(layer);
-      marker.getElement().setAttribute("aria-label", event.names[language]);
+      marker.getElement().setAttribute("aria-label", name);
       marker.getElement().addEventListener("keydown", (key) => {
         if (key.key === " ") {
           key.preventDefault();
