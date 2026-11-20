@@ -1046,7 +1046,6 @@
 .profile-account p { margin: 4px 0 0; color: var(--color-muted); font-size: .875rem; }
 
 @media (min-width: 900px) {
-  .travel-preview:not([data-page="profile"]) .travel-tabs [data-tab="profile"],
   .travel-tabs [data-tab="translation"],
   .travel-language-menu .travel-language-flag { display: none; }
   .travel-language-menu .travel-language-name { margin-inline-end: auto; }

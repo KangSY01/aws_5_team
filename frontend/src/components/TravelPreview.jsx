@@ -32,6 +32,8 @@ import { copyFor as localCardCopyFor } from "../features/local-card/phrases.js";
 import { SCENES, useDemoSwitch } from "../features/demo-panel";
 import { demoItineraryPrompt, makeLocalDemoCourse } from "../features/demo-panel/demoCourse.js";
 import TravelPreferences from "./TravelPreferences.jsx";
+import TripAlbum from "../features/trip-poster/TripAlbum.jsx";
+import { saveCompletedTrip } from "../features/trip-poster/album.js";
 import "./travel-preview.css";
 
 const recommendationCatalog = buildPlacesById([...catalogPlaces, ...regionalPlaces]);
@@ -171,7 +173,7 @@ function LanguageOptions({ language, onSelect }) {
   ));
 }
 
-function ProfilePage({ copy, plannerCopy, language, onLanguageChange }) {
+function ProfilePage({ copy, plannerCopy, language, onLanguageChange, demoMode, albumRevision, archiveError }) {
   const [languageOpen, setLanguageOpen] = useState(false);
   const heading = useRef(null);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, []);
@@ -197,6 +199,7 @@ function ProfilePage({ copy, plannerCopy, language, onLanguageChange }) {
             role="group" aria-label={copy.languageLabel}>
             <LanguageOptions language={language} onSelect={onLanguageChange} />
           </div>
+          <TripAlbum language={language} demoMode={demoMode} revision={albumRevision} archiveError={archiveError} />
           <section className="profile-account">
             <h2>{copy.account}</h2>
             <p>{copy.accountUnavailable}</p>
@@ -239,6 +242,8 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
     }
   });
   const [tripTime, setTripTime] = useState(Date.now);
+  const [albumRevision, setAlbumRevision] = useState(0);
+  const [archiveError, setArchiveError] = useState(false);
   const [preferences, setPreferences] = useState(() => loadPreferences(preferencesKey));
   const [showPreferences, setShowPreferences] = useState(false);
   const [selectedMapDetail, setMapDetail] = useState(null);
@@ -596,6 +601,16 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
         setMapFocus({ id: target.stop_id });
       }
     }
+  }
+
+  function toggleTrip() {
+    if (tripStarted && course?.plan.stops.length) {
+      void saveCompletedTrip(course, demoMode).then(() => {
+        setArchiveError(false);
+        setAlbumRevision((revision) => revision + 1);
+      }).catch(() => setArchiveError(true));
+    }
+    changeTrip(!tripStarted);
   }
 
   function selectStop(index) {
@@ -1076,7 +1091,8 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
           </div>
         </header>
       </div>
-      {profile && <ProfilePage copy={copy} plannerCopy={plannerCopy} language={language} onLanguageChange={changeLanguage} />}
+      {profile && <ProfilePage copy={copy} plannerCopy={plannerCopy} language={language} onLanguageChange={changeLanguage}
+        demoMode={demoMode} albumRevision={albumRevision} archiveError={archiveError} />}
       <aside id="travel-chat" className="travel-chat" data-translation={showTranslation} hidden={!sheetOpen} inert={!sheetOpen} aria-hidden={!sheetOpen} aria-labelledby="travel-panel-title"
         onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
         <div className="chat-grab" aria-hidden="true"
@@ -1285,7 +1301,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
               {stops.length ? plannerCopy.newCourse : plannerCopy.recommend}
             </button>
             {stops.length > 0 && (
-              <button type="button" disabled={Boolean(pending)} onClick={() => changeTrip(!tripStarted)}>
+              <button type="button" disabled={Boolean(pending)} onClick={toggleTrip}>
                 {tripStarted ? copy.endTrip : copy.startTrip}
               </button>
             )}

@@ -18,16 +18,24 @@ export async function loadBusanStyle(signal) {
   return response.json();
 }
 
-export function createBusanBasemap(style, getLanguage) {
+export function configureBusanMapWorker() {
   setWorkerUrl(workerUrl);
+}
+
+export function busanLabelExpression(language) {
+  const fields = [...(localeFields[language] ?? []), "name", "name:latin"];
+  return ["coalesce", ...fields.map((name) => ["get", name])];
+}
+
+export function createBusanBasemap(style, getLanguage) {
+  configureBusanMapWorker();
   const labelLayers = style.layers.filter((layer) => layer.layout?.["text-field"]);
   const layer = maplibreGL({ style, interactive: false });
 
   function updateLanguage() {
     const map = layer.getMaplibreMap();
     if (!map?.getStyle()) return;
-    const fields = [...(localeFields[getLanguage()] ?? []), "name", "name:latin"];
-    const text = ["coalesce", ...fields.map((name) => ["get", name])];
+    const text = busanLabelExpression(getLanguage());
     for (const label of labelLayers) {
       if (map.getLayer(label.id)) map.setLayoutProperty(label.id, "text-field", text);
     }

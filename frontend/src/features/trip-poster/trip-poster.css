@@ -1,0 +1,129 @@
+.poster-map-renderer {
+  position: fixed;
+  top: 0;
+  left: -2000px;
+  pointer-events: none;
+}
+.trip-album { padding: 14px; border-block-start: 1px solid var(--color-border); }
+.trip-album h2 { margin: 0 0 8px; font-size: 1rem; }
+.trip-album p { margin: 0 0 8px; color: var(--color-muted); font-size: .875rem; }
+.trip-album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  gap: 8px;
+}
+.album-thumbnail {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 4px;
+  text-align: start;
+  font-size: .75rem;
+}
+.album-thumbnail img { width: 100%; display: block; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 5px; }
+.trip-album-record { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-block: 8px; }
+.trip-album-record time { margin-inline-end: auto; font-size: .85rem; }
+.trip-album :is(.album-thumbnail, .trip-album-record button) {
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+.trip-album-record button { padding: 5px 10px; }
+
+.travel-preview .trip-poster-dialog {
+  width: min(440px, calc(100% - 24px));
+  height: min(850px, calc(var(--visible-height, 100dvh) - 24px));
+  max-height: calc(var(--visible-height, 100dvh) - 24px);
+  padding: 10px 12px;
+  overflow: hidden;
+  background: #fff;
+  color: #17252a;
+  --poster-border: #dfe4e6;
+}
+.trip-poster-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+.trip-poster-dialog header { align-items: center; padding-block-end: 4px; }
+.trip-poster-dialog:has(.trip-poster-photos) > header {
+  margin-block-start: -6px;
+  padding-inline: 9px;
+}
+.trip-poster-dialog:has(.trip-poster-photos) > header button {
+  margin-inline-end: -2px;
+  text-align: end;
+}
+.travel-preview .trip-poster-dialog header button {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 1.15rem;
+}
+.trip-poster-body { container-type: size; overflow: auto; overscroll-behavior: contain; min-height: 0; }
+.trip-poster-preview {
+  position: relative;
+  width: min(100%, 340px, max(min(110px, 80cqh), calc(80cqh - 88px)));
+  aspect-ratio: 4 / 5;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 10px;
+  border-radius: 8px;
+  background: #f3f6f5;
+}
+.trip-poster-preview img { display: block; width: 100%; height: auto; border-radius: inherit; }
+.trip-poster-preview p { padding: 4px; text-align: center; }
+.trip-poster-render-status {
+  position: absolute;
+  inset-inline: 8px;
+  inset-block-end: 8px;
+  padding: 2px 4px;
+  border-radius: 7px;
+  background: #fff;
+  text-align: center;
+}
+.trip-poster-photos h3 { margin: 0 0 6px; font-size: .85rem; }
+.poster-photo-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+.travel-preview .poster-photo-slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  aspect-ratio: 1;
+  padding: 2px;
+  border: 1px solid var(--poster-border);
+  border-radius: 8px;
+  background: #f4f7f6;
+  color: #26343b;
+}
+.poster-photo-slot img { display: block; width: 100%; height: 100%; position: absolute; inset: 0; object-fit: cover; border-radius: 7px; }
+.poster-photo-plus { font-size: 1.15rem; }
+.travel-preview .trip-poster-secondary button {
+  min-width: 0;
+  min-height: 44px;
+  padding: 4px;
+  border: 1px solid var(--poster-border);
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  font-size: .75rem;
+  overflow-wrap: anywhere;
+}
+.trip-poster-actions { display: grid; gap: 5px; padding-block-start: 8px; border-block-start: 1px solid var(--poster-border); background: #fff; }
+.trip-poster-actions p { margin: 0; font-size: .75rem; }
+.travel-preview .trip-poster-actions .trip-poster-primary { border-color: var(--trip-green); background: var(--trip-green); color: #fff; }
+.trip-poster-actions button:disabled { opacity: .5; }
+.trip-poster-secondary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.travel-preview .trip-poster-secondary button { display: flex; align-items: center; justify-content: center; gap: 5px; }
+.trip-poster-secondary svg { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+@font-face {
+  font-family: "Busan Poster Title";
+  src: url("./busan-title.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  unicode-range: U+B124, U+BD80, U+C0B0, U+CEF7;
+}
