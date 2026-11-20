@@ -16,11 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 def _bucket() -> str:
-    """업로드 버킷 이름 (환경 변수 UPLOADS_BUCKET, 공용 스택 출력 UploadsBucketName).
-
-    config.py 는 A 담당이라 아직 이 상수가 없을 수 있다. 추가되기 전에는 빈 값으로 보고, USE_MOCK=0 이면 PhotoServiceError 가 난다.
-    """
-    return getattr(config, "UPLOADS_BUCKET", "") or ""
+    """업로드 버킷 이름 (config.UPLOADS_BUCKET, 공용 스택 출력 UploadsBucketName, #54). 비어 있으면 USE_MOCK=0 에서 PhotoServiceError."""
+    return config.UPLOADS_BUCKET or ""
 
 
 def create_upload_url(request: PhotoUploadUrlRequest) -> PhotoUploadUrlResponse:
