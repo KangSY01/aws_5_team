@@ -307,7 +307,7 @@ def test_api_can_use_the_weather_cache_and_no_other_table(template, function):
     assert all("*" not in s["Resource"]["Fn::Sub"] for s in dynamo)
     # 다른 권한은 그대로 있다
     assert {"Logs", "SessionsTable", "BedrockModelOrProfile", "BedrockModelsBehindProfile", "PhotoUploads", "PhotoTextract",
-            "PollySpeak", "WeatherCache"} == set(found)
+            "PollySpeak", "WeatherCache", "TranscribeStreaming"} == set(found)
 
 
 def test_deployed_storage_is_dynamodb_even_with_sample_data(monkeypatch):

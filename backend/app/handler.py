@@ -6,6 +6,7 @@ GET·PUT /plan 은 app/storage 에서 읽고 쓴다 (USE_MOCK=1 이면 메모리
 /plan/check, /plan/{plan_id}/delay 는 저장된 일정을 읽어 Guardian(app/guardian/service.py) 결과를 돌려준다.
 GET /alerts 는 예약 점검(app/scheduled_handler.py)이 저장한 마지막 결과를 읽기만 한다. 점검을 새로 하지 않는다.
 POST /photo/upload-url, /photo/translate 는 app/photo/service.py 를 부른다 (USE_MOCK=1 이면 샘플 메뉴판, FAKE_LLM=1 이면 고정 번역).
+POST /voice/url 은 app/voice/service.py 를 부른다 (Transcribe Streaming presigned URL. USE_MOCK=1 이면 연결되지 않는 가짜 주소).
 Guardian 해결안은 저장하지 않는다. 사용자가 고른 해결안을 프론트엔드가 PUT /plan/{plan_id} 로 저장한다.
 
 CORS 헤더는 여기서 붙이지 않는다. 배포에서는 Function URL 설정이,
@@ -35,12 +36,15 @@ from app.models.api import (
     PlanResponse,
     SpeakRequest,
     SpeakResponse,
+    VoiceUrlRequest,
 )
 from app.models.plan import Place, Plan
 from app.photo import errors as photo_errors
 from app.photo import service as photo
 from app.speech import polly
 from app.storage import InvalidDataError, PlanNotFoundError, StorageError
+from app.voice import service as voice
+from app.voice.errors import VoiceServiceError
 
 logger = logging.getLogger(__name__)
 
@@ -211,6 +215,13 @@ def _route(event: dict) -> BaseModel:
         case "POST", ["photo", "translate"]:
             request = _parse(event, PhotoTranslateRequest)
             return _photo(lambda: photo.translate_photo(request))
+
+        case "POST", ["voice", "url"]:
+            request = _parse(event, VoiceUrlRequest)
+            try:
+                return voice.create_voice_url(request)
+            except VoiceServiceError:  # 사유는 app/voice 가 로그에 남긴다
+                raise ApiError(500, "internal_error", "서버 오류가 발생했습니다.")
 
         case _:
             raise ApiError(404, "not_found", f"{method} {event['rawPath']} 경로가 없습니다.")

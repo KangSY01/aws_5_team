@@ -139,6 +139,12 @@ Resources:
                 Effect: Allow
                 Action: textract:DetectDocumentText
                 Resource: "*"
+              # POST /voice/url (음성 입력). 브라우저는 이 역할의 임시 자격 증명으로 서명된 URL 로 Transcribe 에 연결하므로,
+              # 연결할 때 이 역할의 권한으로 검사된다. Transcribe 스트리밍은 리소스 단위 권한을 지원하지 않는다
+              - Sid: TranscribeStreaming
+                Effect: Allow
+                Action: transcribe:StartStreamTranscriptionWebSocket
+                Resource: "*"
               # POST /speak (B 의 음성 출력). Polly 는 리소스 단위 권한을 지원하지 않는다
               - Sid: PollySpeak
                 Effect: Allow
