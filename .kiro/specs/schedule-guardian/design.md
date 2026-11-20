@@ -115,7 +115,7 @@ EventBridge Scheduler (예보 갱신 시각)
   → 점검 Lambda: 저장된 일정 읽기 → build_context → check_plan (LLM 없음)
   → 결과를 DynamoDB에 저장 → /alerts API가 읽어 배지로 표시
 ```
-- `guardian/`은 점검 로직만 제공합니다. Lambda 진입점, 스케줄, DynamoDB 저장 형식은 배포 구성·세션 저장 담당과 정합니다.
+- 점검 로직은 `guardian/scheduled.py`(D)에 둡니다. Lambda 연결과 EventBridge 스케줄은 `infra/`(A)에서 하고, DynamoDB 저장 형식은 세션 저장 담당(A)과 정합니다.
 
 ## 오류 처리
 - `context`에 필요한 값이 없으면 그 규칙만 건너뜁니다. 점검 전체를 실패시키지 않습니다.

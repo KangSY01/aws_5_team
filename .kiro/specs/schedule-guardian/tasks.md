@@ -59,5 +59,5 @@
 
 - [ ] 11. 예약 점검 (EventBridge)
   - 예보 갱신 시각에 `check_plan`을 실행하고 결과를 DynamoDB에 저장
-  - 배포 구성·세션 저장 담당과 진입점·저장 형식 확정 후 진행
+  - 로직은 `guardian/scheduled.py`에 작성. Lambda 연결·스케줄(`infra/`)과 DynamoDB 저장 형식은 A와 확정 후 진행
   - _요구사항: 8_

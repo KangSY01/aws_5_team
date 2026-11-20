@@ -7,7 +7,8 @@
 - 필드 이름과 타입은 `backend/app/models/plan.py`(데이터)와 `backend/app/models/api.py`(요청·응답)의 Pydantic 모델과 같다.
   아래에서 `Plan`, `Place`, `Stop`, `Issue`, `RepairOption`, `StopChange` 는 그 모델을 가리킨다.
 - 시각은 시간대를 포함한 ISO 8601 (`2026-11-21T10:00:00+09:00`), 날짜는 `YYYY-MM-DD`.
-- 스트리밍은 쓰지 않는다. 응답은 한 번에 온다.
+- `POST /chat` 은 스트리밍으로 응답한다(11/20 결정). 이벤트 형식은 금 12:00 점검 1에서 확정해 이 문서에 추가한다. 확정 전까지는 아래 `ChatResponse` 를 한 번에 돌려준다.
+- 나머지 경로는 스트리밍하지 않는다. 응답은 한 번에 온다.
 - 아래 예시는 `backend/app/data/` 의 샘플과 같은 내용이다. 실제 응답 전체는
   `uv run python -m scripts.local_invoke` 로 볼 수 있다.
 

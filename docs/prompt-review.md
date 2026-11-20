@@ -1,11 +1,12 @@
 # 답변 시스템 프롬프트 검토 메모
 
-작성: 이온규 (D) → 전달: 노윤지 (A, `backend/app/prompts.py` 담당)
+작성: 이온규 (D) → 전달: 노윤지 (A)
+담당 변경: 11/20부터 `backend/app/prompts.py`는 D가 맡습니다. 이 메모의 제안은 D가 `prompts.py`에 반영합니다.
 비교 대상:
 - **스펙 초안**: `.kiro/specs/chat-agent/design.md`의 "시스템 프롬프트 (`prompts.py`)"
 - **노션 초안**: 「판단 단계 JSON · 시스템 프롬프트 · 평가 질의 (초안)」 3-2 답변 생성
 
-`prompts.py`는 직접 고치지 않았습니다. 아래 제안을 반영할지는 A가 정합니다.
+작성 당시 `prompts.py`는 A 담당이라 직접 고치지 않았습니다.
 
 ## 빠진 규칙
 

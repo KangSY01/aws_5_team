@@ -27,10 +27,12 @@ uv run python -m scripts.local_server   # 로컬 서버 http://127.0.0.1:8000 (C
 
 | 역할 | 담당 | 맡는 곳 |
 |---|---|---|
-| A. 에이전트 백엔드 | 노윤지 | `backend/app/agent.py`, `backend/app/tools/plan_edit.py`, `backend/app/storage/`, 뼈대·배포 구성 |
-| B. 데이터·도구 | 강서영 | `backend/app/data/`, `backend/app/tools/lookup.py` |
+| A. 에이전트 백엔드 | 노윤지 | `backend/app/agent.py`, `backend/app/tools/plan_edit.py`, `backend/app/storage/`, `backend/app/voice/`(음성 입력 서명 URL), `backend/app/config.py`, `backend/scripts/`, `infra/`(SAM 템플릿·배포 구성) |
+| B. 데이터·도구 | 강서영 | `backend/app/data/`, `backend/app/tools/lookup.py`, `backend/app/speech/`(음성 출력 Polly) |
 | C. 프론트엔드 | 이지혜 | `frontend/` (D 폴더 제외) |
-| D. 아키텍처 설계 인프라 | 이온규 | `backend/app/guardian/`, `backend/app/prompts.py`, `backend/eval/`, `frontend/src/features/local-card/`, `frontend/src/features/demo-panel/`, 사진 인식 백엔드(`/photo`, 계약 변경 PR 후 위치 결정) |
+| D. 아키텍처 설계 인프라 | 이온규 | `backend/app/guardian/`(예약 점검 로직 `scheduled.py` 포함), `backend/app/prompts.py`, `backend/app/photo/`(사진 인식 백엔드), `backend/eval/`, `frontend/src/features/local-card/`, `frontend/src/features/demo-panel/` |
+
+담당 규칙 세부(테스트 파일, 예약 점검 연결, 계약에 없는 경로)는 [CONTRIBUTING.md](CONTRIBUTING.md)의 「담당 영역」을 따릅니다.
 
 - 지금은 스텁입니다. `agent.py`, `guardian/`, `tools/`의 함수는 시그니처와 docstring, `TODO(담당)`만 있고 호출하면 `NotImplementedError`가 납니다.
 - 구현한 뒤에는 `backend/app/handler.py`의 `TODO` 위치에서 고정 응답을 실제 호출로 바꿉니다. 이 파일은 공용 파일이라 아래 규칙을 따릅니다.

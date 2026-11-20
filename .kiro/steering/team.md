@@ -12,7 +12,7 @@ inclusion: always
 ## 스택
 - 백엔드: Python 3.13, uv, Strands Agents SDK, boto3, Pydantic, pytest
 - 프론트엔드: React (Vite, JavaScript), MapLibre GL JS
-- 배포: AWS Lambda (Function URL → 이후 API Gateway), S3 + CloudFront, DynamoDB
+- 배포: SAM + AgentCore 먼저 시도, 금 12:00 점검 1까지 안 되면 AWS Lambda (Function URL → 이후 API Gateway)로 전환. S3 + CloudFront, DynamoDB
 
 ## AWS 규칙
 - 리소스와 Bedrock 호출 엔드포인트는 ap-northeast-2. 모델은 global. 교차 리전 프로필을 쓰며 처리는 다른 리전에서 될 수 있다. 대회 계정에서 실제 ID를 확인한다. AWS_REGION 기본값 ap-northeast-2.
@@ -53,7 +53,8 @@ inclusion: always
 - 에이전트는 Strands만 쓴다. LangChain 등 다른 에이전트 프레임워크를 섞지 않는다.
 - 도구 함수는 app/tools/ 아래. docstring에 언제 쓰는지, 입력, 출력을 자세히 쓴다.
 - 도구 반복 상한 5회, max_tokens 설정, 외부 API 타임아웃 5초 재시도 1회.
-- Lambda: 모델 객체는 핸들러 밖에서 1회 생성, Agent는 요청마다 생성. API 응답은 스트리밍하지 않는다(SDK 내부 호출은 예외).
+- Lambda: 모델 객체는 핸들러 밖에서 1회 생성, Agent는 요청마다 생성.
+- API 응답은 /chat만 스트리밍한다. 나머지 경로는 한 번에 돌려준다. 스트리밍 방식과 이벤트 형식은 금 12:00 점검 1에서 확정해 docs/api-contract.md에 적는다.
 - FastAPI, Django, Firebase를 쓰지 않는다.
 - 응답 형식은 docs/api-contract.md를 따른다.
 - 주석과 로그는 한국어.

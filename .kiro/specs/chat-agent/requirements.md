@@ -91,7 +91,7 @@ Strands Agents로 작성하고 `POST /chat`을 처리하는 Lambda(`app.handler.
 
 #### Acceptance Criteria
 
-1. 시스템은 스트리밍 없이 `ChatResponse` 하나를 한 번에 돌려줘야 합니다.
+1. 시스템은 `/chat` 응답을 스트리밍으로 보내야 하고, 스트림이 끝나면 클라이언트가 `ChatResponse` 하나를 온전히 받을 수 있어야 합니다. 스트리밍 방식과 이벤트 형식은 금 12:00 점검 1에서 확정해 `docs/api-contract.md`에 적습니다.
 2. 시스템은 도구 호출을 5회 이내로 제한하고 `max_tokens`를 설정해야 합니다.
 3. 시스템은 정상 상태에서 15초 이내에 응답해야 합니다.
 4. IF 처리 중 오류가 나면 THEN 시스템은 `docs/api-contract.md`의 오류 형식(`{"error": {"code", "message"}}`)으로 답해야 합니다.
