@@ -1,0 +1,171 @@
+.translation-page { display: contents; }
+
+.translation-page fieldset { display: grid; gap: 12px; margin: 0; border: 0; padding: 0; min-width: 0; }
+.translation-page :is(.translation-voice-input button, textarea),
+.translation-photo-inputs label, .translation-select {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.translation-page :is(button, textarea):focus-visible,
+.translation-page :is(.translation-select, .translation-photo-inputs label):focus-within {
+  outline: 2px solid #145440;
+  outline-offset: 2px;
+}
+.translation-page .translation-submit { min-height: 44px; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 10px; font: inherit; font-weight: 700; font-size: 14px; }
+.translation-page .translation-submit:disabled { background: #f1f1f2; color: #606064; }
+
+.translation-photo-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.translation-language-label { font-size: 13px; font-weight: 500; color: var(--color-muted); overflow-wrap: anywhere; }
+.translation-select {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.translation-select::after {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-inline-end: 2px;
+  border: solid currentColor;
+  border-width: 0 1px 1px 0;
+  transform: translateY(-2px) rotate(45deg);
+}
+.translation-photo-inputs label { position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; text-align: center; }
+.translation-photo-inputs svg { width: 16px; height: 16px; flex: none; }
+.translation-photo-inputs input, .translation-select select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.translation-help { margin: -4px 0 0; font-size: 13px; line-height: 1.45; color: var(--color-muted); overflow-wrap: anywhere; }
+.translation-preview { display: block; width: 100%; max-height: 220px; object-fit: contain; border-radius: 12px; }
+.translation-voice-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg);
+}
+.translation-page .translation-voice-input textarea {
+  width: 100%;
+  min-height: 88px;
+  max-height: 156px;
+  field-sizing: content;
+  resize: none;
+  padding: 5px;
+  border: 0;
+  background: transparent;
+  line-height: 1.45;
+}
+.translation-microphone { display: grid; justify-content: center; padding-block: 6px; }
+.travel-preview .translation-microphone button {
+  display: grid;
+  min-width: 48px;
+  min-height: 48px;
+  place-items: center;
+  padding: 6px 10px;
+  border: 1px solid #c5dfd2;
+  border-radius: 999px;
+  background: #edf7f2;
+  color: #145440;
+}
+.travel-chat[data-translation="true"] .chat-heading { flex-wrap: wrap; }
+.travel-chat .translation-mode-chips { flex: 0 0 100%; gap: 0 5px; }
+.travel-chat .translation-mode-chips button { width: auto; height: auto; }
+.translation-voice-result:empty { position: absolute; }
+.translation-result { padding: 12px; border: 1px solid #c5dfd2; border-radius: 12px; background: #edf7f2; }
+.translation-result h2 { margin: 0 0 6px; font-size: 14px; }
+.translation-result p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.translation-status section { margin-top: 12px; padding: 12px; border: 1px solid var(--color-border); border-radius: 12px; }
+.translation-status h2 { margin: 0 0 6px; font-size: 1rem; }
+.translation-status section p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.translation-page[hidden] { display: none; }
+.translation-page .translation-body { padding-block-start: 6px; }
+.translation-footer { grid-row: 4; display: grid; padding: 6px 14px; }
+.travel-chat .chat-content[hidden] { display: none; }
+.translation-footer[hidden] { display: none; }
+.travel-chat[data-translation="true"] .chat-heading h1 { font-size: 20px; font-weight: 700; }
+.travel-preview .translation-swap {
+  justify-self: end;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.travel-preview .translation-swap:disabled { color: var(--color-muted); }
+
+@media (max-width: 899px) {
+  .travel-preview[data-expanded="false"]:has(.translation-page[data-compact-translation="true"]) {
+    --chat-height: min(var(--compact-translation-height, 275px), calc(100% - var(--nav-bottom) - var(--mobile-nav-height) - 12px - env(safe-area-inset-top)));
+  }
+}
+
+.translation-photo-field { display: grid; gap: 4px; }
+.translation-photo-language { display: grid; gap: 4px; }
+.translation-photo-language small { color: var(--color-muted); }
+
+
+.translation-language-value { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.translation-language-value img { flex: none; border-radius: 50%; object-fit: cover; }
+
+.translation-language-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  gap: 4px 8px;
+}
+.translation-language-pair label {
+  grid-row: 1 / 3;
+  grid-template-rows: subgrid;
+  min-width: 0;
+}
+.translation-language-pair label:first-child { grid-column: 1; }
+.translation-language-pair .translation-direction + label { grid-column: 3; }
+.translation-direction { grid-area: 2 / 2; display: grid; place-items: center; color: var(--color-text); }
+.translation-direction svg { width: 20px; height: 20px; }
+
+.translation-text-pair { grid-template-rows: auto auto auto; row-gap: 6px; }
+.translation-page .translation-text-source, .translation-text-result {
+  grid-row: 3;
+  width: 100%;
+  min-width: 0;
+  min-height: 96px;
+  height: 126px;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow: auto;
+}
+.translation-page .translation-text-source { grid-column: 1; resize: none; }
+.translation-text-result { grid-column: 3; border: 1px solid var(--color-border); background: var(--color-bg); }
+.translation-result-placeholder { color: var(--color-muted); }

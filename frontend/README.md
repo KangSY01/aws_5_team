@@ -80,3 +80,9 @@ cp backend/app/data/places.json frontend/src/mocks/places.json
 copy /Y backend\app\data\sample_plan.json frontend\src\mocks\sample_plan.json
 copy /Y backend\app\data\places.json frontend\src\mocks\places.json
 ```
+
+## 번역 탭
+
+사진의 글자는 브라우저에서 Tesseract.js로 읽습니다. 자동 감지에는 지원하는 언어의 OCR 데이터를 사용하며, 첫 사용에는 엔진과 언어 데이터 다운로드가 필요합니다. 원문을 확실히 구분하기 어려우면 사용자가 언어를 선택할 수 있습니다. 음성 입력은 브라우저의 음성 인식을 사용하며, 지원 여부는 기기와 브라우저에 따라 달라집니다.
+
+모바일에서 번역 결과를 받으려면 빌드 전에 `VITE_TRANSLATION_ENDPOINT`를 설정합니다. 이 주소는 JSON `POST` 요청 `{ q, source, target, format: "text" }`을 받아 `{ translatedText }`를 반환해야 합니다. `source`와 `target`은 `ko`, `en`, `ja`, `zh-Hans`, `zh-Hant` 중 하나입니다. 제공자 키는 이 주소를 처리하는 서버에 두고, 브라우저에는 공개 주소만 설정합니다. 별도 주소를 설정하지 않으면 브라우저 내장 Translator API가 지원되는 환경에서 번역합니다.
