@@ -16,7 +16,8 @@ API 를 부르지 않는다. places.json·travel_times.json 이 바뀌면 다시
                       현장의 외국어 안내 수준을 조사한 값이 아니다
   crowd_alternatives  붐빌 때 대신 갈 후보. 이동 시간 MAX_MINUTES 이내이고 indoor 를 뺀 tags 가 하나 이상 겹치는 장소,
                       가까운 순 MAX_ALTERNATIVES 곳
-  rain_alternatives   비 올 때 대신 갈 후보. 이동 시간 MAX_MINUTES 이내의 실내(indoor=true) 장소, 가까운 순 MAX_ALTERNATIVES 곳
+  rain_alternatives   비 올 때 대신 갈 후보. 이동 시간 MAX_MINUTES 이내의 실내(indoor=true) 장소, 가까운 순 MAX_ALTERNATIVES 곳.
+                      RAIN_EXCLUDED(대형 상업·유료 시설)는 후보에서 뺀다
   source              "rule"(이 스크립트가 만든 값) 또는 "manual"(curation_overrides.json 으로 고친 항목)
 이동 시간은 travel_times.json 의 추정값이다. 같은 시간이면 place_id 사전순.
 
@@ -33,6 +34,9 @@ OVERRIDES_PATH = fp.DATA_DIR / "curation_overrides.json"
 TRAVEL_PATH = fp.DATA_DIR / "travel_times.json"
 MAX_MINUTES = 30
 MAX_ALTERNATIVES = 3
+# 비 대안 후보에서 빼는 장소. 대형 상업·유료 시설(유료 수족관, 유료 전망대, 백화점)이라 비 올 때마다
+# 이곳들만 추천되는 것을 막는다. 후보에서만 빼고, 이 장소 자체의 항목과 crowd_alternatives·tags 는 그대로다.
+RAIN_EXCLUDED = frozenset({"sea-life-busan", "busan-x-the-sky", "shinsegae-centum-city"})
 FIELDS = ("tags", "foreigner_friendly", "crowd_alternatives", "rain_alternatives")
 
 TAGS = ["food", "sea", "history", "culture", "shopping", "nature", "night_view", "kids", "indoor"]  # 출력 순서
@@ -91,7 +95,7 @@ def build_curation(places: list[dict], pairs: list[dict], lcls: dict[str, list[s
     """규칙으로 만든 {place_id: 큐레이션}. overrides 에 적힌 필드는 마지막에 덮어쓴다."""
     minutes = {frozenset((p["from_place_id"], p["to_place_id"])): p["minutes"] for p in pairs}
     tags = {p["place_id"]: place_tags(p, lcls.get(p["place_id"], [])) for p in places}
-    indoor = [p["place_id"] for p in places if p["indoor"]]
+    indoor = [p["place_id"] for p in places if p["indoor"] and p["place_id"] not in RAIN_EXCLUDED]
     result = {}
     for place in places:
         pid = place["place_id"]

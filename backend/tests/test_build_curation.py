@@ -58,6 +58,25 @@ def test_crowd_alternatives_는_indoor_만_겹치면_넣지_않는다():
     assert result["market"]["rain_alternatives"] == ["tower", "mall"]  # 비 대체 후보는 실내면 된다
 
 
+def test_비_대안_후보에서_대형_상업_유료_시설은_뺀다():
+    assert bc.RAIN_EXCLUDED == {"sea-life-busan", "busan-x-the-sky", "shinsegae-centum-city"}
+    places = [place("beach", "beach"), place("sea-life-busan", "aquarium", indoor=True),
+              place("shinsegae-centum-city", "shopping", indoor=True), place("museum", "museum", indoor=True),
+              place("mall", "shopping", indoor=True)]
+    pairs = [pair("beach", "sea-life-busan", 1), pair("beach", "shinsegae-centum-city", 5), pair("beach", "museum", 20),
+             pair("beach", "mall", 25), pair("sea-life-busan", "museum", 10), pair("mall", "shinsegae-centum-city", 5)]
+    result = bc.build_curation(places, pairs, {}, {})
+    assert result["beach"]["rain_alternatives"] == ["museum", "mall"]  # 더 가까워도 제외 대상은 넣지 않는다
+    # 제외 대상 자신의 항목은 그대로 만들고, 자기 비 대안도 다른 장소와 같은 규칙으로 고른다
+    assert result["sea-life-busan"]["rain_alternatives"] == ["museum"] and result["sea-life-busan"]["source"] == "rule"
+    assert result["sea-life-busan"]["tags"] == bc.place_tags(places[1], [])
+    # 혼잡 대안에는 그대로 나온다 (shopping 태그가 겹친다)
+    assert result["mall"]["crowd_alternatives"] == ["shinsegae-centum-city"]
+    saved = json.loads(bc.OUT_PATH.read_text(encoding="utf-8"))
+    assert not any(set(row["rain_alternatives"]) & bc.RAIN_EXCLUDED for row in saved.values())
+    assert set(saved) >= bc.RAIN_EXCLUDED and all(row["source"] == "rule" for row in saved.values())
+
+
 def test_overrides_는_적은_필드만_덮어쓰고_source_가_manual():
     places = [place("a", "beach"), place("b", "beach")]
     overrides = {"a": {"tags": ["sea", "night_view"], "unknown_field": 1}, "no-such-place": {"tags": ["food"]}}
@@ -86,5 +105,5 @@ def test_curation_json은_규칙으로_다시_만든_값과_같다():
 def test_curation_실제_데이터_예시():
     saved = json.loads(bc.OUT_PATH.read_text(encoding="utf-8"))
     assert saved["haeundae-beach"]["tags"] == ["sea", "nature"]
-    assert saved["haeundae-beach"]["rain_alternatives"][0] == "sea-life-busan"
+    assert saved["haeundae-beach"]["rain_alternatives"][0] == "busan-museum-of-art"  # 씨라이프·엑스더스카이는 RAIN_EXCLUDED
     assert saved["gamcheon-village"]["tags"] == ["culture"] and saved["gamcheon-village"]["foreigner_friendly"] == 3
