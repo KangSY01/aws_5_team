@@ -101,7 +101,7 @@
 
 - 실패하면 모든 도구가 `{"error": {"code": str, "message": str}}`를 돌려줍니다(API 오류 형식과 같음). 예외를 밖으로 던지지 않습니다.
 - `pty`는 기상청 강수 형태 코드입니다(0 없음, 1 비, 2 비/눈, 3 눈, 4 소나기). `closed_weekdays`는 `datetime.weekday()` 값(0=월)입니다.
-- 이동 시간은 카카오 경로 결과를 저장하지 않습니다(`data-rules.md`). `USE_MOCK=1`이면 `backend/app/data/`의 샘플 표를 씁니다.
+- 이동 시간은 `backend/app/data/travel_times.json`의 추정표를 읽습니다(`USE_MOCK`과 무관, 추정 규칙은 `data-rules.md` 「이동 시간」). `mode`는 지금 `walk`·`subway`만 나옵니다. 카카오 경로 결과는 쓰지 않고 저장하지도 않습니다.
 
 ### 일정 시각 계산 (`build_plan`)
 - `backend/app/tools/schedule.py`의 `build_plan(place_ids, date, start, profile)`을 B가 만들고, A의 `run_chat`이 일정 생성에 씁니다. `@tool`이 아닌 일반 함수입니다.

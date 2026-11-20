@@ -1,0 +1,119 @@
+"""부산 행사 목록(events.json)을 한국관광공사 TourAPI 로 만든다. backend/ 에서 실행한다.
+
+    uv run --env-file .env python -m scripts.fetch_events    # KorService2/searchFestival2 를 1회 호출한다
+    uv run python -m scripts.fetch_events --offline          # 호출 없이 저장된 raw 로 다시 만든다 (places.json 이 바뀌었을 때)
+
+조회 조건: 법정동 시도 코드 26(부산), 기간이 2026-11-01 ~ 2026-11-30 과 겹치는 행사.
+출력
+  app/data/events.json                      get_events 가 읽는 목록
+  app/data/raw/_events/searchFestival2.json API 원본 응답 (serviceKey 는 저장하지 않는다)
+events.json 의 행사 한 건
+  name      API 의 title (한국어 원문)
+  start·end 행사 기간 첫날 00:00:00, 마지막 날 23:59:59 (+09:00). API 는 날짜만 준다
+  place_ids 행사 좌표에서 직선거리 1km 이내인 places.json 장소. 좌표가 없으면 빈 목록
+  contentid, addr1, lat, lng  출처 확인용
+API 에 없는 행사는 넣지 않는다. 값을 지어내지 않는다.
+"""
+import argparse
+import datetime as dt
+import json
+import sys
+
+from app import config
+from scripts import fetch_places as fp
+
+REGION_CODE = "26"  # 법정동 시도 코드: 부산광역시
+PERIOD = ("20261101", "20261130")
+EVENT_RADIUS_M = 1000  # 행사 좌표에서 이 거리 안의 장소를 place_ids 에 넣는다
+ROWS = 300
+RAW_PATH = fp.RAW_DIR / "_events" / "searchFestival2.json"
+OUT_PATH = fp.DATA_DIR / "events.json"
+
+
+def festival_items(data: dict) -> list[dict]:
+    """searchFestival2 응답의 항목 목록. 0건이면 items 가 빈 문자열, 1건이면 item 이 dict 로 온다."""
+    items = data.get("response", {}).get("body", {}).get("items")
+    raw = items.get("item", []) if isinstance(items, dict) else []
+    return [raw] if isinstance(raw, dict) else raw
+
+
+def build_events(items: list[dict], places: list[dict]) -> list[dict]:
+    """API 항목 → events.json 의 행사 목록 (시작일, 이름 순). 날짜를 읽을 수 없는 항목은 뺀다."""
+    events = []
+    for item in items:
+        try:
+            start = dt.datetime.strptime(str(item["eventstartdate"]), "%Y%m%d").date()
+            end = dt.datetime.strptime(str(item["eventenddate"]), "%Y%m%d").date()
+            name = str(item["title"]).strip()
+        except (KeyError, ValueError):
+            continue
+        if not name or end < start:
+            continue
+        try:
+            lat, lng = float(item["mapy"]), float(item["mapx"])
+        except (KeyError, TypeError, ValueError):
+            lat = lng = None
+        near = [] if lat is None else [
+            p["place_id"] for p in places if fp.haversine_m(lat, lng, p["lat"], p["lng"]) <= EVENT_RADIUS_M
+        ]
+        events.append({
+            "name": name,
+            "start": f"{start.isoformat()}T00:00:00+09:00",
+            "end": f"{end.isoformat()}T23:59:59+09:00",
+            "place_ids": near,
+            "contentid": str(item.get("contentid", "")),
+            "addr1": str(item.get("addr1", "")),
+            "lat": lat,
+            "lng": lng,
+        })
+    return sorted(events, key=lambda e: (e["start"], e["name"]))
+
+
+def dump_events(source: dict, events: list[dict]) -> str:
+    """events.json 본문. 행사 하나를 한 줄로 쓴다."""
+    rows = ",\n".join("    " + json.dumps(e, ensure_ascii=False) for e in events)
+    body = f'  "events": [\n{rows}\n  ]\n' if events else '  "events": []\n'
+    return json.dumps({"source": source}, ensure_ascii=False, indent=2)[:-2] + ",\n" + body + "}\n"
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="TourAPI searchFestival2 로 events.json 생성")
+    ap.add_argument("--offline", action="store_true", help="API 를 부르지 않고 저장된 raw 응답으로 다시 만든다")
+    args = ap.parse_args(argv)
+    fp.OFFLINE = args.offline
+    if not args.offline and not config.DATA_GO_KR_KEY:
+        print("DATA_GO_KR_KEY_DECODING 이 비어 있습니다. backend/.env 를 확인하세요.", file=sys.stderr)
+        return 1
+
+    params = {"eventStartDate": PERIOD[0], "eventEndDate": PERIOD[1], "lDongRegnCd": REGION_CODE, "numOfRows": ROWS}
+    try:
+        fp._call_and_save(fp.SERVICES["ko"], "searchFestival2", params, RAW_PATH)
+    except fp.FetchError as e:
+        print(f"행사 조회 실패: {e}", file=sys.stderr)
+        return 1
+    data = json.loads(RAW_PATH.read_text(encoding="utf-8"))["response"]
+    items = festival_items(data)
+    total = data.get("response", {}).get("body", {}).get("totalCount")
+    events = build_events(items, fp.load_json(fp.PLACES_PATH, []))
+
+    fetched_at = fp.load_json(OUT_PATH, {}).get("source", {}).get("fetched_at") if args.offline else None
+    source = {
+        "provider": "한국관광공사 TourAPI (공공데이터포털)",
+        "api": f"{fp.SERVICES['ko']}/searchFestival2",
+        "params": params,
+        "place_radius_m": EVENT_RADIUS_M,
+        "fetched_at": fetched_at or fp._today(),
+    }
+    OUT_PATH.write_text(dump_events(source, events), encoding="utf-8", newline="\n")
+
+    print(f"응답 {len(items)}건(totalCount={total}) → 행사 {len(events)}건 저장 ({OUT_PATH.name})")
+    if total is not None and int(total) > len(items):
+        print(f"[경고] totalCount 가 받은 건수보다 많습니다. ROWS({ROWS})를 늘려 다시 받으세요.")
+    for e in events:
+        print(f"  {e['start'][:10]} ~ {e['end'][:10]}  {e['name']}  {e['place_ids']}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8")
+    raise SystemExit(main())

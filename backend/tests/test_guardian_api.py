@@ -187,13 +187,15 @@ def call(method, path, body):
 
 
 def test_handler_plan_check_uses_guardian():
-    # 지금 lookup.py 는 미구현이라 요일 규칙만 남는다 (감천 토요일 → remove 하나, 계약 예시와 같은 경우)
+    # 실제 lookup.py 를 쓴다. 키가 없어 예보는 건너뛰고, 요일 규칙(감천 토요일)과
+    # 이동 시간 추정표(부산타워 → 해운대 약 52분, 일정 간격 60분 → 여유 8분)가 남는다.
+    # 이동 시간을 알게 되어 감천은 remove 대신 같은 분류 장소로 replace 를 제안한다
     status, body = call("POST", "/plan/check", {"plan_id": PLAN.plan_id, "demo": {"now": at(9).isoformat()}})
     assert status == 200
     response = CheckResponse.model_validate_json(body)
     assert response.checked_at == at(9)
-    assert [i.issue_id for i in response.issues] == ["s1-crowded"]
-    assert [o.action for o in response.repairs["s1-crowded"]] == ["remove"]
+    assert [i.issue_id for i in response.issues] == ["s1-crowded", "s4-tight_transfer"]
+    assert [o.action for o in response.repairs["s1-crowded"]] == ["replace"]
 
 
 def test_handler_delay_route():

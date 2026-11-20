@@ -1,14 +1,17 @@
-"""조회 도구 (도구 담당). 장소 검색, 혼잡, 날씨, 운영시간.
+"""조회 도구 (도구 담당). 장소 검색, 혼잡, 날씨, 운영시간, 이동 시간, 행사.
 
 반환 형식은 .kiro/specs/chat-agent/design.md 「조회 도구 반환 형식 (11/20 결정)」을 따른다.
-필드 이름은 app/guardian/context.py 의 모델(HourlyWeather, OpeningHours)과 같다.
+필드 이름은 app/guardian/context.py 의 모델(HourlyWeather, OpeningHours, Event)과 같다.
+Guardian 의 build_context 도 이 함수들을 그대로 부른다.
 
 - 실패하면 예외를 던지지 않고 {"error": {"code": str, "message": str}} 를 돌려준다.
-- config.USE_MOCK 이면 외부 API 를 부르지 않고 app/data/ 의 샘플을 쓴다.
+- config.USE_MOCK 이면 날씨는 외부 API 를 부르지 않고 app/data/weather/{날짜}.json 샘플을 쓴다.
 - 외부 API 는 타임아웃 5초, 재시도 1회. serviceKey 는 로그와 오류 메시지에 남기지 않는다.
 - 모르는 값(운영시간, 집중률)은 null·빈 목록으로 돌려준다. 지어내지 않는다.
+- 이동 시간(travel_times.json)과 행사(events.json)는 USE_MOCK 과 무관하게 app/data/ 의 파일을 읽는다.
+  만드는 스크립트: scripts/build_travel_times.py, scripts/fetch_events.py
 
-TODO(도구 담당): 집중률 파일 읽기(_concentration), 운영시간 데이터, get_travel_time, get_events.
+TODO(도구 담당): 집중률 파일 읽기(_concentration), 운영시간 데이터.
 """
 
 import datetime as dt
@@ -127,11 +130,29 @@ def _concentration(place_id: str, day: dt.date) -> float | None:
     return None
 
 
+# ---------- 이동 시간 ----------
+
+@functools.lru_cache(maxsize=4)
+def _travel_table(path: Path) -> tuple[frozenset[str], dict[frozenset[str], dict]]:
+    """travel_times.json → (표에 있는 장소 ID, {장소 쌍: 행}). 요청마다 여러 번 불리므로 한 번만 읽는다."""
+    try:
+        pairs = json.loads(path.read_text(encoding="utf-8"))["pairs"]
+        table = {frozenset((p["from_place_id"], p["to_place_id"])): p for p in pairs}
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        raise LookupFailure("data_unavailable", f"{path.name} could not be read.") from e
+    return frozenset().union(*table), table
+
+
 # ---------- 날씨 ----------
 
 def _sample_weather(day: dt.date) -> list[dict]:
-    """USE_MOCK=1: app/data/sample_weather.json 의 그 날짜 예보. 없는 날짜는 빈 목록."""
-    return _load_json("sample_weather.json").get("days", {}).get(day.isoformat(), [])
+    """USE_MOCK=1: app/data/weather/{YYYY-MM-DD}.json 샘플 예보의 hourly. 파일이 없는 날짜는 빈 목록.
+
+    파일 형식은 get_weather 반환값과 같다({"date", "hourly"}). 같은 폴더의 이름 붙은 파일(rain-afternoon 등)은
+    데모 스위치(demo.weather_preset)용이라 여기서 읽지 않는다.
+    """
+    name = f"weather/{day.isoformat()}.json"
+    return _load_json(name).get("hourly", []) if (DATA_DIR / name).is_file() else []
 
 
 def latest_kma_base(now: dt.datetime) -> dt.datetime:
@@ -290,3 +311,62 @@ def get_hours(place_id: str) -> dict:
     _require_place(place_id)
     # 운영시간 데이터를 아직 넣지 않았다. 모르는 값으로 돌려준다(지어내지 않는다).
     return {"place_id": place_id, "opens": None, "closes": None, "closed_weekdays": [], "closed_dates": []}
+
+
+@tool
+@_safe
+def get_travel_time(from_place_id: str, to_place_id: str) -> dict:
+    """두 장소 사이의 이동 시간(분)을 가져온다. 일정의 방문 시각을 정하거나, 다음 장소까지 얼마나 걸리는지 답할 때 쓴다.
+    좌표로 계산한 추정값이다. 실제 경로 조회 결과가 아니므로 답변에서는 "약 N분"이라고 말하고 노선·환승은 말하지 않는다.
+    추정 규칙: 경로 거리 = 직선거리 × 1.3. 1.2km 이하는 walk(시속 4.5km), 그보다 멀면 subway(평균 시속 25km +
+    대기·환승 10분). 분은 올림. 방향을 바꿔도 값이 같다.
+
+    Args:
+        from_place_id: 출발 장소 ID (search_places 결과의 place_id)
+        to_place_id: 도착 장소 ID (search_places 결과의 place_id)
+
+    Returns:
+        {"from_place_id", "to_place_id", "minutes": 정수(분), "mode": "walk" | "subway"}.
+        같은 장소면 minutes 0, mode "walk".
+        실패하면 {"error": {"code", "message"}}. 이동 시간 표에 없는 장소 ID 는 place_not_found.
+    """
+    known, table = _travel_table(DATA_DIR / "travel_times.json")
+    for place_id in (from_place_id, to_place_id):
+        if place_id not in known:
+            raise LookupFailure(
+                "place_not_found",
+                f"place_id {place_id!r} is not in the travel time table. Use a place_id from a search_places result.",
+            )
+    if from_place_id == to_place_id:
+        minutes, mode = 0, "walk"
+    else:
+        row = table.get(frozenset((from_place_id, to_place_id)))
+        if row is None:
+            raise LookupFailure("no_route", "No travel time for this pair of places.")
+        minutes, mode = row["minutes"], row["mode"]
+    return {"from_place_id": from_place_id, "to_place_id": to_place_id, "minutes": minutes, "mode": mode}
+
+
+@tool
+@_safe
+def get_events(date: str) -> dict:
+    """해당 날짜에 부산에서 열리는 축제·행사를 가져온다. 그날 갈 만한 행사를 찾거나, 행사 때문에 붐빌 장소를 확인할 때 쓴다.
+    한국관광공사 행사정보(공공데이터)를 미리 받아 둔 목록이다. 목록에 없는 행사는 있다고 말하지 않는다.
+    행사 이름은 한국어 원문이다.
+
+    Args:
+        date: 날짜 (YYYY-MM-DD)
+
+    Returns:
+        {"date": "YYYY-MM-DD", "events": [{"name": 행사 이름, "start": ISO 시각, "end": ISO 시각,
+        "place_ids": [행사 장소 1km 이내의 장소 ID]}]}. start·end 는 행사 기간의 첫날 00:00 과 마지막 날 23:59(+09:00)이다.
+        하루 중 진행 시간은 알 수 없다. 그날 행사가 없으면 events 가 빈 목록.
+        실패하면 {"error": {"code", "message"}} (invalid_date, data_unavailable 등).
+    """
+    day = _parse_date(date).isoformat()
+    events = [
+        {key: event[key] for key in ("name", "start", "end", "place_ids")}
+        for event in _load_json("events.json")["events"]
+        if event["start"][:10] <= day <= event["end"][:10]  # 파일의 start·end 는 +09:00 ISO 시각
+    ]
+    return {"date": day, "events": events}
