@@ -1,4 +1,4 @@
-import misakiPhoto from "../assets/misaki-profile.png";
+import TravelerProfileForm, { travelerCopy } from "./TravelerProfile.jsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getTravelCopy, languages } from "../constants/travelCopy.js";
 import { closeLandmark, mapLandmarks } from "../constants/mapLandmarks.js";
@@ -149,7 +149,7 @@ function save(key, value) {
   }
 }
 
-function getSavedLanguage() {
+export function getSavedLanguage() {
   try {
     const saved = window.localStorage.getItem(languageStorageKey);
     if (Object.hasOwn(languages, saved)) return saved;
@@ -174,17 +174,13 @@ function LanguageOptions({ language, onSelect }) {
   ));
 }
 
-const misakiProfile = {
-  ko: ["사토 미사키", "28세", "일본"],
-  en: ["Misaki Sato", "28 years old", "Japan"],
-  ja: ["さとう みさき", "28歳", "日本"],
-  "zh-Hans": ["Misaki Sato", "28岁", "日本"],
-  "zh-Hant": ["Misaki Sato", "28歲", "日本"],
-};
-
-function ProfilePage({ copy, language, onLanguageChange, demoMode, albumRevision, archiveError }) {
+function ProfilePage({ copy, language, onLanguageChange, demoMode, albumRevision, archiveError, traveler, onTravelerSave }) {
   const [languageOpen, setLanguageOpen] = useState(false);
-  const [name, age, nationality] = misakiProfile[language];
+  const [editing, setEditing] = useState(false);
+  const labels = travelerCopy(language);
+  const { name, age, gender, country, photo } = traveler;
+  const ageLabel = age ? new Intl.NumberFormat(language, { style: "unit", unit: "year", unitDisplay: "long" }).format(Number(age)) : "";
+  const details = [ageLabel, gender && labels.genderNames[gender], country].filter(Boolean);
   const heading = useRef(null);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, []);
 
@@ -194,10 +190,20 @@ function ProfilePage({ copy, language, onLanguageChange, demoMode, albumRevision
         <header>
           <h1 id="profile-heading" ref={heading} tabIndex={-1}>{copy.profile}</h1>
           <div className="profile-person">
-            <img src={misakiPhoto} alt="" width="68" height="68" />
-            <div>
-              <strong>{name}</strong>
-              <p>{age} · {nationality}</p>
+            {photo && <img className="traveler-avatar" src={photo} alt="" width="68" height="68" />}
+            <div className="traveler-profile-summary">
+              {(name || details.length > 0) && <div className="traveler-profile-details">
+                {name && <strong>{name}</strong>}
+                {details.length > 0 && <p>{details.join(" · ")}</p>}
+              </div>}
+              <button type="button" className="traveler-profile-edit" onClick={() => setEditing(true)}>
+                <span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m15 5 4 4M4 20l4-.8L20 7l-3-3L5 16Z" />
+                  </svg>
+                  {labels.edit}
+                </span>
+              </button>
             </div>
           </div>
         </header>
@@ -220,6 +226,11 @@ function ProfilePage({ copy, language, onLanguageChange, demoMode, albumRevision
           </div>
         </section>
       </div>
+      {editing && <TravelActionDialog title={labels.edit}
+        onClose={() => setEditing(false)} className="traveler-profile-dialog">
+        <TravelerProfileForm language={language} initial={traveler} onCancel={() => setEditing(false)}
+          onSave={(profile) => { onTravelerSave(profile); setEditing(false); }} />
+      </TravelActionDialog>}
     </section>
   );
 }
@@ -232,7 +243,7 @@ function formatDate(date, language) {
   }).format(day);
 }
 
-export default function TravelPreview({ night = false, demoMode = false } = {}) {
+export default function TravelPreview({ night = false, demoMode = false, traveler = {}, onTravelerSave } = {}) {
   const suffix = demoMode ? ".demo" : "";
   const courseKey = courseStorageKey + suffix;
   const activeTripKey = activeTripStorageKey + suffix;
@@ -671,6 +682,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
           values.transport && "Transport: " + (english.transportLabels[values.transport] ?? values.transport),
           values.less_walking && "Prefer shorter walks.",
           values.lodging && "Include lodging suggestions when available.",
+          traveler.notes && "Respect these traveler notes when recommending places and building the itinerary: " + traveler.notes,
         ].filter(Boolean).join("\n");
         const chat = runDemo
           ? await sendTravelMessage(demoItineraryPrompt, "ja", null)
@@ -683,7 +695,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
         }
         result = { ...saved, session_id: chat.session_id };
       } else {
-        result = runDemo ? makeLocalDemoCourse() : await recommendDemo(values, language);
+        result = runDemo ? makeLocalDemoCourse() : await recommendDemo(values, language, traveler.notes);
       }
       if (!result?.plan?.plan_id || !result.plan.stops?.length || !Array.isArray(result.places)) throw new Error();
       const next = { ...result, preferences: values };
@@ -1109,7 +1121,8 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
         </header>
       </div>
       {profile && <ProfilePage copy={copy} language={language} onLanguageChange={changeLanguage}
-        demoMode={demoMode} albumRevision={albumRevision} archiveError={archiveError} />}
+        demoMode={demoMode} albumRevision={albumRevision} archiveError={archiveError}
+        traveler={traveler} onTravelerSave={onTravelerSave} />}
       <aside id="travel-chat" className="travel-chat" data-translation={showTranslation} hidden={!sheetOpen} inert={!sheetOpen} aria-hidden={!sheetOpen} aria-labelledby="travel-panel-title"
         onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
         <div className="chat-grab" aria-hidden="true"

@@ -1,7 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import App from "../App.jsx";
 import { resetDemo } from "../features/demo-panel/demoStore.js";
+
+beforeEach(() => localStorage.setItem("busannow.traveler-profile", "{}"));
 
 if (!HTMLDialogElement.prototype.showModal) {
   HTMLDialogElement.prototype.showModal = function () { this.open = true; };

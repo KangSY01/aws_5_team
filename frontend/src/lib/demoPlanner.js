@@ -83,7 +83,7 @@ function kstTime(date, minutes) {
   return localTime + "+09:00";
 }
 
-export async function recommendDemo(preferences, language) {
+export async function recommendDemo(preferences, language, travelerNotes = "") {
   await demoResponse();
   const areaIds = (preferences.regions.length ? preferences.regions : Object.keys(areas))
     .flatMap((key) => areas[key] ?? []);
@@ -101,7 +101,8 @@ export async function recommendDemo(preferences, language) {
     const seafoodMarket = candidates.findIndex((p) => p.place_id === "jagalchi-market");
     if (seafoodMarket !== -1) candidates.unshift(...candidates.splice(seafoodMarket, 1));
   }
-  if (preferences.less_walking) {
+  const needsShortWalks = /오래\s*걷기|장거리.*보행|difficulty walking|long distances|長い距離.*歩|长时间步行|長時間步行/iu.test(travelerNotes);
+  if (preferences.less_walking || needsShortWalks) {
     const [first, ...others] = candidates;
     others.sort((a, b) => score(b) - score(a) || distance(first, a) - distance(first, b));
     candidates.splice(1, others.length, ...others);
