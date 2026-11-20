@@ -35,3 +35,9 @@ def test_safety_and_preservation_cases_exist():
     # 채점 목표: 안전 처리 2건, 일정 보전 3건(19·20·21)
     assert sum(q["category"] == "safety" for q in QUERIES) == 2
     assert {19, 20, 21} <= {q["id"] for q in QUERIES}
+
+
+def test_q10_places_any_is_every_indoor_place():
+    # 10번(비 올 때 실내 장소)은 실내 장소 중 하나라도 답하면 맞다. 일부만 두면 맞는 답도 실패로 채점된다
+    q10 = next(q for q in QUERIES if q["id"] == 10)
+    assert set(q10["expect"]["places_any"]) == {p.place_id for p in PLACES if p.indoor}
