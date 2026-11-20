@@ -1,0 +1,10 @@
+{
+  "차림표": {"en": "Menu", "ja": "メニュー", "zh-Hans": "菜单", "zh-Hant": "菜單", "spicy": null},
+  "돼지국밥 9,000원": {"en": "Dwaeji-gukbap (pork soup with rice) 9,000 won", "ja": "テジクッパ（豚肉のスープご飯） 9,000ウォン", "zh-Hans": "猪肉汤饭 9,000韩元", "zh-Hant": "豬肉湯飯 9,000韓元", "spicy": false},
+  "순대국밥 9,500원": {"en": "Sundae-gukbap (Korean blood sausage soup with rice) 9,500 won", "ja": "スンデクッパ（韓国式腸詰めのスープご飯） 9,500ウォン", "zh-Hans": "米肠汤饭 9,500韩元", "zh-Hant": "米腸湯飯 9,500韓元", "spicy": false},
+  "낙곱새 (2인) 28,000원": {"en": "Nakgopsae (spicy stew of octopus, beef tripe and shrimp) (for 2) 28,000 won", "ja": "ナッコプセ（タコ・ホルモン・エビの辛い鍋）（2人前） 28,000ウォン", "zh-Hans": "章鱼牛肠虾辣锅（2人份） 28,000韩元", "zh-Hant": "章魚牛腸蝦辣鍋（2人份） 28,000韓元", "spicy": true},
+  "밀면 8,000원": {"en": "Milmyeon (Busan-style cold wheat noodles) 8,000 won", "ja": "ミルミョン（釜山式の冷たい小麦麺） 8,000ウォン", "zh-Hans": "小麦冷面（釜山式） 8,000韩元", "zh-Hant": "小麥冷麵（釜山式） 8,000韓元", "spicy": false},
+  "비빔밀면 8,500원": {"en": "Bibim-milmyeon (cold wheat noodles with spicy sauce) 8,500 won", "ja": "ビビンミルミョン（辛いタレの冷たい小麦麺） 8,500ウォン", "zh-Hans": "拌小麦冷面（辣酱） 8,500韩元", "zh-Hant": "拌小麥冷麵（辣醬） 8,500韓元", "spicy": true},
+  "어묵 4,000원": {"en": "Eomuk (Busan fish cake) 4,000 won", "ja": "オムク（釜山のおでん・練り物） 4,000ウォン", "zh-Hans": "鱼糕 4,000韩元", "zh-Hant": "魚糕 4,000韓元", "spicy": false},
+  "공기밥 추가 1,000원": {"en": "Extra bowl of rice 1,000 won", "ja": "ご飯追加 1,000ウォン", "zh-Hans": "加米饭 1,000韩元", "zh-Hant": "加白飯 1,000韓元", "spicy": null}
+}

@@ -1,0 +1,18 @@
+{
+  "_note": "USE_MOCK=1 에서 /photo/translate 가 쓰는 Textract DetectDocumentText 응답 샘플 (데모 장면 3 메뉴판). 실제 호출 결과가 아니라 형식을 맞춰 만든 값이다. WORD 블록, 영어만 있는 줄, 신뢰도 낮은 줄은 걸러지는지 보려고 넣었다.",
+  "DocumentMetadata": {"Pages": 1},
+  "Blocks": [
+    {"BlockType": "PAGE", "Geometry": {"BoundingBox": {"Width": 1.0, "Height": 1.0, "Left": 0.0, "Top": 0.0}}},
+    {"BlockType": "LINE", "Confidence": 99.1, "Text": "차림표", "Geometry": {"BoundingBox": {"Width": 0.22, "Height": 0.07, "Left": 0.39, "Top": 0.06}}},
+    {"BlockType": "WORD", "Confidence": 99.1, "Text": "차림표", "Geometry": {"BoundingBox": {"Width": 0.22, "Height": 0.07, "Left": 0.39, "Top": 0.06}}},
+    {"BlockType": "LINE", "Confidence": 98.4, "Text": "OPEN 10:00 - 21:00", "Geometry": {"BoundingBox": {"Width": 0.30, "Height": 0.04, "Left": 0.35, "Top": 0.15}}},
+    {"BlockType": "LINE", "Confidence": 97.6, "Text": "돼지국밥  9,000원", "Geometry": {"BoundingBox": {"Width": 0.52, "Height": 0.05, "Left": 0.12, "Top": 0.27}}},
+    {"BlockType": "LINE", "Confidence": 96.2, "Text": "순대국밥 9,500원", "Geometry": {"BoundingBox": {"Width": 0.52, "Height": 0.05, "Left": 0.12, "Top": 0.35}}},
+    {"BlockType": "LINE", "Confidence": 95.8, "Text": "낙곱새 (2인) 28,000원", "Geometry": {"BoundingBox": {"Width": 0.60, "Height": 0.05, "Left": 0.12, "Top": 0.43}}},
+    {"BlockType": "LINE", "Confidence": 97.0, "Text": "밀면 8,000원", "Geometry": {"BoundingBox": {"Width": 0.45, "Height": 0.05, "Left": 0.12, "Top": 0.51}}},
+    {"BlockType": "LINE", "Confidence": 94.3, "Text": "비빔밀면 8,500원", "Geometry": {"BoundingBox": {"Width": 0.50, "Height": 0.05, "Left": 0.12, "Top": 0.59}}},
+    {"BlockType": "LINE", "Confidence": 92.7, "Text": "어묵 4,000원", "Geometry": {"BoundingBox": {"Width": 0.42, "Height": 0.05, "Left": 0.12, "Top": 0.67}}},
+    {"BlockType": "LINE", "Confidence": 41.5, "Text": "곱빼기 +l,0OO원", "Geometry": {"BoundingBox": {"Width": 0.40, "Height": 0.04, "Left": 0.12, "Top": 0.76}}},
+    {"BlockType": "LINE", "Confidence": 90.2, "Text": "공기밥 추가 1,000원", "Geometry": {"BoundingBox": {"Width": 0.55, "Height": 0.04, "Left": 0.12, "Top": 0.84}}}
+  ]
+}
