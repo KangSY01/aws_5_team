@@ -10,4 +10,5 @@
 //   - 데모 스위치가 켜져 있고 날씨가 rain-afternoon 일 때만 보인다 (데모 스위치를 직접 읽으므로 조건을 넘기지 않아도 된다)
 export { default as ChatSources } from "./ChatSources.jsx";
 export { default as RainNotice } from "./RainNotice.jsx";
+export { default as CrowdLegend } from "./CrowdLegend.jsx";
 export { providerNames } from "./copy.js";

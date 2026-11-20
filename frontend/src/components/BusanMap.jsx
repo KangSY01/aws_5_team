@@ -22,7 +22,12 @@ const eventIcons = {
   event: "M5 5h14v15H5zm3-3v6m8-6v6M5 10h14",
 };
 
-export default function BusanMap({ plan, places, events, onEventSelect, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, focusRequest, regionPicker }) {
+// 마커 이름표에 넣는 장소 이름을 HTML 로 안전하게 만든다 (디자인 실험)
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+export default function BusanMap({ plan, places, events, onEventSelect, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, focusRequest, regionPicker, crowdLevels = null }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const [locationControl, setLocationControl] = useState(null);
@@ -165,7 +170,8 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
 
     mappedStops.forEach(({ stop, coordinates }, index) => {
       if (!coordinates) return;
-      const title = `${index + 1}. ${resolvePlaceName(stop, placesById, language).name}`;
+      const placeName = resolvePlaceName(stop, placesById, language).name;
+      const title = `${index + 1}. ${placeName}`;
       const marker = L.marker(coordinates, {
         title,
         icon: L.divIcon({
@@ -175,7 +181,7 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
           html: `<svg viewBox="0 0 44 44" aria-hidden="true">
             <path d="M22 42C15 34 7 25 7 18a15 15 0 1 1 30 0c0 7-8 16-15 24Z"/>
             <text x="22" y="18" dy=".34em">${index + 1}</text>
-          </svg>`,
+          </svg><span class="busan-map-pin__label" aria-hidden="true">${escapeHtml(placeName)}</span>`,
         }),
       }).addTo(layer);
       const element = marker.getElement();
@@ -308,8 +314,10 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
       if (id === nextStopId) element?.setAttribute("aria-current", "true");
       else element?.removeAttribute("aria-current");
       marker.setZIndexOffset(id === nextStopId ? 2000 : active ? 1000 : 0);
+      if (element && crowdLevels?.[id]) element.dataset.crowd = crowdLevels[id];
+      else element?.removeAttribute("data-crowd");
     }
-  }, [selectedId, nextStopId, plan, places, language, onSelect]);
+  }, [selectedId, nextStopId, plan, places, language, onSelect, crowdLevels]);
 
   useEffect(() => {
     if (!focusRequest) return;

@@ -51,3 +51,29 @@
 }
 .rain-notice__open:focus-visible,
 .rain-notice__close:focus-visible { outline: 2px solid var(--coast-focus); outline-offset: 2px; }
+
+/* 지도 혼잡 범례 (디자인 실험) */
+.crowd-legend {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  bottom: calc(var(--nav-bottom, 12px) + 72px);
+  display: grid;
+  gap: 4px;
+  padding: 10px 14px;
+  border: 1.5px solid #1c2331;
+  border-radius: 10px;
+  background: rgb(251 250 246 / 96%);
+  color: #1c2331;
+  font-size: .8rem;
+  pointer-events: none;
+}
+.crowd-legend ul { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; padding: 0; list-style: none; }
+.crowd-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.crowd-legend p { margin: 0; color: #5e6672; font-size: .7rem; }
+.crowd-legend__swatch { width: 12px; height: 12px; border-radius: 3px; background: #4c7366; }
+.crowd-legend__swatch[data-crowd="moderate"] { background: #c99a3c; }
+.crowd-legend__swatch[data-crowd="busy"] { background: #a5402a; }
+@media (min-width: 900px) {
+  .crowd-legend { bottom: 24px; }
+}

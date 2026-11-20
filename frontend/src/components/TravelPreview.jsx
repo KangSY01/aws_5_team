@@ -34,7 +34,23 @@ import { demoItineraryPrompt, makeLocalDemoCourse } from "../features/demo-panel
 import TravelPreferences from "./TravelPreferences.jsx";
 import TripAlbum from "../features/trip-poster/TripAlbum.jsx";
 import { saveCompletedTrip } from "../features/trip-poster/album.js";
+import { CrowdLegend } from "../features/data-notices";
 import "./travel-preview.css";
+
+// 디자인 실험(design/giljabi-ui): 넓은 화면에서는 왼쪽 사이드바 패널을 항상 연다.
+// jsdom 처럼 matchMedia 가 없으면 false 라 기존 동작과 같다.
+const WIDE_QUERY = "(min-width: 900px)";
+function useWideScreen() {
+  const [wide, setWide] = useState(() => Boolean(globalThis.matchMedia?.(WIDE_QUERY).matches));
+  useEffect(() => {
+    const media = globalThis.matchMedia?.(WIDE_QUERY);
+    if (!media) return undefined;
+    const update = () => setWide(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  return wide;
+}
 
 const recommendationCatalog = buildPlacesById([...catalogPlaces, ...regionalPlaces]);
 
@@ -230,6 +246,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const [translationExpanded, setTranslationExpanded] = useState(false);
   const page = route;
   const [open, setOpen] = useState(false);
+  const wide = useWideScreen();
   const [course, setCourse] = useState(() => {
     const saved = loadSaved(courseKey);
     return Array.isArray(saved?.plan?.stops) && Array.isArray(saved?.places) ? saved : null;
@@ -311,9 +328,10 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const profile = page === "profile";
   const isMap = page === "map";
   const translationCopy = getTranslationCopy(language);
-  const baseTab = isMap ? open ? panel : "home" : page;
+  const sidebar = wide && isMap;
+  const baseTab = isMap ? open || sidebar ? panel : "home" : page;
   const showTranslation = translationMode !== null;
-  const sheetOpen = open || showTranslation;
+  const sheetOpen = open || showTranslation || sidebar;
   const sheetExpanded = showTranslation ? translationExpanded : expanded;
   const tab = showTranslation ? "translation" : baseTab;
   const showChat = panel === "chat";
@@ -795,8 +813,8 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
           const { options, text } = chatRecommendations(answer, chat.sources, placesById, language);
           setMessages((previous) => [
             ...previous,
-            ...(options.length ? [{ options, readOnly: true, lang: answerLanguage }] : []),
             ...(text ? [{ text, lang: answerLanguage, role: "assistant" }] : []),
+            ...(options.length ? [{ options, readOnly: true, lang: answerLanguage }] : []),
           ]);
         } else {
           const query = activityTextKey(message).replace(/\s/g, "");
@@ -1030,18 +1048,38 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
     }
   }
 
+  // 지도 마커 혼잡도 (디자인 실험): Guardian 점검의 crowded 이슈. high=busy, medium=moderate, 없음·low=calm. 점검 전이면 null
+  const crowdLevels = guardian?.plan === plan && Array.isArray(guardian.issues)
+    ? Object.fromEntries(stops.map((stop) => {
+      const issue = guardian.issues.find((item) => item.stop_id === stop.stop_id && item.type === "crowded");
+      return [stop.stop_id, issue?.severity === "high" ? "busy" : issue?.severity === "medium" ? "moderate" : "calm"];
+    }))
+    : null;
+
+  function openChat() {
+    navigatePage("map");
+    setShowPreferences(false);
+    setPanel("chat");
+    setOpen(true);
+  }
+
   return (
     <main ref={root} className="travel-preview" data-trip-active={tripStarted} data-night={night} data-page={page} data-sheet={sheetOpen ? "open" : "closed"} data-expanded={sheetExpanded}
-      data-compact-itinerary={!showTranslation && !showChat && !showPreferences && !stops.length} data-region-picker={regionDraft !== null} lang={language}>
+      data-compact-itinerary={!showTranslation && !showChat && !showPreferences && !stops.length} data-region-picker={regionDraft !== null} data-sidebar={sidebar} lang={language}>
       <div className="travel-shell" inert={!isMap} aria-hidden={!isMap}>
         <BusanMap plan={plan} places={places} events={events} onEventSelect={setMapDetail} onLandmarkSelect={setMapDetail}
           language={language} label={copy.map} locationCopy={copy.location}
-          selectedId={selectedId} nextStopId={nextStop?.stop_id} onSelect={setSelectedId} focusRequest={mapFocus}
+          selectedId={selectedId} nextStopId={nextStop?.stop_id} onSelect={setSelectedId} focusRequest={mapFocus} crowdLevels={crowdLevels}
           regionPicker={regionDraft && {
             selected: regionDraft, onChange: setRegionDraft, copy: plannerCopy,
             onDone: () => finishRegions(true), onCancel: () => finishRegions(false),
           }} />
+        {crowdLevels && stops.length > 0 && !regionDraft && <CrowdLegend language={language} />}
         <header className="travel-header">
+          <button type="button" className="travel-ask" aria-controls="travel-chat" onClick={openChat}>
+            <span className="travel-ask__mark" aria-hidden="true">B</span>
+            <span className="travel-ask__text">{copy.placeholder}</span>
+          </button>
           <div className="travel-brand-column">
             <div className="travel-brand-group">
               <span className="travel-brand">Busan<span>Now</span></span>
@@ -1095,6 +1133,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
         demoMode={demoMode} albumRevision={albumRevision} archiveError={archiveError} />}
       <aside id="travel-chat" className="travel-chat" data-translation={showTranslation} hidden={!sheetOpen} inert={!sheetOpen} aria-hidden={!sheetOpen} aria-labelledby="travel-panel-title"
         onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
+        {sidebar && <div className="sidebar-brand" aria-hidden="true"><span className="travel-brand">Busan<span>Now</span></span></div>}
         <div className="chat-grab" aria-hidden="true"
           onPointerDown={(event) => {
             dragStart.current = event.clientY;
