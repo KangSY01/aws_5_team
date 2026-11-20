@@ -5,6 +5,7 @@ POST /chat 은 app.agent.run_chat 을 부른다 (FAKE_LLM=1 이면 run_chat 이 
 GET·PUT /plan 은 app/storage 에서 읽고 쓴다 (USE_MOCK=1 이면 메모리, 아니면 DynamoDB).
 /plan/check, /plan/{plan_id}/delay 는 저장된 일정을 읽어 Guardian(app/guardian/service.py) 결과를 돌려준다.
 GET /alerts 는 예약 점검(app/scheduled_handler.py)이 저장한 마지막 결과를 읽기만 한다. 점검을 새로 하지 않는다.
+POST /photo/upload-url, /photo/translate 는 app/photo/service.py 를 부른다 (USE_MOCK=1 이면 샘플 메뉴판, FAKE_LLM=1 이면 고정 번역).
 Guardian 해결안은 저장하지 않는다. 사용자가 고른 해결안을 프론트엔드가 PUT /plan/{plan_id} 로 저장한다.
 
 CORS 헤더는 여기서 붙이지 않는다. 배포에서는 Function URL 설정이,
@@ -29,11 +30,15 @@ from app.models.api import (
     DelayRequest,
     ErrorBody,
     ErrorResponse,
+    PhotoTranslateRequest,
+    PhotoUploadUrlRequest,
     PlanResponse,
     SpeakRequest,
     SpeakResponse,
 )
 from app.models.plan import Place, Plan
+from app.photo import errors as photo_errors
+from app.photo import service as photo
 from app.speech import polly
 from app.storage import InvalidDataError, PlanNotFoundError, StorageError
 
@@ -125,6 +130,21 @@ def _guardian(run):
         raise ApiError(422, "validation_error", str(e))
 
 
+def _photo(run):
+    """사진 인식 호출. app/photo/errors.py 의 예외를 api-contract 오류 형식으로 바꾼다.
+
+    PhotoServiceError(설정 누락, AWS 호출 실패)의 사유는 app/photo 가 로그에 남기고, 응답에는 담지 않는다.
+    """
+    try:
+        return run()
+    except photo_errors.PhotoNotFound as e:
+        raise ApiError(404, "not_found", str(e))
+    except (photo_errors.PhotoKeyInvalid, photo_errors.PhotoUnreadable) as e:
+        raise ApiError(422, "validation_error", str(e))
+    except photo_errors.PhotoServiceError:
+        raise ApiError(500, "internal_error", "서버 오류가 발생했습니다.")
+
+
 def _plan_response(plan: Plan) -> PlanResponse:
     ids = {s.place_id for s in plan.stops}
     places = [p for p in PLACES if p.place_id in ids]
@@ -183,6 +203,14 @@ def _route(event: dict) -> BaseModel:
             except polly.SpeechError:  # 사유는 polly 가 로그에 남긴다. 계약 오류 표에 502 가 없어 500 으로 답한다
                 raise ApiError(500, "internal_error", "음성을 만들지 못했습니다.")
             return SpeakResponse(content_type="audio/mpeg", audio_base64=base64.b64encode(audio).decode("ascii"))
+
+        case "POST", ["photo", "upload-url"]:
+            request = _parse(event, PhotoUploadUrlRequest)
+            return _photo(lambda: photo.create_upload_url(request))
+
+        case "POST", ["photo", "translate"]:
+            request = _parse(event, PhotoTranslateRequest)
+            return _photo(lambda: photo.translate_photo(request))
 
         case _:
             raise ApiError(404, "not_found", f"{method} {event['rawPath']} 경로가 없습니다.")
