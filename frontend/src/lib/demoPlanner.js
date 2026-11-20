@@ -1,25 +1,45 @@
 import places from "../mocks/places.json";
 import regionalPlaces from "../mocks/regionalPlaces.json";
+import { getActivityCopy } from "../constants/activityCopy.js";
+import { activityTextKey, normalizeActivities, placeActivities } from "./activityPreferences.js";
 
 const areas = {
-  east: ["haeundae-beach", "haedong-yonggungsa", "shinsegae-centum-city"],
+  east: ["haeundae-beach", "haedong-yonggungsa", "shinsegae-centum-city", "coralani"],
   center: ["gwangalli-beach"],
   oldtown: ["gamcheon-village", "jagalchi-market", "busan-tower", "taejongdae", "gukje-market"],
-  downtown: [],
+  downtown: ["fm-coffee-house"],
   songdo: ["gamcheon-village", "songdo-beach", "songdo-cable-car"],
-  estuary: ["dadaepo-beach", "eulsukdo-eco-park"],
+  estuary: ["dadaepo-beach", "eulsukdo-eco-park", "busan-moca"],
   geumjeong: ["geumjeong-east-gate", "geumgang-park", "beomeosa-temple"],
-};
-
-const categories = {
-  sea: ["beach", "park"], market: ["market"], cafe: [],
-  culture: ["village", "temple", "historic"], active: ["park", "beach", "cable_car"], night: ["observatory", "beach"],
 };
 
 const catalog = new Map([...places, ...regionalPlaces].filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng))
   .map((place) => [place.place_id, place]));
 const distance = (a, b) => Math.hypot((a.lat - b.lat) * 111, (a.lng - b.lng) * 91);
 const demoResponse = () => new Promise((resolve) => setTimeout(resolve, 180));
+const aliases = [
+  [/골목.*사진|사진.*골목|alley.*photog|photog.*alley|路地.*撮影|巷.*拍照/u, "mural_village"],
+  [/사진|photograph|撮影|拍照/u, "photo_spots"],
+  [/노을|일몰|sunset|夕日|日落/u, "sunset"],
+  [/벽화|mural|壁画|壁畫/u, "mural_village"],
+  [/전시|미술관|exhibit|art museum|美術館|美术馆/u, "exhibitions"],
+  [/사찰|temple|寺院|寺庙|寺廟/u, "temples"],
+];
+
+function activityMatches(text, candidates) {
+  const query = activityTextKey(text);
+  const named = candidates.filter((place) => Object.values(place.names).some((name) => {
+    const key = activityTextKey(name);
+    return key.length >= 3 && query.includes(key);
+  }));
+  if (named.length) return new Set(named.map((place) => place.place_id));
+  const tag = aliases.find(([pattern]) => pattern.test(query))?.[1];
+  const labels = ["ko", "en", "ja", "zh-Hans", "zh-Hant"].flatMap((language) =>
+    Object.entries(getActivityCopy(language).keywords));
+  const tags = new Set(tag ? [tag] : labels.filter(([, label]) => query.includes(activityTextKey(label))).map(([id]) => id));
+  return new Set(candidates.filter((place) => (placeActivities[place.place_id] ?? []).some((id) => tags.has(id)))
+    .map((place) => place.place_id));
+}
 
 function kstTime(date, minutes) {
   const localTime = new Date(date.getTime() + minutes * 60000).toISOString().slice(0, 19);
@@ -30,17 +50,23 @@ export async function recommendDemo(preferences, language) {
   await demoResponse();
   const areaIds = (preferences.regions.length ? preferences.regions : Object.keys(areas))
     .flatMap((key) => areas[key] ?? []);
-  const priorities = preferences.activities.flatMap((key) => categories[key] ?? []);
+  const priorities = new Set(normalizeActivities(preferences.activities));
   const candidates = [...new Set(areaIds)].map((id) => catalog.get(id)).filter(Boolean);
   if (!candidates.length) throw new Error("noPlaces");
-  candidates.sort((a, b) => Number(priorities.includes(b.category)) - Number(priorities.includes(a.category)));
-  if (/seafood|해산물|海鮮|海鲜/i.test(preferences.food)) {
+  const customMatches = (preferences.customActivities ?? []).map((text) => [text, activityMatches(text, candidates)]);
+  const score = (place) => (placeActivities[place.place_id] ?? []).filter((tag) => priorities.has(tag)).length
+    + customMatches.filter(([, matches]) => matches.has(place.place_id)).length;
+  candidates.sort((a, b) => score(b) - score(a));
+  const food = preferences.food ?? "";
+  const seafood = /seafood|해산물|海鮮|海鲜/iu;
+  const dislikesSeafood = /(?:avoid|no |without|싫|피하|못 먹|빼|제외|避け|不要|不吃).*?(?:seafood|해산물|海鮮|海鲜)|(?:seafood|해산물|海鮮|海鲜).*?(?:allerg|알레르기|빼|제외|못 먹|なし|抜き|过敏|過敏)/iu;
+  if (seafood.test(food) && !dislikesSeafood.test(food)) {
     const seafoodMarket = candidates.findIndex((p) => p.place_id === "jagalchi-market");
     if (seafoodMarket !== -1) candidates.unshift(...candidates.splice(seafoodMarket, 1));
   }
   if (preferences.less_walking) {
     const [first, ...others] = candidates;
-    others.sort((a, b) => distance(first, a) - distance(first, b));
+    others.sort((a, b) => score(b) - score(a) || distance(first, a) - distance(first, b));
     candidates.splice(1, others.length, ...others);
   }
   const days = { half: 1, day: 1, overnight: 2, long: 3 }[preferences.duration];
@@ -56,7 +82,7 @@ export async function recommendDemo(preferences, language) {
   const chosen = candidates.filter((place) => filled.has(place));
   const seoulToday = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
   const start = new Date(seoulToday + "T00:00:00Z");
-  const firstHour = preferences.activities.includes("night") ? (preferences.duration === "half" ? 17 : 13) : 10;
+  const firstHour = priorities.has("night") || priorities.has("sunset") ? (preferences.duration === "half" ? 17 : 13) : 10;
   const step = Math.floor((preferences.duration === "half" ? 180 : 420) / perDay);
   const stops = chosen.map((place, index) => {
     const date = new Date(start.getTime() + Math.floor(index / perDay) * 86400000);
@@ -70,6 +96,8 @@ export async function recommendDemo(preferences, language) {
     plan: { plan_id: crypto.randomUUID(), date: seoulToday, profile: { language }, stops },
     places: chosen, demo: true, lodging_unavailable: Boolean(preferences.lodging),
     limited_places: chosen.length < (preferences.duration === "half" ? 3 : 4) * days,
+    unmatched_activities: customMatches.filter(([, matches]) => !chosen.some((place) => matches.has(place.place_id)))
+      .map(([text]) => text),
   };
 }
 

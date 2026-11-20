@@ -24,13 +24,14 @@ function regionCoordinates(id) {
 const regionBounds = L.latLngBounds(areaIds.map(regionCoordinates));
 
 export function RegionChoices({ selected, onChange, copy }) {
+  if (!selected.length) return <p className="region-empty-note">{copy.noAreaSelection}</p>;
   return (
-    <div className="region-choices">
-      <button type="button" aria-pressed={!selected.length} onClick={() => onChange([])}>{copy.automatic}</button>
+    <div className="activity-chips">
       {selected.map((id) => (
-        <button key={id} type="button" className="region-remove" aria-label={copy.removeArea + " · " + copy.areasList[areaIds.indexOf(id)]}
+        <button key={id} type="button" className="activity-chip region-remove" data-selected="true"
+          aria-label={copy.removeArea + " · " + copy.areasList[areaIds.indexOf(id)]}
           onClick={() => onChange(selected.filter((item) => item !== id))}>
-          {copy.areasList[areaIds.indexOf(id)]} <span aria-hidden="true">×</span>
+          <span>{copy.areasList[areaIds.indexOf(id)]}</span><span className="region-remove-icon" aria-hidden="true">×</span>
         </button>
       ))}
     </div>

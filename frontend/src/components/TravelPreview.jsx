@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getTravelCopy, languages } from "../constants/travelCopy.js";
-import { getPlannerCopy } from "../constants/plannerCopy.js";
+import { getPlannerCopy, transportPreferenceIds } from "../constants/plannerCopy.js";
 import { recommendDemo, suggestDemo } from "../lib/demoPlanner.js";
+import { normalizeActivities } from "../lib/activityPreferences.js";
 import koreanFlag from "../assets/flags/kr.svg";
 import englishFlag from "../assets/flags/gb.svg";
 import japaneseFlag from "../assets/flags/jp.svg";
@@ -49,7 +50,8 @@ const preferencesStorageKey = "busannow.preferences";
 const emptyPlan = { stops: [] };
 const emptyPlaces = [];
 const defaultPreferences = {
-  duration: "day", regions: [], activities: [], food: "", transport: "", origin: "", less_walking: false, lodging: false,
+  duration: "day", regions: [], activities: [], customActivities: [], foodTags: [], customFoods: [],
+  transport: "", less_walking: false, lodging: false,
 };
 
 function loadSaved(key) {
@@ -58,6 +60,20 @@ function loadSaved(key) {
   } catch {
     return null;
   }
+}
+
+function loadPreferences() {
+  const { food, origin, ...saved } = loadSaved(preferencesStorageKey) ?? {};
+  const values = { ...defaultPreferences, ...saved };
+  if (typeof food === "string" && food.trim() && !values.customFoods.length) values.customFoods = [food.trim()];
+  if (!transportPreferenceIds.includes(values.transport)) {
+    const previous = values.transport;
+    values.transport = /대중교통|지하철|버스|transit|subway|metro|\bbus\b|公共交通|大眾運輸/iu.test(previous) ? "public_transit"
+      : /차량|자동차|택시|\bcar\b|taxi|汽車|汽车/iu.test(previous) ? "car"
+      : /도보|걷기|walk|徒歩|步行/iu.test(previous) ? "walking"
+      : /상관없|no preference|こだわらない|无偏好|無偏好/iu.test(previous) ? "any" : "";
+  }
+  return values;
 }
 
 function save(key, value) {
@@ -152,7 +168,7 @@ export default function TravelPreview({ night = false } = {}) {
       return false;
     }
   });
-  const [preferences, setPreferences] = useState(() => ({ ...defaultPreferences, ...loadSaved(preferencesStorageKey) }));
+  const [preferences, setPreferences] = useState(loadPreferences);
   const [showPreferences, setShowPreferences] = useState(false);
   const [event, setEvent] = useState(null);
   const [regionDraft, setRegionDraft] = useState(null);
@@ -326,7 +342,9 @@ export default function TravelPreview({ night = false } = {}) {
   async function recommendCourse(event) {
     event.preventDefault();
     if (requestInProgress.current) return;
-    const values = { ...preferences, lodging: ["overnight", "long"].includes(preferences.duration) && preferences.lodging };
+    const { foodTags, customFoods, ...answers } = preferences;
+    const values = { ...answers, activities: normalizeActivities(preferences.activities), food: [...foodTags, ...customFoods].join(", "),
+      lodging: ["overnight", "long"].includes(preferences.duration) && preferences.lodging };
     requestInProgress.current = true;
     setPending("recommend");
     setPlanError(null);
@@ -518,6 +536,12 @@ export default function TravelPreview({ night = false } = {}) {
                 formatStopDate={(date) => formatDate(date, language)} /> : <EmptyState message={copy.empty} />}
               {course?.lodging_unavailable && <p>{plannerCopy.lodgingUnavailable}</p>}
               {course?.limited_places && <p>{plannerCopy.limitedPlaces}</p>}
+              {course?.unmatched_activities?.length > 0 && (
+                <div className="activity-unmatched" role="status">
+                  <p>{plannerCopy.activityCopy.unmatched}</p>
+                  <ul>{course.unmatched_activities.map((activity) => <li key={activity}>{activity}</li>)}</ul>
+                </div>
+              )}
               {stops.length > 1 && <small>{plannerCopy.schematicRoute}</small>}
             </section>
           ))}

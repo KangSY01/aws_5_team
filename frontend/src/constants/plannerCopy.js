@@ -1,3 +1,5 @@
+import { getActivityCopy } from "./activityCopy.js";
+
 const keys = [
   "recommend", "newCourse", "makeCourse", "stay", "areas", "interests", "options", "food",
   "transport", "lessWalking", "origin", "lodging", "automatic", "planning", "editing", "editStop",
@@ -15,22 +17,23 @@ const labels = {
 };
 
 export const durationIds = ["half", "day", "overnight", "long"];
+export const foodPreferenceIds = ["korean", "chinese", "japanese", "western", "southeast_asian", "indian", "busan_local", "seafood", "market_food", "dessert", "vegetarian"];
+export const transportPreferenceIds = ["public_transit", "car", "walking", "any"];
 export const areaIds = ["east", "center", "oldtown", "downtown", "songdo", "estuary", "geumjeong"];
-export const activityIds = ["sea", "market", "cafe", "culture", "active", "night"];
 const choices = {
-  ko: [["반나절","하루","1박 2일","2박 이상"],["해운대·기장","광안리·수영","남포·영도","서면·전포"],["바다 산책","시장 구경","카페","전시·문화","액티비티","야경"]],
-  en: [["Half a day","One day","Two days, one night","Two nights or more"],["Haeundae · Gijang","Gwangalli · Suyeong","Nampo · Yeongdo","Seomyeon · Jeonpo"],["Seaside walks","Markets","Cafés","Arts and culture","Activities","Night views"]],
-  ja: [["半日","1日","1泊2日","2泊以上"],["海雲台・機張","広安里・水営","南浦・影島","西面・田浦"],["海辺の散歩","市場巡り","カフェ","展示・文化","アクティビティ","夜景"]],
-  "zh-Hans": [["半天","一天","两天一夜","两晚或以上"],["海云台·机张","广安里·水营","南浦·影岛","西面·田浦"],["海边散步","逛市场","咖啡馆","展览文化","户外活动","夜景"]],
-  "zh-Hant": [["半天","一天","兩天一夜","兩晚或以上"],["海雲臺·機張","廣安里·水營","南浦·影島","西面·田浦"],["海邊散步","逛市場","咖啡館","展覽文化","戶外活動","夜景"]],
+  ko: [["반나절","하루","1박 2일","2박 이상"],["해운대·기장","광안리·수영","남포·영도","서면·전포"]],
+  en: [["Half a day","One day","Two days, one night","Two nights or more"],["Haeundae · Gijang","Gwangalli · Suyeong","Nampo · Yeongdo","Seomyeon · Jeonpo"]],
+  ja: [["半日","1日","1泊2日","2泊以上"],["海雲台・機張","広安里・水営","南浦・影島","西面・田浦"]],
+  "zh-Hans": [["半天","一天","两天一夜","两晚或以上"],["海云台·机张","广安里·水营","南浦·影岛","西面·田浦"]],
+  "zh-Hant": [["半天","一天","兩天一夜","兩晚或以上"],["海雲臺·機張","廣安里·水營","南浦·影島","西面·田浦"]],
 };
 
 const areaActions = {
-  ko: ["이 지역 추가", "지역 미리보기 닫기", "지역 빼기", "지도에서 보기", "선택 완료", "취소"],
-  en: ["Add", "Close area preview", "Remove area", "View on map", "Done", "Cancel"],
-  ja: ["このエリアを追加", "エリアの詳細を閉じる", "エリアを削除", "地図で見る", "選択を完了", "キャンセル"],
-  "zh-Hans": ["添加此区域", "关闭区域预览", "移除区域", "在地图上查看", "完成选择", "取消"],
-  "zh-Hant": ["新增此區域", "關閉區域預覽", "移除區域", "在地圖上查看", "完成選擇", "取消"],
+  ko: ["이 지역 추가", "지역 미리보기 닫기", "지역 빼기", "지도에서 지역 고르기", "선택 완료", "취소", "지도에서 지역 변경", "지역을 고르지 않으면 AI가 추천해요."],
+  en: ["Add", "Close area preview", "Remove area", "Choose areas on the map", "Done", "Cancel", "Change areas on the map", "Leave areas blank and AI will suggest where to go."],
+  ja: ["このエリアを追加", "エリアの詳細を閉じる", "エリアを削除", "地図でエリアを選ぶ", "選択を完了", "キャンセル", "地図でエリアを変更", "エリアを選ばない場合は、AIがおすすめします。"],
+  "zh-Hans": ["添加此区域", "关闭区域预览", "移除区域", "在地图上选择区域", "完成选择", "取消", "在地图上更改区域", "如果不选择区域，AI 会为你推荐。"],
+  "zh-Hant": ["新增此區域", "關閉區域預覽", "移除區域", "在地圖上選擇區域", "完成選擇", "取消", "在地圖上變更區域", "如果不選擇區域，AI 會為你推薦。"],
 };
 
 const areaDescriptions = {
@@ -77,15 +80,38 @@ const selectionStatus = {
   "zh-Hant": "已新增",
 };
 
+const answerCopy = {
+  ko: ["필수", "선택", "여행 기간을 선택해 주세요."],
+  en: ["Required", "Optional", "Choose how long you’ll stay."],
+  ja: ["必須", "任意", "滞在期間を選んでください。"],
+  "zh-Hans": ["必填", "选填", "请选择停留时间。"],
+  "zh-Hant": ["必填", "選填", "請選擇停留時間。"],
+};
+
+const foodTransportCopy = {
+  ko: [["한식","중식","일식","양식","동남아식","인도식","부산 향토 음식","해산물","시장 먹거리","디저트","채식"],["대중교통","차량","도보 위주","상관없음"],["먹거리 취향 직접 추가","먹거리 취향이나 피할 음식 입력","추가","직접 추가한 먹거리 취향 삭제","이미 목록에 있는 취향이에요."]],
+  en: [["Korean","Chinese","Japanese","Western","Southeast Asian","Indian","Local Busan food","Seafood","Market food","Desserts","Vegetarian"],["Public transit","Car","Mostly walking","No preference"],["Add a food preference","Enter a preference or food to avoid","Add","Remove custom food preference","This preference is already in the list."]],
+  ja: [["韓国料理","中華料理","日本料理","洋食","東南アジア料理","インド料理","釜山の郷土料理","海鮮","市場グルメ","デザート","菜食"],["公共交通","車","徒歩中心","こだわらない"],["食の好みを追加","好みや避けたい食べ物を入力","追加","追加した食の好みを削除","この好みは登録済みです。"]],
+  "zh-Hans": [["韩餐","中餐","日料","西餐","东南亚菜","印度菜","釜山乡土美食","海鲜","市场小吃","甜点","素食"],["公共交通","汽车","以步行为主","无偏好"],["添加饮食偏好","输入偏好或要避免的食物","添加","移除自定义饮食偏好","该偏好已在列表中。"]],
+  "zh-Hant": [["韓式料理","中式料理","日式料理","西式料理","東南亞料理","印度料理","釜山鄉土美食","海鮮","市場小吃","甜點","素食"],["大眾運輸","汽車","以步行為主","無偏好"],["新增飲食偏好","輸入偏好或要避免的食物","新增","移除自訂飲食偏好","該偏好已在清單中。"]],
+};
+
 export function getPlannerCopy(language) {
-  const [durations, areasList, activities] = choices[language];
-  const [addArea, closeArea, removeArea, showAreas, doneAreas, cancelAreas] = areaActions[language];
+  const [durations, areasList] = choices[language];
+  const [addArea, closeArea, removeArea, showAreas, doneAreas, cancelAreas, changeAreas, noAreaSelection] = areaActions[language];
   const [extraNames, extraDescriptions, limitedPlaces] = additionalAreas[language];
   const areaAdded = selectionStatus[language];
+  const [requiredAnswer, optionalAnswer, durationRequired] = answerCopy[language];
+  const [food, transport, editor] = foodTransportCopy[language];
+  const [openCustom, customLabel, addCustom, removeCustom, duplicate] = editor;
   const doneAreasLabel = (total) => total
     ? `${doneAreas} · ${new Intl.NumberFormat(language).format(total)}`
     : doneAreas;
   return { ...Object.fromEntries(keys.map((key, i) => [key, labels[language][i]])),
     durations, areasList: [...areasList, ...extraNames], areaDescriptions: [...areaDescriptions[language], ...extraDescriptions],
-    activities, addArea, areaAdded, closeArea, removeArea, showAreas, doneAreasLabel, cancelAreas, limitedPlaces };
+    activityCopy: getActivityCopy(language), addArea, areaAdded, closeArea, removeArea, showAreas, doneAreasLabel, cancelAreas, limitedPlaces,
+    requiredAnswer, optionalAnswer, durationRequired, changeAreas, noAreaSelection,
+    foodLabels: Object.fromEntries(foodPreferenceIds.map((id, index) => [id, food[index]])),
+    transportLabels: Object.fromEntries(transportPreferenceIds.map((id, index) => [id, transport[index]])),
+    foodEditor: { openCustom, customLabel, addCustom, removeCustom, duplicate } };
 }

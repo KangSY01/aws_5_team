@@ -52,5 +52,32 @@
     "category": "park",
     "indoor": false,
     "nearest_station": null
+  },
+  {
+    "place_id": "coralani",
+    "names": {"ko":"코랄라니","en":"Coralani","ja":"コラルラニ","zh-Hans":"Coralani 咖啡馆","zh-Hant":"Coralani 咖啡館"},
+    "lat": 35.1824072,
+    "lng": 129.2088791,
+    "category": "cafe",
+    "indoor": true,
+    "nearest_station": null
+  },
+  {
+    "place_id": "fm-coffee-house",
+    "names": {"ko":"에프엠커피하우스","en":"FM Coffee House","ja":"FMコーヒーハウス","zh-Hans":"FM 咖啡馆","zh-Hant":"FM 咖啡館"},
+    "lat": 35.1546455,
+    "lng": 129.0637738,
+    "category": "cafe",
+    "indoor": true,
+    "nearest_station": "Jeonpo"
+  },
+  {
+    "place_id": "busan-moca",
+    "names": {"ko":"부산현대미술관","en":"Busan Museum of Contemporary Art","ja":"釜山現代美術館","zh-Hans":"釜山现代美术馆","zh-Hant":"釜山現代美術館"},
+    "lat": 35.109277,
+    "lng": 128.942746,
+    "category": "museum",
+    "indoor": true,
+    "nearest_station": null
   }
 ]
