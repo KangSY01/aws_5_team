@@ -27,7 +27,7 @@ function buildKeys(stops) {
   });
 }
 
-export default function PlanList({ plan, places, displayLanguage, selected, tripStopId, onSelect, lockedLabel, onEdit, editLabel, formatStopDate, onSaveStops, busy, saveError, renderStopChecks, onToggleLock, lockCopy, events, checkedIds, legs, renderLeg }) {
+export default function PlanList({ plan, places, displayLanguage, selected, tripStopId, onSelect, lockedLabel, onEdit, editLabel, formatStopDate, onSaveStops, busy, saveError, renderStopChecks, onToggleLock, lockCopy, events, checkedIds, legs, renderLeg, doneBefore }) {
   const stops = Array.isArray(plan?.stops) ? plan.stops : [];
   const placesById = buildPlacesById(places);
   const language = displayLanguage ?? plan?.profile?.language;
@@ -88,7 +88,9 @@ export default function PlanList({ plan, places, displayLanguage, selected, trip
             dragging={drag?.from === index}
             insertion={drag?.to === index && drag.from !== index ? (drag.from > index ? 'before' : 'after') : undefined}
             checks={renderStopChecks?.(stop)}
-            leg={index < stops.length - 1 && legs?.[stop.stop_id] ? renderLeg?.(legs[stop.stop_id]) : undefined}
+            done={doneBefore !== undefined && Date.parse(stop.end) <= doneBefore}
+            leg={index < stops.length - 1 && stops[index + 1].place_id !== stop.place_id && legs?.[stop.stop_id]
+              ? renderLeg?.(legs[stop.stop_id]) : undefined}
             lock={onToggleLock ? {
               label: (name) => lockCopy.label(name, stop.locked),
               disabled: busy,

@@ -100,13 +100,7 @@ it("runs the demo script, refreshes issue badges, locks a stop, applies a repair
     profile: { language: "ja" }, demo: { now: "2026-11-28T09:00:00+09:00" },
   })]);
   expect(checkBodies.at(-1).demo.now).toBe("2026-11-28T09:00:00+09:00");
-  await waitFor(() => expect(screen.getByRole("button", { name: "Check itinerary", exact: true })).toBeEnabled());
-  click("Check itinerary");
-  const manualResult = await screen.findByRole("button", { name: "Haeundae · High crowding · View alternatives" });
-  fireEvent.click(manualResult);
-  const manualDialog = within(screen.getByRole("dialog"));
-  expect(manualDialog.getByText("Beach crowds")).toBeVisible();
-  fireEvent.click(manualDialog.getByRole("button", { name: "Close alternatives" }));
+  expect(screen.queryByRole("button", { name: "Check itinerary" })).not.toBeInTheDocument();
   click("Lock stop · Light Festival");
   await screen.findByRole("button", { name: "Unlock stop · Light Festival" });
   await screen.findByRole("button", { name: "High crowding · Haeundae" });

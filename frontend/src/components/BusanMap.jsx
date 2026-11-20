@@ -30,8 +30,10 @@ function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
 
-export default function BusanMap({ plan, places, events, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, onRoutes, focusRequest, regionPicker, crowdLevels = null, returnPaths }) {
+export default function BusanMap({ plan, places, events, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, onRoutes, leftInset = 0, focusRequest, regionPicker, crowdLevels = null, returnPaths }) {
   const container = useRef(null);
+  const leftInsetRef = useRef(leftInset); // 지도 왼쪽을 덮는 사이드바 폭 (경로 맞춤 여백)
+  leftInsetRef.current = leftInset;
   const placeLabelsRef = useRef(null); // 선택·다음 목적지가 바뀌면 이름표 다시 배치
   const mapRef = useRef(null);
   const [locationControl, setLocationControl] = useState(null);
@@ -205,7 +207,9 @@ export default function BusanMap({ plan, places, events, onLandmarkSelect, langu
     const line = L.polyline(returnPaths, {
       color: "#145440", weight: 4, dashArray: "6 5", interactive: false, attribution: "© TMAP",
     }).addTo(map);
-    map.fitBounds(line.getBounds(), { padding: [42, 82], maxZoom: 16, animate: false });
+    map.fitBounds(line.getBounds(), {
+      paddingTopLeft: [42 + leftInsetRef.current, 82], paddingBottomRight: [42, 82], maxZoom: 16, animate: false,
+    });
     return () => line.remove();
   }, [returnPaths]);
 
@@ -274,7 +278,7 @@ export default function BusanMap({ plan, places, events, onLandmarkSelect, langu
 
     if (fittedPlan.current !== plan && map.getSize().x > 0 && markers.size) {
       map.fitBounds([...markers.values()].map((marker) => marker.getLatLng()), {
-        padding: [42, 80], maxZoom: 12, animate: false,
+        paddingTopLeft: [42 + leftInsetRef.current, 80], paddingBottomRight: [42, 80], maxZoom: 12, animate: false,
       });
       fittedPlan.current = plan;
     }
@@ -370,11 +374,14 @@ export default function BusanMap({ plan, places, events, onLandmarkSelect, langu
     const mapBounds = container.current.getBoundingClientRect();
     const panel = container.current.closest("main").querySelector(".travel-chat");
     const panelBounds = panel.getBoundingClientRect();
-    const panelOverlapsMap = !panel.hidden && panelBounds.width > 0 && panelBounds.left < mapBounds.right;
+    // 데스크톱 사이드바(leftInset): 지도 왼쪽을 덮으므로 오른쪽 남은 영역 가운데로 이동. 모바일 하단 패널: 패널 위 영역 가운데
+    const inset = leftInsetRef.current;
+    const panelOverlapsMap = !inset && !panel.hidden && panelBounds.width > 0 && panelBounds.left < mapBounds.right;
     const visibleHeight = panelOverlapsMap ? panelBounds.top - mapBounds.top : size.y;
     const [offsetX, offsetY] = marker.getElement().style.translate.split(" ").map(parseFloat);
     const targetY = Math.max(70, visibleHeight / 2 + 20);
-    const center = map.project(marker.getLatLng()).add([offsetX || 0, size.y / 2 - targetY + (offsetY || 0)]);
+    const targetX = inset + (size.x - inset) / 2;
+    const center = map.project(marker.getLatLng()).add([size.x / 2 - targetX + (offsetX || 0), size.y / 2 - targetY + (offsetY || 0)]);
     map.panTo(map.unproject(center), { animate: !window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches });
   }, [focusRequest]);
 

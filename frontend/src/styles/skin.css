@@ -204,7 +204,7 @@
     background: #f4f5f6;
     box-shadow: none;
   }
-  .travel-panel .stop-track::before {
+  .travel-panel :is(.stop-track, .plan-list__stops > .stop-item:has(> .transit-leg))::before {
     width: 1px;
     inset-inline-start: calc(var(--stop-number-inset) + var(--stop-number-size) / 2 - .5px);
   }
@@ -266,10 +266,13 @@
 /* ---------- 데스크톱: 왼쪽 사이드바 + 오른쪽 지도 ---------- */
 @media (min-width: 900px) {
   .travel-preview[data-sidebar="true"] { grid-template: minmax(0, 1fr) / 380px minmax(0, 1fr); }
-  .travel-preview[data-sidebar="true"] .travel-shell { grid-column: 2; grid-row: 1; }
+  /* 지도는 사이드바가 열리고 닫혀도 항상 전체 폭 (지도가 밀리지 않도록 사이드바를 지도 위에 겹쳐 표시) */
+  .travel-preview[data-sidebar="true"] .travel-shell { grid-column: 1 / -1; grid-row: 1; }
   .travel-preview[data-sidebar="true"] .travel-chat {
     grid-column: 1;
     grid-row: 1;
+    position: relative;
+    z-index: 5;
     display: flex;
     flex-direction: column;
     width: 380px;
@@ -277,7 +280,7 @@
     margin: 0;
     border-width: 0 1px 0 0;
     border-radius: 0;
-    box-shadow: none;
+    box-shadow: 4px 0 16px rgb(28 36 51 / 8%);
   }
   .travel-preview[data-sidebar="true"] .travel-chat > .chat-content { flex: 1 1 auto; min-height: 0; }
   .travel-preview[data-sidebar="true"] .chat-heading { padding: 12px 20px 10px; }
@@ -298,6 +301,7 @@
   .travel-preview[data-sidebar="true"] .travel-brand-group > .travel-brand { display: none; }
   .travel-preview[data-sidebar="true"] .travel-tabs { left: calc(380px + (100% - 380px) / 2); }
   body:has(.travel-preview[data-sidebar="true"]) .demo-panel { left: 396px; bottom: 120px; }
+  .travel-preview[data-sidebar="true"] .crowd-legend { left: 396px; }
 
 }
 
@@ -596,3 +600,10 @@
 
 /* 다른 핀·이름표와 겹쳐 둘 자리가 없는 이름표 (핀 번호와 title 로 식별) */
 .busan-map-pin[data-label-hidden] .busan-map-pin__label { visibility: hidden; }
+
+/* 채팅·일정·프로필 패널 배경 통일: 기존 흰색 패널 변수를 레퍼런스 종이색으로 지정 */
+.travel-preview {
+  --panel-white: var(--skin-paper);
+  --panel-field: var(--skin-card);
+  --panel-divider: var(--skin-divider);
+}
