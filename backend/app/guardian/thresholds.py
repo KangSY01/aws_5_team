@@ -10,8 +10,14 @@ from app.models.plan import Severity
 CROWD_MEDIUM_RATE = 85  # 집중률이 이 값 이상이면 medium
 CROWD_HIGH_RATE = 95  # 집중률이 이 값 이상이고 주말이면 high
 
-# 집중률 데이터에 없는 장소. 요일 규칙으로 판단한다 (places.json 에 있는 ID만)
-WEEKDAY_RULE_PLACES = frozenset({"gamcheon-village", "haedong-yonggungsa"})
+# 집중률 데이터에 없는 장소. 요일 규칙으로 판단한다 (places.json 에 있는 ID만, data-rules.md 「혼잡도」 목록)
+WEEKDAY_RULE_PLACES = frozenset({
+    "gamcheon-village",
+    "haedong-yonggungsa",
+    "huinnyeoul-village",
+    "haeridan-gil",
+    "blueline-park",
+})
 # 요일 규칙 심각도. 키는 datetime.weekday() 값 (5=토, 6=일). 평일은 문제 없음
 WEEKDAY_RULE_SEVERITY: dict[int, Severity] = {5: "medium", 6: "low"}
 

@@ -178,3 +178,14 @@ def test_sample_plan_baseline():
     issues += [check_tight_transfer(p, s, ctx) for p, s in zip(PLAN.stops, PLAN.stops[1:])]
     found = [i for i in issues if i]
     assert [(i.issue_id, i.severity) for i in found] == [("s1-crowded", "medium")]
+
+
+@pytest.mark.parametrize("place_id", ["huinnyeoul-village", "haeridan-gil", "blueline-park"])
+def test_weekday_rule_places_added_with_places_json(place_id):
+    # data-rules.md 「혼잡도」: 집중률에 없는 장소는 요일 규칙 (토 medium, 일 low, 평일 없음)
+    stop = S1.model_copy(update={"place_id": place_id})
+    ctx = make_context()
+    assert place_id in ctx.places  # places.json 에 있는 ID
+    assert check_crowded(stop, ctx).severity == "medium"
+    assert check_crowded(on_day(stop, 1), ctx).severity == "low"
+    assert check_crowded(on_day(stop, 2), ctx) is None

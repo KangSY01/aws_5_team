@@ -310,7 +310,7 @@ Schedule Guardian 으로 일정을 점검한다. LLM 을 호출하지 않는다.
 - `repairs`: `issue_id` → `RepairOption` 목록. 변경이 작은 순서 (시간 이동 → 순서 변경 → 교체 → 제외).
   `action` 은 `move_time` / `reorder` / `replace` / `remove`.
 - `crowded` 는 집중률·요일 규칙이 하루 단위라, 행사 시간대처럼 시간대 근거가 있을 때만 `move_time` 해결안이 나온다.
-  위 예시의 `s1-crowded`(요일 규칙)은 시간 이동·같은 분류 교체 후보가 없어 `remove` 만 나온 경우다.
+  위 예시의 `s1-crowded`(요일 규칙)은 시간 이동 근거가 없고, 이웃이 고정 일정이라 순서를 바꿀 수 없고, 같은 분류 장소(`huinnyeoul-village`)도 요일 규칙 대상이라 토요일에는 혼잡이 그대로여서 `remove` 만 나온 경우다.
 - `metrics.changed` 는 장소가 교체·제거된 Stop 수다. 시각·순서만 바뀐 Stop 은 세지 않는다 (시간만 옮긴 해결안은 `changed: 0`).
   시각이 바뀐 Stop 은 모두 `changes` 에 들어 있다.
 - `places`: `repairs` 에 새로 등장하는 장소의 `Place` 목록 (교체 후보 표시용). 없으면 `[]`.

@@ -285,7 +285,8 @@ def test_guardian_repair_can_be_saved_with_put(api_storage, option):
     assert status == 200, body
     assert PlanResponse.model_validate(body).plan == applied
     assert api_storage.get_plan(PLAN_ID) == applied
-    assert api_storage.get_plan(PLAN_ID).stops[1] == SAMPLE_PLAN.stops[1]  # 고정된 자갈치시장은 그대로
+    kept = next(s for s in api_storage.get_plan(PLAN_ID).stops if s.stop_id == "s2")
+    assert kept == SAMPLE_PLAN.stops[1]  # 고정된 자갈치시장은 그대로 (remove 로 순서가 바뀌어도 stop_id 로 찾는다)
 
 
 def test_guardian_results_are_not_saved_automatically(monkeypatch, api_storage):

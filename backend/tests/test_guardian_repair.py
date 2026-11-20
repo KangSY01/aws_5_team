@@ -278,9 +278,21 @@ def test_replace_skips_locked_target_and_no_candidate():
     # 고정 일정(자갈치)은 바꾸지 않는다
     ctx = make_context(hours={"jagalchi-market": OpeningHours(closed_weekdays=[5])})
     assert try_replace(PLAN, issue_of(PLAN, ctx, "s2-closed"), ctx) == []
-    # 감천은 places.json 에서 유일한 village 라 같은 분류 후보가 없다
-    ctx = make_context()
+    # 감천의 같은 village 후보(흰여울)도 요일 규칙 대상이라 토요일엔 혼잡이 남는다 → 이동 시간을 알아도 교체 없음
+    ctx = make_context(travel_min=BASE_TRAVEL_MIN | {("huinnyeoul-village", "jagalchi-market"): 20})
     assert try_replace(PLAN, issue_of(PLAN, ctx, "s1-crowded"), ctx) == []
+
+
+def test_replace_weekday_rule_village_on_sunday():
+    # 일요일 감천(low) → 흰여울도 low 라 나아지지 않아 교체하지 않는다. 혼잡이 없는 평일엔 Issue 자체가 없다
+    sunday = PLAN.model_copy(update={"stops": [
+        s.model_copy(update={"start": s.start + dt.timedelta(days=1), "end": s.end + dt.timedelta(days=1)})
+        for s in PLAN.stops
+    ]})
+    ctx = make_context(travel_min=BASE_TRAVEL_MIN | {("huinnyeoul-village", "jagalchi-market"): 20})
+    issue = issue_of(sunday, ctx, "s1-crowded")
+    assert issue.severity == "low"
+    assert try_replace(sunday, issue, ctx) == []
 
 
 # ---------- 5.5 try_remove ----------
@@ -355,7 +367,7 @@ def test_propose_rain_first_is_indoor_replace_like_design_table():
 
 
 def test_propose_remove_only_when_nothing_else():
-    # 계약 예시 s1-crowded: 시간 이동 근거 없음 · 이웃이 고정 · 같은 분류 후보 없음 → remove 하나
+    # 계약 예시 s1-crowded: 시간 이동 근거 없음 · 이웃이 고정 · 같은 village(흰여울)도 요일 규칙 → remove 하나
     ctx = make_context()
     options = propose_repairs(PLAN, issue_of(PLAN, ctx, "s1-crowded"), ctx)
     assert [o.action for o in options] == ["remove"]

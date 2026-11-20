@@ -39,7 +39,7 @@ backend/app/guardian/
 |---|---|---|
 | `CROWD_MEDIUM_RATE` | 85 | 집중률이 이 값 이상이면 `medium` |
 | `CROWD_HIGH_RATE` | 95 | 집중률이 이 값 이상이고 주말이면 `high` |
-| `WEEKDAY_RULE_PLACES` | `gamcheon-village`, `haedong-yonggungsa` | 집중률에 없는 장소. 토 `medium`, 일 `low` |
+| `WEEKDAY_RULE_PLACES` | `gamcheon-village`, `haedong-yonggungsa`, `huinnyeoul-village`, `haeridan-gil`, `blueline-park` | 집중률에 없는 장소. 토 `medium`, 일 `low` |
 | `RAIN_POP_MEDIUM` | 60 | 체류 시간대 최대 강수확률(%)이 이 값 이상이면 `medium` |
 | `RAIN_PTY_HIGH_RATIO` | 0.5 | 체류 시간의 50% 이상에 강수가 있으면 `high` |
 | `TRANSFER_BUFFER_MIN` | 10 | 이동 여유(분). 미만이면 `medium`, 0 미만이면 `high` |
@@ -48,7 +48,7 @@ backend/app/guardian/
 | `REPLACE_MAX_EXTRA_MIN` | 30 | `replace` 이동 시간 증가 상한(분) |
 | `MAX_REPAIRS` | 3 | Issue당 해결안 수 |
 
-`WEEKDAY_RULE_PLACES`의 ID는 `places.json`에 있는 값만 씁니다. 흰여울문화마을 등이 추가되면 함께 넣습니다.
+`WEEKDAY_RULE_PLACES`의 ID는 `places.json`에 있는 값만 씁니다. `data-rules.md` 「혼잡도」의 "집중률에 없는 장소"가 `places.json`에 추가되면 함께 넣습니다.
 
 ## 점검 규칙 (`rules.py`)
 | 함수 | 판정 |
