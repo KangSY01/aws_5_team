@@ -2,8 +2,8 @@
   {
     "place_id": "haeundae-beach",
     "names": { "en": "Haeundae Beach", "ja": "海雲台海水浴場", "zh-Hans": "海云台海水浴场", "zh-Hant": "海雲臺海水浴場" },
-    "lat": 35.1587,
-    "lng": 129.1604,
+    "lat": 35.1590840227,
+    "lng": 129.1602785648,
     "category": "beach",
     "indoor": false,
     "nearest_station": "Haeundae"
@@ -11,8 +11,8 @@
   {
     "place_id": "gwangalli-beach",
     "names": { "en": "Gwangalli Beach", "ja": "広安里海水浴場", "zh-Hans": "广安里海水浴场", "zh-Hant": "廣安里海水浴場" },
-    "lat": 35.1532,
-    "lng": 129.1186,
+    "lat": 35.1531932737,
+    "lng": 129.1189760936,
     "category": "beach",
     "indoor": false,
     "nearest_station": "Gwangan"
@@ -20,17 +20,17 @@
   {
     "place_id": "gamcheon-village",
     "names": { "en": "Gamcheon Culture Village", "ja": "甘川文化村", "zh-Hans": "甘川文化村", "zh-Hant": "甘川文化村" },
-    "lat": 35.0975,
-    "lng": 129.0106,
+    "lat": 35.0974606978,
+    "lng": 129.0105969965,
     "category": "village",
     "indoor": false,
     "nearest_station": "Toseong"
   },
   {
     "place_id": "jagalchi-market",
-    "names": { "en": "Jagalchi Market", "ja": "チャガルチ市場", "zh-Hans": "札嘎其市场", "zh-Hant": "札嘎其市場" },
-    "lat": 35.0966,
-    "lng": 129.0306,
+    "names": { "en": "Jagalchi Market", "ja": "釜山 チャガルチ市場", "zh-Hans": "釜山札嘎其市场", "zh-Hant": "釜山札嘎其市場" },
+    "lat": 35.0966111701,
+    "lng": 129.0305757138,
     "category": "market",
     "indoor": true,
     "nearest_station": "Jagalchi"
@@ -38,8 +38,8 @@
   {
     "place_id": "gukje-market",
     "names": { "en": "Gukje Market", "ja": "国際市場", "zh-Hans": "国际市场", "zh-Hant": "國際市場" },
-    "lat": 35.1011,
-    "lng": 129.0283,
+    "lat": 35.101319054,
+    "lng": 129.0281852526,
     "category": "market",
     "indoor": false,
     "nearest_station": "Jagalchi"
@@ -47,8 +47,8 @@
   {
     "place_id": "busan-tower",
     "names": { "en": "Busan Tower", "ja": "釜山タワー", "zh-Hans": "釜山塔", "zh-Hant": "釜山塔" },
-    "lat": 35.1007,
-    "lng": 129.0324,
+    "lat": 35.101157344,
+    "lng": 129.0323310732,
     "category": "observatory",
     "indoor": true,
     "nearest_station": "Nampo"
@@ -56,8 +56,8 @@
   {
     "place_id": "haedong-yonggungsa",
     "names": { "en": "Haedong Yonggungsa Temple", "ja": "海東龍宮寺", "zh-Hans": "海东龙宫寺", "zh-Hant": "海東龍宮寺" },
-    "lat": 35.1883,
-    "lng": 129.2233,
+    "lat": 35.1882428912,
+    "lng": 129.2235301928,
     "category": "temple",
     "indoor": false,
     "nearest_station": "OSIRIA"
@@ -65,8 +65,8 @@
   {
     "place_id": "taejongdae",
     "names": { "en": "Taejongdae", "ja": "太宗台", "zh-Hans": "太宗台", "zh-Hant": "太宗臺" },
-    "lat": 35.053,
-    "lng": 129.085,
+    "lat": 35.059694919,
+    "lng": 129.0798056912,
     "category": "park",
     "indoor": false,
     "nearest_station": null
@@ -74,8 +74,8 @@
   {
     "place_id": "shinsegae-centum-city",
     "names": { "en": "Shinsegae Centum City", "ja": "新世界百貨店センタムシティ", "zh-Hans": "新世界百货Centum City店", "zh-Hant": "新世界百貨Centum City店" },
-    "lat": 35.1687,
-    "lng": 129.1296,
+    "lat": 35.1687462007,
+    "lng": 129.1297116996,
     "category": "shopping",
     "indoor": true,
     "nearest_station": "Centum City"
@@ -83,10 +83,208 @@
   {
     "place_id": "beomeosa-temple",
     "names": { "en": "Beomeosa Temple", "ja": "梵魚寺", "zh-Hans": "梵鱼寺", "zh-Hant": "梵魚寺" },
-    "lat": 35.2838,
-    "lng": 129.0682,
+    "lat": 35.2838302944,
+    "lng": 129.0702465946,
     "category": "temple",
     "indoor": false,
     "nearest_station": "Beomeosa"
+  },
+  {
+    "place_id": "dongbaekseom",
+    "names": { "en": "Haeundae Dongbaekseom Island", "ja": "海雲台 冬柏島", "zh-Hans": "海云台冬柏岛", "zh-Hant": "海雲臺冬柏島" },
+    "lat": 35.153951141,
+    "lng": 129.152151687,
+    "category": "park",
+    "indoor": false,
+    "nearest_station": "Dongbaek"
+  },
+  {
+    "place_id": "the-bay-101",
+    "names": { "en": "The Bay 101" },
+    "lat": 35.1565836936,
+    "lng": 129.1520693211,
+    "category": "attraction",
+    "indoor": false,
+    "nearest_station": "Dongbaek"
+  },
+  {
+    "place_id": "haeridan-gil",
+    "names": { "en": "Haeridan Street", "ja": "ヘリダンギル", "zh-Hans": "海理团路", "zh-Hant": "海理團路" },
+    "lat": 35.1648388507,
+    "lng": 129.1576008763,
+    "category": "street",
+    "indoor": false,
+    "nearest_station": "Haeundae"
+  },
+  {
+    "place_id": "haeundae-market",
+    "names": { "en": "Busan Haeundae Market" },
+    "lat": 35.1614753828,
+    "lng": 129.1627110674,
+    "category": "market",
+    "indoor": false,
+    "nearest_station": "Haeundae"
+  },
+  {
+    "place_id": "blueline-park",
+    "names": { "en": "Haeundae Blueline Park", "ja": "海雲台ブルーラインパーク", "zh-Hans": "海云台蓝线公园", "zh-Hant": "海雲臺Blueline Park" },
+    "lat": 35.161248012,
+    "lng": 129.191400312,
+    "category": "attraction",
+    "indoor": false,
+    "nearest_station": "Jangsan"
+  },
+  {
+    "place_id": "cheongsapo-skywalk",
+    "names": { "en": "Cheongsapo Daritdol Observatory", "ja": "青沙浦タリットル展望台", "zh-Hans": "青沙浦踏石观景台" },
+    "lat": 35.1633119624,
+    "lng": 129.1953779554,
+    "category": "observatory",
+    "indoor": false,
+    "nearest_station": "Jangsan"
+  },
+  {
+    "place_id": "busan-x-the-sky",
+    "names": { "en": "BUSAN X the SKY", "zh-Hans": "釜山X the SKY", "zh-Hant": "釜山X The Sky" },
+    "lat": 35.1613422355,
+    "lng": 129.1680138925,
+    "category": "observatory",
+    "indoor": true,
+    "nearest_station": "Jung-dong"
+  },
+  {
+    "place_id": "sea-life-busan",
+    "names": { "en": "SEA LIFE Busan Aquarium", "zh-Hans": "SEA LIFE 釜山水族馆SEA LIFE" },
+    "lat": 35.1591562501,
+    "lng": 129.1610034953,
+    "category": "aquarium",
+    "indoor": true,
+    "nearest_station": "Haeundae"
+  },
+  {
+    "place_id": "songjeong-beach",
+    "names": { "en": "Songjeong Beach", "ja": "松亭海水浴場", "zh-Hans": "松亭海水浴场", "zh-Hant": "松亭海水浴場" },
+    "lat": 35.178728,
+    "lng": 129.199722,
+    "category": "beach",
+    "indoor": false,
+    "nearest_station": "Jangsan"
+  },
+  {
+    "place_id": "busan-museum-of-art",
+    "names": { "en": "Busan Museum of Art", "ja": "釜山市立美術館", "zh-Hans": "釜山市立美术馆", "zh-Hant": "釜山市立美術館" },
+    "lat": 35.1666576947,
+    "lng": 129.1370166325,
+    "category": "museum",
+    "indoor": true,
+    "nearest_station": "Busan Museum of Art"
+  },
+  {
+    "place_id": "busan-cinema-center",
+    "names": { "en": "Busan Cinema Center", "zh-Hans": "釜山电影殿堂" },
+    "lat": 35.1709631305,
+    "lng": 129.1270422473,
+    "category": "culture",
+    "indoor": true,
+    "nearest_station": "Centum City"
+  },
+  {
+    "place_id": "millak-waterside-park",
+    "names": { "ja": "民楽水辺公園", "zh-Hans": "民乐水边公园", "zh-Hant": "民樂水邊公園" },
+    "lat": 35.1545,
+    "lng": 129.133,
+    "category": "park",
+    "indoor": false,
+    "nearest_station": "Dongbaek"
+  },
+  {
+    "place_id": "lotte-world-busan",
+    "names": { "en": "Lotte World Adventure Busan", "zh-Hans": "釜山乐天世界探险世界", "zh-Hant": "釜山樂天世界" },
+    "lat": 35.1960278871,
+    "lng": 129.2129698479,
+    "category": "theme_park",
+    "indoor": false,
+    "nearest_station": null
+  },
+  {
+    "place_id": "lotte-outlet-dongbusan",
+    "names": { "zh-Hant": "樂天名牌折扣購物中心東釜山店" },
+    "lat": 35.1921894462,
+    "lng": 129.2127644188,
+    "category": "shopping",
+    "indoor": false,
+    "nearest_station": null
+  },
+  {
+    "place_id": "yongdusan-park",
+    "names": { "en": "Yongdusan Park", "ja": "龍頭山公園", "zh-Hans": "龙头山公园", "zh-Hant": "龍頭山公園" },
+    "lat": 35.1004440914,
+    "lng": 129.0326643023,
+    "category": "park",
+    "indoor": false,
+    "nearest_station": "Nampo"
+  },
+  {
+    "place_id": "huinnyeoul-village",
+    "names": { "en": "Huinnyeoul Culture Village", "ja": "ヒニョウル文化村", "zh-Hans": "白浅滩文化村", "zh-Hant": "白淺灘文化村" },
+    "lat": 35.0798897489,
+    "lng": 129.0435396078,
+    "category": "village",
+    "indoor": false,
+    "nearest_station": "Nampo"
+  },
+  {
+    "place_id": "national-maritime-museum",
+    "names": { "en": "National Maritime Museum", "ja": "国立海洋博物館", "zh-Hans": "国立海洋博物馆", "zh-Hant": "國立海洋博物館" },
+    "lat": 35.0785003395,
+    "lng": 129.0802910274,
+    "category": "museum",
+    "indoor": true,
+    "nearest_station": null
+  },
+  {
+    "place_id": "busan-modern-history-museum",
+    "names": { "en": "Busan Modern & Contemporary History Museum - Main Building", "ja": "釜山近現代歴史館本館", "zh-Hans": "釜山近现代历史馆本馆", "zh-Hant": "釜山近現代歷史館本館" },
+    "lat": 35.1027222024,
+    "lng": 129.0321614962,
+    "category": "museum",
+    "indoor": true,
+    "nearest_station": "Jungang"
+  },
+  {
+    "place_id": "choryang-ibagu-gil",
+    "names": { "ja": "草梁イバグキル", "zh-Hant": "草梁故事街" },
+    "lat": 35.1169,
+    "lng": 129.0367,
+    "category": "street",
+    "indoor": false,
+    "nearest_station": "Busan Station"
+  },
+  {
+    "place_id": "busan-chinatown",
+    "names": { "en": "Busan Chinatown", "ja": "釜山チャイナタウン特区（上海門、上海通り）", "zh-Hant": "釜山中華街特區(上海門、上海街)" },
+    "lat": 35.1133909492,
+    "lng": 129.0385345717,
+    "category": "street",
+    "indoor": false,
+    "nearest_station": "Busan Station"
+  },
+  {
+    "place_id": "busan-citizens-park",
+    "names": { "zh-Hant": "釜山市民公園" },
+    "lat": 35.1655426683,
+    "lng": 129.0558397915,
+    "category": "park",
+    "indoor": false,
+    "nearest_station": "Bujeon"
+  },
+  {
+    "place_id": "busan-museum",
+    "names": { "en": "Busan Museum", "zh-Hans": "釜山博物馆", "zh-Hant": "釜山博物館" },
+    "lat": 35.1295140526,
+    "lng": 129.0947549351,
+    "category": "museum",
+    "indoor": true,
+    "nearest_station": "Daeyeon"
   }
 ]

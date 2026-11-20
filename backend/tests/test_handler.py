@@ -19,7 +19,7 @@ def call(method, path, body=None):
 
 
 def test_sample_data():
-    assert 8 <= len(PLACES) <= 10
+    assert len(PLACES) >= 8  # 공공데이터로 30곳 이상으로 늘렸다 (상한 없음)
     assert any(stop.locked for stop in SAMPLE_PLAN.stops)
 
 

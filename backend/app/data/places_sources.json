@@ -1,0 +1,846 @@
+{
+  "haeundae-beach": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "126081",
+      "zh-Hans": "331260",
+      "zh-Hant": "332578"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "zh-Hans": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "gwangalli-beach": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "126078",
+      "en": "264250",
+      "zh-Hans": "331259",
+      "zh-Hant": "332597"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "en": "exact",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "gamcheon-village": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2"
+    },
+    "contentids": {
+      "ko": "1997221"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {},
+    "match_kind": {},
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "jagalchi-market": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "ja": "JpnService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "132190",
+      "ja": "2358273",
+      "zh-Hans": "2658292",
+      "zh-Hant": "1550800"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "ja": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "ja": "exact",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "gukje-market": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "ja": "JpnService2"
+    },
+    "contentids": {
+      "ko": "132191",
+      "ja": "615146"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "ja": 300
+    },
+    "match_kind": {
+      "ja": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "busan-tower": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "ja": "JpnService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "1277679",
+      "ja": "2003316",
+      "zh-Hans": "1984125",
+      "zh-Hant": "2009731"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "ja": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "ja": "exact",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "haedong-yonggungsa": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "ja": "JpnService2"
+    },
+    "contentids": {
+      "ko": "126848",
+      "ja": "281852"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "ja": 300
+    },
+    "match_kind": {
+      "ja": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "taejongdae": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2"
+    },
+    "contentids": {
+      "ko": "126658"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {},
+    "match_kind": {},
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "shinsegae-centum-city": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2"
+    },
+    "contentids": {
+      "ko": "767084"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {},
+    "match_kind": {},
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "beomeosa-temple": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2"
+    },
+    "contentids": {
+      "ko": "126148"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {},
+    "match_kind": {},
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "dongbaekseom": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "ja": "JpnService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "987810",
+      "en": "1751530",
+      "ja": "1974038",
+      "zh-Hans": "1877873",
+      "zh-Hant": "1802432"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300,
+      "ja": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "en": "exact",
+      "ja": "exact",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "the-bay-101": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2"
+    },
+    "contentids": {
+      "ko": "2350092",
+      "en": "2357538"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300
+    },
+    "match_kind": {
+      "en": "keyword_en"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "haeridan-gil": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "ja": "JpnService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "2783306",
+      "en": "3115401",
+      "ja": "3115072",
+      "zh-Hans": "3300569",
+      "zh-Hant": "3314964"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300,
+      "ja": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "en": "keyword_en",
+      "ja": "exact",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "haeundae-market": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2"
+    },
+    "contentids": {
+      "ko": "995455",
+      "en": "1468918"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300
+    },
+    "match_kind": {
+      "en": "keyword_en"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "blueline-park": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "ja": "JpnService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "2672393",
+      "en": "2812440",
+      "ja": "2676814",
+      "zh-Hans": "2813472",
+      "zh-Hant": "2731092"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300,
+      "ja": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "en": "keyword_en",
+      "ja": "exact",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "cheongsapo-skywalk": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "ja": "JpnService2",
+      "zh-Hans": "ChsService2"
+    },
+    "contentids": {
+      "ko": "2607943",
+      "en": "2946894",
+      "ja": "2946811",
+      "zh-Hans": "2949347"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300,
+      "ja": 300,
+      "zh-Hans": 300
+    },
+    "match_kind": {
+      "en": "keyword_en",
+      "ja": "exact",
+      "zh-Hans": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "busan-x-the-sky": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "2668973",
+      "en": "2815428",
+      "zh-Hans": "2816119",
+      "zh-Hant": "2731077"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "en": "keyword_en",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "sea-life-busan": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "zh-Hans": "ChsService2"
+    },
+    "contentids": {
+      "ko": "229912",
+      "en": "2666408",
+      "zh-Hans": "331340"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300,
+      "zh-Hans": 300
+    },
+    "match_kind": {
+      "en": "keyword_en",
+      "zh-Hans": "contains"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "songjeong-beach": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "ja": "JpnService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "126080",
+      "en": "264198",
+      "ja": "281478",
+      "zh-Hans": "331315",
+      "zh-Hant": "332609"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300,
+      "ja": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "en": "keyword_en",
+      "ja": "exact",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "busan-museum-of-art": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "ja": "JpnService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "130166",
+      "en": "1054849",
+      "ja": "1059117",
+      "zh-Hans": "1056808",
+      "zh-Hant": "1075357"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300,
+      "ja": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "en": "keyword_en",
+      "ja": "exact",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "busan-cinema-center": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "zh-Hans": "ChsService2"
+    },
+    "contentids": {
+      "ko": "3454074",
+      "en": "2503886",
+      "zh-Hans": "2503888"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300,
+      "zh-Hans": 300
+    },
+    "match_kind": {
+      "en": "keyword_en",
+      "zh-Hans": "contains"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "millak-waterside-park": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "ja": "JpnService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "126799",
+      "ja": "1370469",
+      "zh-Hans": "1865457",
+      "zh-Hant": "1669673"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "ja": 300,
+      "zh-Hans": 1000,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "ja": "exact",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "lotte-world-busan": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "2815627",
+      "en": "2835516",
+      "zh-Hans": "2949389",
+      "zh-Hant": "2949015"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "en": "keyword_en",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "lotte-outlet-dongbusan": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "1993017",
+      "zh-Hant": "1993137"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "yongdusan-park": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "ja": "JpnService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "126121",
+      "en": "264539",
+      "ja": "281855",
+      "zh-Hans": "331344",
+      "zh-Hant": "332645"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300,
+      "ja": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "en": "keyword_en",
+      "ja": "exact",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "huinnyeoul-village": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "ja": "JpnService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "2684712",
+      "en": "2835497",
+      "ja": "2946819",
+      "zh-Hans": "2949382",
+      "zh-Hant": "2762965"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 1000,
+      "ja": 1000,
+      "zh-Hans": 1000,
+      "zh-Hant": 1000
+    },
+    "match_kind": {
+      "en": "exact",
+      "ja": "exact",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "national-maritime-museum": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "ja": "JpnService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "1825843",
+      "en": "1849142",
+      "ja": "1825967",
+      "zh-Hans": "1827139",
+      "zh-Hant": "1826464"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300,
+      "ja": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "en": "keyword_en",
+      "ja": "exact",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "busan-modern-history-museum": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "ja": "JpnService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "3083767",
+      "en": "3516758",
+      "ja": "3497991",
+      "zh-Hans": "3504093",
+      "zh-Hant": "3507612"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300,
+      "ja": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "en": "keyword_en",
+      "ja": "exact",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "choryang-ibagu-gil": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "ja": "JpnService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "2605916",
+      "ja": "2656787",
+      "zh-Hant": "2353130"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "ja": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "ja": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "busan-chinatown": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "ja": "JpnService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "127151",
+      "en": "264602",
+      "ja": "282095",
+      "zh-Hant": "332774"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300,
+      "ja": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "en": "keyword_en",
+      "ja": "contains",
+      "zh-Hant": "contains"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "busan-citizens-park": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "2663341",
+      "zh-Hant": "2986556"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "busan-museum": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "129783",
+      "en": "1054712",
+      "zh-Hans": "1052096",
+      "zh-Hant": "569377"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "match_radius_m": {
+      "en": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "en": "keyword_en",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  }
+}
