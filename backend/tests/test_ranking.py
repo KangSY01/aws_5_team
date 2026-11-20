@@ -1,6 +1,8 @@
 """랭킹 엔진 (app/ranking/) 테스트. 수치는 guardian_fixtures 의 테스트용 값이다."""
 
 import datetime as dt
+import json
+from pathlib import Path
 
 from app.guardian.check import check_plan
 from app.guardian.context import HourlyWeather, OpeningHours
@@ -11,6 +13,7 @@ from tests.guardian_fixtures import DATE, at, hourly_weather, make_context
 
 PROFILE = Profile(language="ja", interests=["sea"])
 SAT = DATE  # 2026-11-21 토요일
+PLACES_PATH = Path(__file__).resolve().parent.parent / "app" / "data" / "places.json"
 
 
 # ---------- score_place ----------
@@ -94,10 +97,22 @@ def test_travel_from_previous_place():
     assert unknown.breakdown["travel"] == w.NEUTRAL and "no_data:travel" in unknown.notes
 
 
-def test_dispersal_bonus_for_west():
+def test_dispersal_bonus_for_west_and_non_landmark():
     ctx = make_context()
-    assert score_place("gamcheon-village", PROFILE, ctx, day=SAT).breakdown["dispersal"] == 1.0
+    west_landmark = score_place("gamcheon-village", PROFILE, ctx, day=SAT)
+    assert west_landmark.breakdown["dispersal"] == w.DISPERSAL_WEST
+    assert "dispersal:west" in west_landmark.notes and "dispersal:not_landmark" not in west_landmark.notes
     assert score_place("haeundae-beach", PROFILE, ctx, day=SAT).breakdown["dispersal"] == 0.0
+    west_lesser = score_place("busan-tower", PROFILE, ctx, day=SAT)
+    assert west_lesser.breakdown["dispersal"] == w.DISPERSAL_WEST + w.DISPERSAL_NOT_LANDMARK == 1.0
+    east_lesser = score_place("songjeong-beach", PROFILE, ctx, day=SAT)
+    assert east_lesser.breakdown["dispersal"] == w.DISPERSAL_NOT_LANDMARK
+    assert east_lesser.notes.count("dispersal:not_landmark") == 1
+
+
+def test_landmarks_are_known_places():
+    places = {p["place_id"] for p in json.loads(PLACES_PATH.read_text(encoding="utf-8"))}
+    assert w.LANDMARKS <= places
 
 
 def test_total_is_0_to_100_and_deterministic():
