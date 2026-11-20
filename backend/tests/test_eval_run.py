@@ -156,9 +156,89 @@ def test_main_fake_mode_writes_results(mock_mode, tmp_path):
     data = json.loads(json_path.read_text(encoding="utf-8"))
     assert [r["id"] for r in data["results"]] == [1, 17, 19, 21]
     assert data["meta"]["fake_llm"] is True
-    assert set(data["summary"]) >= {"tool_selection", "place_id", "language", "safety", "preservation", "ungrounded_numbers"}
+    assert set(data["summary"]) >= {"tool_selection", "place_id", "language", "safety", "preservation", "ungrounded_numbers", "ranking"}
     assert all("ok" in r["judge"] for r in data["results"])
     assert json_path.with_suffix(".md").read_text(encoding="utf-8").startswith("# 평가 결과")
+
+
+# ---- 랭킹 지표 ----
+
+
+def test_new_stop_ids_counts_added_and_replaced_only():
+    s3, s4 = sample_stops()[2], sample_stops()[3]
+    run = chat_run(changes=[
+        {"stop_id": "s4", "before": s4, "after": {**s4, "place_id": "gwangalli-beach"}},  # 교체
+        {"stop_id": "s3", "before": s3, "after": {**s3, "start": "2026-11-21T14:00:00+09:00"}},  # 시간만
+        {"stop_id": "s5", "before": None, "after": stop("s5", "busan-tower", "18:00", "19:00")},  # 추가
+        {"stop_id": "s1", "before": sample_stops()[0], "after": None},  # 제거
+    ])
+    assert run_eval.new_stop_ids(run) == {"s4", "s5"}
+
+
+def test_locked_slacks_uses_gap_minus_travel():
+    from tests.guardian_fixtures import make_context
+
+    # 샘플: s1 감천 ~11:30 → s2 자갈치(고정) 12:00, 이동 15분(테스트 값) → 여유 15분
+    assert run_eval.locked_slacks(SAMPLE, make_context()) == [15]
+    assert run_eval.locked_slacks(SAMPLE, make_context(travel_min={})) == []  # 이동 시간을 모르면 뺀다
+
+
+def test_ranking_metrics_on_replaced_stop(mock_mode, monkeypatch):
+    s3 = sample_stops()[2]
+    after = {**s3, "place_id": "busan-modern-history-museum"}  # 원도심(서쪽)
+    final = {**SAMPLE.model_dump(mode="json"), "stops": [*sample_stops()[:2], after, sample_stops()[3]]}
+    run = chat_run(changes=[{"stop_id": "s3", "before": s3, "after": after}], final_plan=final)
+
+    class FakeCheck:
+        issues = [type("I", (), {"type": "crowded", "stop_id": "s3", "severity": "medium"})()]
+
+    monkeypatch.setattr(run_eval.guardian, "run_check", lambda plan, demo: FakeCheck())
+    m = run_eval.ranking_metrics(run, run_eval.dt.datetime.fromisoformat(run_eval.DEFAULT_NOW))
+    assert m["new_places"] == ["busan-modern-history-museum"]
+    assert m["crowded"] == ["busan-modern-history-museum"]
+    assert m["west"] == ["busan-modern-history-museum"]
+    assert len(m["locked_slack_min"]) == 1  # 고정 일정 s2 하나
+
+
+def test_ranking_metrics_without_final_plan():
+    assert run_eval.ranking_metrics(chat_run(), run_eval.dt.datetime.fromisoformat(run_eval.DEFAULT_NOW)) is None
+
+
+def test_summarize_ranking_rates():
+    results = [
+        {"ranking": {"new_places": ["a", "b"], "crowded": ["a"], "west": [], "locked_slack_min": [10, 30]}},
+        {"ranking": {"new_places": ["c", "d"], "crowded": [], "west": ["c"], "locked_slack_min": []}},
+        {"ranking": None},
+    ]
+    assert run_eval.summarize_ranking(results) == {
+        "new_places": 4, "crowded_rate": 0.25, "dispersal_rate": 0.25, "locked_slack_avg_min": 20.0, "locked_slack_n": 2,
+    }
+    empty = run_eval.summarize_ranking([])
+    assert empty["crowded_rate"] is None and empty["locked_slack_avg_min"] is None
+
+
+def test_render_ranking_with_baseline():
+    before = {"new_places": 10, "crowded_rate": 0.4, "dispersal_rate": 0.1, "locked_slack_avg_min": 12.0, "locked_slack_n": 3}
+    after = {"new_places": 10, "crowded_rate": 0.1, "dispersal_rate": 0.3, "locked_slack_avg_min": 25.0, "locked_slack_n": 3}
+    text = "\n".join(run_eval.render_ranking(after, before))
+    assert "| 기준(전) | 이번(후) |" in text
+    assert "| 40% | 10% |" in text and "| 12분 | 25분 |" in text
+    assert "| 결과 |" in "\n".join(run_eval.render_ranking(after, None))
+
+
+def test_main_with_baseline(mock_mode, tmp_path):
+    assert run_eval.main(["--ids", "1", "21", "--out", str(tmp_path / "before")]) == 0
+    (before,) = (tmp_path / "before").glob("*-fake.json")
+    assert run_eval.main(["--ids", "1", "21", "--out", str(tmp_path / "after"), "--baseline", str(before)]) == 0
+    (after_md,) = (tmp_path / "after").glob("*-fake.md")
+    assert "기준(전)" in after_md.read_text(encoding="utf-8")
+
+
+def test_main_rejects_baseline_without_ranking(mock_mode, tmp_path):
+    old = tmp_path / "old.json"
+    old.write_text(json.dumps({"summary": {"tool_selection": {}}}), encoding="utf-8")
+    with pytest.raises(SystemExit):
+        run_eval.main(["--ids", "1", "--out", str(tmp_path), "--baseline", str(old)])
 
 
 def test_all_queries_load():
