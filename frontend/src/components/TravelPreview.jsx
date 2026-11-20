@@ -256,7 +256,7 @@ export default function TravelPreview({ night = false } = {}) {
   return (
     <main ref={root} className="travel-preview" data-night={night} data-page={profile ? "profile" : "map"} data-sheet={open ? "open" : "closed"} data-expanded={expanded} lang={language}>
       <div className="travel-shell" inert={profile} aria-hidden={profile}>
-        <BusanMap plan={plan} places={samplePlaces} language={language} label={copy.map}
+        <BusanMap plan={plan} places={samplePlaces} language={language} label={copy.map} visitOrderLabel={copy.visitOrder}
           selectedId={selectedId} nextStopId={nextStop?.stop_id} onSelect={setSelectedId} focusRequest={mapFocus} />
         <header className="travel-header">
           <div className="travel-brand-group">

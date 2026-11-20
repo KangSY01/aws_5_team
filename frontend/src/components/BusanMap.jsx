@@ -1,17 +1,42 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { buildPlacesById, resolvePlaceName } from "../lib/resolvePlaceName.js";
 
 const tileOverride = import.meta.env.VITE_MAP_TILE_URL;
+const osmTileUrl = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const osmAttribution = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-const vectorAttribution = '<a href="https://openfreemap.org/">OpenFreeMap</a> © <a href="https://openmaptiles.org/">OpenMapTiles</a>';
+const tileOverrideAttribution = import.meta.env.VITE_MAP_TILE_ATTRIBUTION;
+const pinSize = 44;
+const pinAnchor = [22, 42];
+const pinGap = pinSize + 4;
 
-export default function BusanMap({ plan, places, language, label, selectedId, nextStopId, onSelect, focusRequest }) {
+export default function BusanMap({ plan, places, language, label, visitOrderLabel, selectedId, nextStopId, onSelect, focusRequest }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const fittedPlan = useRef(null);
   const markersRef = useRef(new Map());
+  const languageRef = useRef(language);
+  const updateMapLanguage = useRef(null);
+  const mappedStops = useMemo(() => {
+    const placesById = buildPlacesById(places);
+    return plan.stops.map((stop) => {
+      const place = placesById.get(stop.place_id);
+      const coordinates = Number.isFinite(place?.lat) && Number.isFinite(place?.lng)
+        ? [place.lat, place.lng]
+        : null;
+      return { stop, coordinates };
+    });
+  }, [plan, places]);
+  const visitSegments = useMemo(() => mappedStops.flatMap(({ coordinates }, index) => {
+    const next = mappedStops[index + 1]?.coordinates;
+    return coordinates && next ? [[coordinates, next]] : [];
+  }), [mappedStops]);
+
+  useEffect(() => {
+    languageRef.current = language;
+    updateMapLanguage.current?.();
+  }, [language]);
 
   useEffect(() => {
     const map = L.map(container.current, {
@@ -23,25 +48,33 @@ export default function BusanMap({ plan, places, language, label, selectedId, ne
     }).setView([35.145, 129.075], 12);
     mapRef.current = map;
 
-    const attribution = L.control.attribution({ position: "topleft", prefix: false }).addTo(map);
-    attribution.addAttribution(osmAttribution);
+    L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
     const addRaster = () => {
-      L.tileLayer(tileOverride || "https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+      const url = tileOverride || osmTileUrl;
+      const host = new URL(url, window.location.href).hostname;
+      const attribution = host === "tile.openstreetmap.org" || host.endsWith(".tile.openstreetmap.org")
+        ? osmAttribution
+        : tileOverrideAttribution || host;
+      L.tileLayer(url, { maxZoom: 19, attribution }).addTo(map);
     };
     let disposed = false;
+    const styleRequest = new AbortController();
     if (tileOverride || typeof WebGL2RenderingContext === "undefined") {
       addRaster();
     } else {
-      import("./busanBasemap.js").then(({ createBusanBasemap }) => {
+      import("./busanBasemap.js").then(async ({ createBusanBasemap, loadBusanStyle }) => {
         if (disposed) return;
-        const layer = createBusanBasemap();
+        const style = await loadBusanStyle(styleRequest.signal);
+        if (disposed) return;
+        const { layer, updateLanguage } = createBusanBasemap(style, () => languageRef.current);
         try {
           layer.addTo(map);
         } catch (error) {
           layer.remove();
           throw error;
         }
-        attribution.addAttribution(vectorAttribution);
+        updateMapLanguage.current = updateLanguage;
+        layer.getMaplibreMap().once("style.load", updateLanguage);
       }).catch(() => {
         if (!disposed) addRaster();
       });
@@ -54,6 +87,8 @@ export default function BusanMap({ plan, places, language, label, selectedId, ne
     observer?.observe(container.current);
     return () => {
       disposed = true;
+      styleRequest.abort();
+      updateMapLanguage.current = null;
       observer?.disconnect();
       map.remove();
       mapRef.current = null;
@@ -62,21 +97,40 @@ export default function BusanMap({ plan, places, language, label, selectedId, ne
   }, []);
 
   useEffect(() => {
+    if (!visitSegments.length) return;
+    const line = L.polyline(visitSegments, {
+      className: "busan-visit-line",
+      color: "#387687",
+      weight: 2.5,
+      opacity: 1,
+      dashArray: "2 6",
+      lineCap: "round",
+      interactive: false,
+    }).addTo(mapRef.current);
+    return () => line.remove();
+  }, [visitSegments]);
+
+  useEffect(() => {
     const map = mapRef.current;
     const layer = L.layerGroup().addTo(map);
     const placesById = buildPlacesById(places);
     const markers = new Map();
     markersRef.current = markers;
 
-    plan.stops.forEach((stop, index) => {
-      const place = placesById.get(stop.place_id);
-      if (!Number.isFinite(place?.lat) || !Number.isFinite(place?.lng)) return;
+    mappedStops.forEach(({ stop, coordinates }, index) => {
+      if (!coordinates) return;
       const title = `${index + 1}. ${resolvePlaceName(stop, placesById, language).name}`;
-      const number = document.createElement("span");
-      number.textContent = String(index + 1);
-      const marker = L.marker([place.lat, place.lng], {
+      const marker = L.marker(coordinates, {
         title,
-        icon: L.divIcon({ className: "busan-map-pin", html: number, iconSize: [44, 44], iconAnchor: [22, 22] }),
+        icon: L.divIcon({
+          className: "busan-map-pin",
+          iconSize: [pinSize, pinSize],
+          iconAnchor: pinAnchor,
+          html: `<svg viewBox="0 0 44 44" aria-hidden="true">
+            <path d="M22 42C15 34 7 25 7 18a15 15 0 1 1 30 0c0 7-8 16-15 24Z"/>
+            <text x="22" y="18" dy=".34em">${index + 1}</text>
+          </svg>`,
+        }),
       }).addTo(layer);
       const element = marker.getElement();
       element.setAttribute("aria-label", title);
@@ -96,14 +150,23 @@ export default function BusanMap({ plan, places, language, label, selectedId, ne
       const occupied = [];
       for (const marker of markers.values()) {
         const point = map.project(marker.getLatLng());
-        const shifts = [[0, 0], [0, -48], [0, 48], [-48, 0], [48, 0], [0, -96], [0, 96]];
+        const shifts = [[0, 0], [0, -pinGap], [0, pinGap], [-pinGap, 0], [pinGap, 0]];
+        for (let step = 2; step <= occupied.length; step += 1) {
+          shifts.push([0, -step * pinGap], [0, step * pinGap]);
+        }
         const [x, y] = shifts.find(([dx, dy]) =>
           occupied.every((other) =>
-            Math.abs(other.x - point.x - dx) >= 44 || Math.abs(other.y - point.y - dy) >= 44
+            Math.abs(other.x - point.x - dx) >= pinSize || Math.abs(other.y - point.y - dy) >= pinSize
           )
         ) ?? shifts[0];
         occupied.push(point.add([x, y]));
-        marker.getElement().style.translate = `${x}px ${y}px`;
+        const element = marker.getElement();
+        element.style.translate = `${x}px ${y}px`;
+        element.toggleAttribute("data-displaced", Boolean(x || y));
+        element.style.setProperty("--pin-tether-length", `${Math.hypot(x, y)}px`);
+        element.style.setProperty("--pin-tether-angle", `${Math.atan2(-y, -x)}rad`);
+        element.style.setProperty("--pin-origin-x", `${pinAnchor[0] - x}px`);
+        element.style.setProperty("--pin-origin-y", `${pinAnchor[1] - y}px`);
       }
     }
 
@@ -119,7 +182,7 @@ export default function BusanMap({ plan, places, language, label, selectedId, ne
       map.off("zoomend", separatePins);
       layer.remove();
     };
-  }, [plan, places, language, onSelect]);
+  }, [plan, places, mappedStops, language, onSelect]);
 
   useEffect(() => {
     for (const [id, marker] of markersRef.current) {
@@ -148,5 +211,9 @@ export default function BusanMap({ plan, places, language, label, selectedId, ne
     map.panTo(map.unproject(center), { animate: !window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches });
   }, [focusRequest]);
 
-  return <div ref={container} className="busan-map" role="region" aria-label={label} />;
+  return (
+    <div ref={container} className="busan-map" role="region" aria-label={label}>
+      {visitSegments.length > 0 && <span className="busan-visit-legend">{visitOrderLabel}</span>}
+    </div>
+  );
 }

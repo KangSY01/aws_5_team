@@ -46,6 +46,14 @@ const tripCopy = {
   "zh-Hant": ["開始旅行", "結束旅行", "旅行中", "下一站", "請 AI 推薦行程"],
 };
 
+const visitOrderCopy = {
+  ko: "방문 순서",
+  en: "Visit order",
+  ja: "訪問順",
+  "zh-Hans": "游览顺序",
+  "zh-Hant": "遊覽順序",
+};
+
 export function getTravelCopy(language) {
   const [intro, prompt, example, submit, title, edit, itinerary, map, schematic, locked, languageLabel, night, loading, empty, network, timeout, http, invalidResponse, retry] = copy[language];
   const [ask, send, close, expand, reduce, ready, messageLabel, sampleTitle, home, chat, navigation] = chatCopy[language];
@@ -54,6 +62,7 @@ export function getTravelCopy(language) {
   const [profile, guest, account, accountUnavailable] = profileCopy[language];
   const [startTrip, endTrip, traveling, nextPlace, askForRoute] = tripCopy[language];
   return {
+    visitOrder: visitOrderCopy[language],
     startTrip, endTrip, traveling, nextPlace, askForRoute,
     profile, guest, account, accountUnavailable,
     collapseItinerary, closeItinerary,

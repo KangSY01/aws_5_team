@@ -3,58 +3,37 @@ import { setWorkerUrl } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-const style = {
-  version: 8,
-  glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
-  sources: {
-    openmaptiles: { type: "vector", url: "https://tiles.openfreemap.org/planet" },
-  },
-  layers: [
-    { id: "land", type: "background", paint: { "background-color": "#F5F5F1" } },
-    {
-      id: "green-space", type: "fill", source: "openmaptiles", "source-layer": "landcover",
-      minzoom: 10, paint: { "fill-color": "#DFE8DA" },
-    },
-    {
-      id: "water", type: "fill", source: "openmaptiles", "source-layer": "water",
-      paint: { "fill-color": "#C6E0EB" },
-    },
-    {
-      id: "waterways", type: "line", source: "openmaptiles", "source-layer": "waterway",
-      minzoom: 11, paint: { "line-color": "#C6E0EB", "line-width": 1 },
-    },
-    {
-      id: "minor-roads", type: "line", source: "openmaptiles", "source-layer": "transportation",
-      minzoom: 14,
-      filter: ["==", ["get", "class"], "minor"],
-      paint: { "line-color": "#E7E8E5", "line-width": 1 },
-    },
-    {
-      id: "main-roads", type: "line", source: "openmaptiles", "source-layer": "transportation",
-      minzoom: 7,
-      filter: ["in", ["get", "class"], ["literal", ["motorway", "trunk", "primary", "secondary", "tertiary"]]],
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: {
-        "line-color": "#C9D0D2",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 9, 0.5, 13, 1.2, 17, 2.6],
-      },
-    },
-    {
-      id: "major-places", type: "symbol", source: "openmaptiles", "source-layer": "place",
-      minzoom: 7,
-      filter: ["in", ["get", "class"], ["literal", ["city", "town", "suburb"]]],
-      layout: {
-        "text-field": ["coalesce", ["get", "name"], ["get", "name:latin"]],
-        "text-font": ["Noto Sans Regular"],
-        "text-size": ["match", ["get", "class"], "city", 14, 11],
-        "text-padding": 14,
-      },
-      paint: { "text-color": "#4F5B60", "text-halo-color": "#F5F5F1", "text-halo-width": 1.25 },
-    },
-  ],
+const localeFields = {
+  ko: ["name:ko", "name_ko"],
+  en: ["name:en", "name_en", "name:latin"],
+  ja: ["name:ja", "name_ja"],
+  "zh-Hans": ["name:zh-Hans", "name_zh-Hans", "name:zh", "name_zh"],
+  "zh-Hant": ["name:zh-Hant", "name_zh-Hant"],
 };
 
-export function createBusanBasemap() {
+export async function loadBusanStyle(signal) {
+  const url = new URL(import.meta.env.BASE_URL + "maps/busan-poster.json", window.location.href);
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error("Unable to load the Busan map style");
+  const style = await response.json();
+  style.sprite = new URL(style.sprite, url).href;
+  return style;
+}
+
+export function createBusanBasemap(style, getLanguage) {
   setWorkerUrl(workerUrl);
-  return maplibreGL({ style, interactive: false, attributionControl: false });
+  const labelLayers = style.layers.filter((layer) => layer.layout?.["text-field"]);
+  const layer = maplibreGL({ style, interactive: false });
+
+  function updateLanguage() {
+    const map = layer.getMaplibreMap();
+    if (!map?.getStyle()) return;
+    const fields = [...(localeFields[getLanguage()] ?? []), "name", "name:latin"];
+    const text = ["coalesce", ...fields.map((name) => ["get", name])];
+    for (const label of labelLayers) {
+      if (map.getLayer(label.id)) map.setLayoutProperty(label.id, "text-field", text);
+    }
+  }
+
+  return { layer, updateLanguage };
 }

@@ -23,6 +23,12 @@ npm run build    # 프로덕션 빌드
 npm test         # 테스트 실행 (vitest --run)
 ```
 
+## 지도 타일 출처
+
+별도 래스터 타일을 사용하려면 `VITE_MAP_TILE_URL`에 타일 주소를, `VITE_MAP_TILE_ATTRIBUTION`에 공급자가 안내한 출처 문구와 링크를 설정합니다. 출처에는 링크를 포함한 HTML을 사용할 수 있습니다. 기본 OpenStreetMap 래스터 타일에는 OpenStreetMap 출처가 자동으로 표시됩니다.
+
+벡터 타일 공급자를 바꿀 때는 `public/maps/busan-poster.json`의 해당 소스에서 URL과 `attribution`을 함께 갱신합니다. 스타일에 출처를 지정하지 않으면 소스의 TileJSON 출처를 사용합니다.
+
 ## 환경 변수 `VITE_API_BASE_URL`
 
 백엔드 API 의 기준 주소(Base_URL)다. `.env.example` 을 `.env` 로 복사해 값을 바꿀 수 있다.
