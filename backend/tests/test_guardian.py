@@ -51,7 +51,7 @@ def test_table_saturday_gamcheon_weekday_rule():
 def test_table_rain_15_18_haeundae_first_repair_indoor_replace():
     ctx = make_context(
         weather=hourly_weather(rain_hours=range(15, 18)),
-        travel_min=BASE_TRAVEL_MIN | {("busan-tower", "shinsegae-centum-city"): 45},
+        travel_min=BASE_TRAVEL_MIN | {("busan-tower", "busan-museum-of-art"): 45},
     )
     issue = issue_map(PLAN, ctx)["s4-rain"]
     assert issue.severity == "high"
@@ -89,7 +89,7 @@ def test_table_every_repair_keeps_jagalchi():
     contexts = [
         make_context(),
         make_context(weather=hourly_weather(rain_hours=range(15, 18)),
-                     travel_min=BASE_TRAVEL_MIN | {("busan-tower", "shinsegae-centum-city"): 45}),
+                     travel_min=BASE_TRAVEL_MIN | {("busan-tower", "busan-museum-of-art"): 45}),
         make_context(hours={"busan-tower": OpeningHours(opens=dt.time(14))}),
         make_context(travel_min=BASE_TRAVEL_MIN | {("jagalchi-market", "busan-tower"): 40}),
     ]
@@ -140,7 +140,7 @@ def test_scene_5_afternoon_rain_moves_time_first():
     # 해운대 체류 시간대(15~17시) 비. 첫 안은 시간만 옮기기(변경 0곳), 다음 안은 실내 교체(변경 1곳)
     ctx = make_context(
         weather=hourly_weather(rain_hours=range(15, 17)),
-        travel_min=BASE_TRAVEL_MIN | {("busan-tower", "shinsegae-centum-city"): 45},
+        travel_min=BASE_TRAVEL_MIN | {("busan-tower", "busan-museum-of-art"): 45},
     )
     options = propose_repairs(PLAN, issue_map(PLAN, ctx)["s4-rain"], ctx)
 

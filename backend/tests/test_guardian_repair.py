@@ -228,17 +228,17 @@ def travel_with(**extra: int) -> dict:
 
 
 def test_replace_rain_with_indoor_place_like_contract_example():
-    # 계약 예시와 같은 장면: 15~18시 비, 해운대 → 신세계 센텀시티(실내), 이동 +5분
+    # 계약 예시와 같은 장면: 15~18시 비, 해운대 → 부산시립미술관(실내), 이동 +5분
     # 광안리(같은 beach)는 실외라 비가 남아 빠지고, 자갈치·부산타워는 이미 일정에 있어 후보가 아니다
     ctx = make_context(
         weather=hourly_weather(rain_hours=range(15, 18)),
-        travel_min=travel_with(shinsegae_centum_city=45, gwangalli_beach=30),
+        travel_min=travel_with(busan_museum_of_art=45, gwangalli_beach=30),
     )
     issue = issue_of(PLAN, ctx, "s4-rain")
 
     options = try_replace(PLAN, issue, ctx)
 
-    assert [after_of(o, "s4").place_id for o in options] == ["shinsegae-centum-city"]
+    assert [after_of(o, "s4").place_id for o in options] == ["busan-museum-of-art"]
     opt = options[0]
     assert opt.action == "replace"
     s4 = after_of(opt, "s4")
@@ -252,7 +252,7 @@ def test_replace_crowded_with_same_category_only():
     # 토요일 해운대 집중률 99 → crowded high. 같은 beach 인 광안리로만 바꾼다 (실내 장소는 비 문제일 때만)
     ctx = make_context(
         crowd={"jagalchi-market": 60.0, "busan-tower": 50.0, "haeundae-beach": 99.0},
-        travel_min=travel_with(gwangalli_beach=30, shinsegae_centum_city=45),
+        travel_min=travel_with(gwangalli_beach=30, busan_museum_of_art=45),
     )
     issue = issue_of(PLAN, ctx, "s4-crowded")
     assert issue.severity == "high"
@@ -279,8 +279,19 @@ def test_replace_crowded_puts_walkable_local_commerce_first():
     assert options[0].metrics.extra_travel_min == 2  # 이동이 더 늘어도 도보권 상권이 먼저
 
 
+def test_replace_never_uses_large_commercial():
+    # 데모 장면 5 방향: 비가 와도 씨라이프·신세계 같은 대형 상업시설로 보내지 않는다. 이동 시간을 알아도 후보가 아니다
+    ctx = make_context(
+        weather=hourly_weather(rain_hours=range(15, 18)),
+        travel_min=travel_with(sea_life_busan=41, shinsegae_centum_city=42, busan_museum_of_art=45),
+    )
+    options = try_replace(PLAN, issue_of(PLAN, ctx, "s4-rain"), ctx)
+    assert [after_of(o, "s4").place_id for o in options] == ["busan-museum-of-art"]
+    assert th.LARGE_COMMERCIAL <= set(ctx.places)
+
+
 def test_replace_excludes_over_limit_and_unknown_travel():
-    # 광안리 +45분(상한 40분 초과), 신세계 이동 시간 모름 → 후보 없음
+    # 광안리 +45분(상한 40분 초과), 시립미술관 이동 시간 모름 → 후보 없음
     ctx = make_context(
         weather=hourly_weather(rain_hours=range(15, 18)),
         crowd={"jagalchi-market": 60.0, "busan-tower": 50.0, "haeundae-beach": 99.0},
@@ -354,10 +365,10 @@ def test_remove_skips_locked_target():
 # ---------- 5.6 propose_repairs ----------
 
 def rain_15_17_ctx():
-    """15~17시 비. 시간 이동(+90분)·순서 변경(+10분)·교체(신세계 +5분)가 모두 가능한 상황."""
+    """15~17시 비. 시간 이동(+90분)·순서 변경(+10분)·교체(시립미술관 +5분)가 모두 가능한 상황."""
     return make_context(
         weather=hourly_weather(rain_hours=range(15, 17)),
-        travel_min=REORDER_TRAVEL | {("busan-tower", "shinsegae-centum-city"): 45},
+        travel_min=REORDER_TRAVEL | {("busan-tower", "busan-museum-of-art"): 45},
     )
 
 
@@ -382,7 +393,7 @@ def test_propose_rain_first_is_indoor_replace_like_design_table():
     # design.md 테스트 표: 15~18시 비 → 첫 해결안 replace(실내), locked_kept true
     ctx = make_context(
         weather=hourly_weather(rain_hours=range(15, 18)),
-        travel_min=travel_with(shinsegae_centum_city=45, gwangalli_beach=30),
+        travel_min=travel_with(busan_museum_of_art=45, gwangalli_beach=30),
     )
     options = propose_repairs(PLAN, issue_of(PLAN, ctx, "s4-rain"), ctx)
 
@@ -390,7 +401,7 @@ def test_propose_rain_first_is_indoor_replace_like_design_table():
     assert first.action == "replace"
     assert ctx.places[after_of(first, "s4").place_id].indoor is True
     assert first.metrics.locked_kept is True
-    assert [p.place_id for p in new_places(PLAN, options, ctx)] == ["shinsegae-centum-city"]
+    assert [p.place_id for p in new_places(PLAN, options, ctx)] == ["busan-museum-of-art"]
 
 
 def test_propose_remove_only_when_nothing_else():
@@ -415,7 +426,7 @@ def test_propose_never_touches_locked_stop_in_any_scenario():
     # 여러 상황의 모든 Issue·모든 해결안에서 자갈치 place_id·start·end 그대로 (design.md 테스트 표)
     contexts = [
         rain_15_17_ctx(),
-        make_context(weather=hourly_weather(rain_hours=range(15, 18)), travel_min=travel_with(shinsegae_centum_city=45)),
+        make_context(weather=hourly_weather(rain_hours=range(15, 18)), travel_min=travel_with(busan_museum_of_art=45)),
         make_context(hours={"busan-tower": OpeningHours(opens=dt.time(14))}),
         make_context(events=[Event(name="테스트 행사", start=at(15), end=at(17), place_ids=["haeundae-beach"])],
                      travel_min=REORDER_TRAVEL),
@@ -454,8 +465,8 @@ def test_apply_option_and_new_places():
     ctx = rain_15_17_ctx()
     options = propose_repairs(PLAN, issue_of(PLAN, ctx, "s4-rain"), ctx)
     replaced = apply_option(PLAN, options[2])
-    assert [s.place_id for s in replaced.stops] == ["gamcheon-village", "jagalchi-market", "busan-tower", "shinsegae-centum-city"]
+    assert [s.place_id for s in replaced.stops] == ["gamcheon-village", "jagalchi-market", "busan-tower", "busan-museum-of-art"]
     assert PLAN.stops[3].place_id == "haeundae-beach"  # 원래 일정은 그대로
     # 새 장소는 한 번씩만, 시간 이동·순서 변경은 새 장소가 없다
-    assert [p.place_id for p in new_places(PLAN, options + options, ctx)] == ["shinsegae-centum-city"]
+    assert [p.place_id for p in new_places(PLAN, options + options, ctx)] == ["busan-museum-of-art"]
     assert new_places(PLAN, options[:2], ctx) == []

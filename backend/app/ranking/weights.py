@@ -3,6 +3,8 @@
 값은 팀이 정한 규칙이며 데이터로 학습한 값이 아니다.
 """
 
+from app.guardian import thresholds as _guardian_thresholds
+
 # ---------- 장소 점수 (score_place) ----------
 # 항목별 점수는 0~1 이고, 가중합을 0~100 으로 맞춘다.
 PLACE_WEIGHTS = {
@@ -44,15 +46,8 @@ LANDMARKS = frozenset({
 })
 
 # 대형 상업시설: 대표 명소가 아니어도 분산 보너스(DISPERSAL_NOT_LANDMARK)를 주지 않는다.
-# 대형 시설로 몰린 소비를 중소 상권으로 옮기는 목적과 반대이기 때문. place_id 는 places.json 기준.
-LARGE_COMMERCIAL = frozenset({
-    "shinsegae-centum-city",
-    "lotte-outlet-dongbusan",
-    "lotte-world-busan",
-    "the-bay-101",
-    "busan-x-the-sky",
-    "sea-life-busan",
-})
+# 목록은 Guardian 교체 후보 제외와 같이 쓰려고 app/guardian/thresholds.py 에 둔다.
+LARGE_COMMERCIAL = _guardian_thresholds.LARGE_COMMERCIAL
 
 # ---------- 방문 순서 점수 (rank_orders) ----------
 # 순서 점수 = -(이동 분 × W_TRAVEL) - (비 노출 × W_RAIN) + (고정 일정 앞 여유 분, 상한 적용 × W_SLACK). 높을수록 좋다.

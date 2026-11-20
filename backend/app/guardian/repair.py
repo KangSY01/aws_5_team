@@ -326,6 +326,7 @@ def try_replace(plan: Plan, issue: Issue, ctx: CheckContext) -> list[RepairOptio
     """대상 Stop 의 장소를 비슷한 장소로 바꾸는 해결안 목록. 시각은 그대로 둔다.
 
     - 후보는 ctx.places(places.json)에 있는 장소만 쓴다. 일정에 이미 있는 장소는 빼고 새 ID 를 만들지 않는다.
+    - 대형 상업시설(LARGE_COMMERCIAL)은 후보로 쓰지 않는다.
     - 후보 조건: 같은 category. rain 이면 category 가 달라도 실내(indoor) 장소를 넣는다 (요구사항 4.4).
       crowded 이면 category 가 달라도 그 장소에서 LOCAL_COMMERCE_MAX_MIN 안의 시장·거리(도보권 상권)를 넣는다.
     - 이동 시간을 모르는 구간이 생기거나 이동 시간 증가가 REPLACE_MAX_EXTRA_MIN 을 넘으면 뺀다.
@@ -347,7 +348,7 @@ def try_replace(plan: Plan, issue: Issue, ctx: CheckContext) -> list[RepairOptio
     used = {s.place_id for s in stops}
     found: list[tuple[tuple[bool, bool, int, str], RepairOption]] = []
     for place in ctx.places.values():
-        if place.place_id in used:
+        if place.place_id in used or place.place_id in th.LARGE_COMMERCIAL:
             continue
         same_category = place.category == current.category
         local = issue.type == "crowded" and _local_commerce(current, place, ctx)
