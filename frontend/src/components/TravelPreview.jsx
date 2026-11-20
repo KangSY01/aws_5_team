@@ -39,6 +39,10 @@ import "./travel-preview.css";
 
 // 디자인 실험(design/giljabi-ui): 넓은 화면에서는 왼쪽 사이드바 패널을 항상 연다.
 // jsdom 처럼 matchMedia 가 없으면 false 라 기존 동작과 같다.
+// 임시 로고 (디자인 실험). public/brand/ 의 SVG
+const brandLogo = import.meta.env.BASE_URL + "brand/busannow-logo.svg";
+const brandSymbol = import.meta.env.BASE_URL + "brand/busannow-symbol.svg";
+
 const WIDE_QUERY = "(min-width: 900px)";
 // 모바일 검색 알약 문구 (레퍼런스 "Search or ask Giljabi" 방식, 이름은 BusanNow)
 const ASK_COPY = {
@@ -1096,12 +1100,12 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
         {crowdLevels && stops.length > 0 && !regionDraft && <CrowdLegend language={language} />}
         <header className="travel-header">
           <button type="button" className="travel-ask" aria-controls="travel-chat" onClick={openChat}>
-            <span className="travel-ask__mark" aria-hidden="true">부산</span>
+            <img className="travel-ask__mark" src={brandSymbol} alt="" aria-hidden="true" />
             <span className="travel-ask__text">{ASK_COPY[language] ?? ASK_COPY.en}</span>
           </button>
           <div className="travel-brand-column">
             <div className="travel-brand-group">
-              <span className="travel-brand">Busan<span>Now</span></span>
+              <span className="travel-brand"><img className="travel-brand__logo" src={brandLogo} alt="BusanNow" /></span>
               {tripStarted && <span className="trip-status">{copy.traveling}</span>}
             </div>
             {(tab === "home" || sidebarMap) && !regionDraft && (currentPlace || mapDetail) && (
@@ -1161,7 +1165,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
       )}
       <aside id="travel-chat" className="travel-chat" data-translation={showTranslation} hidden={!sheetOpen} inert={!sheetOpen} aria-hidden={!sheetOpen} aria-labelledby="travel-panel-title"
         onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
-        {sidebar && <div className="sidebar-brand" aria-hidden="true"><span className="travel-brand">Busan<span>Now</span></span></div>}
+        {sidebar && <div className="sidebar-brand"><img className="travel-brand__logo" src={brandLogo} alt="BusanNow" /></div>}
         <div className="chat-grab" aria-hidden="true"
           onPointerDown={(event) => {
             dragStart.current = event.clientY;

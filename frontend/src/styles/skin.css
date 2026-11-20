@@ -45,33 +45,10 @@
 .travel-preview .stop-item__name { font-size: 18px; }
 .travel-preview .chat-heading h1 { font-family: var(--skin-sans); font-weight: 600; letter-spacing: 0; }
 
-/* 로고: 코랄 사각 마크 + serif 글자 (이름은 BusanNow 유지) */
-.travel-preview .travel-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0;
-  font-family: var(--skin-serif);
-  font-weight: 700;
-  letter-spacing: .02em;
-  color: var(--skin-ink);
-}
-.travel-preview .travel-brand::before {
-  content: "부산";
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 3px;
-  background: var(--skin-coral);
-  color: var(--skin-paper);
-  font-family: var(--skin-serif);
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1;
-  margin-inline-end: 12px;
-  transform: rotate(-4deg);
-}
-.travel-preview .travel-brand span { color: inherit; }
+/* 로고: 임시 로고 이미지 (public/brand/busannow-logo.svg) */
+.travel-preview .travel-brand { display: inline-flex; align-items: center; padding: 8px 12px; }
+.travel-preview .travel-brand__logo { display: block; height: 28px; width: auto; }
+.sidebar-brand .travel-brand__logo { height: 40px; }
 
 /* ---------- 버튼 ---------- */
 .travel-preview :is(.trip-actions button:last-child, .guardian-apply, .planner-actions button[type="submit"]) {
@@ -272,18 +249,10 @@
     pointer-events: auto;
   }
   .travel-ask__mark {
-    display: grid;
-    place-items: center;
+    display: block;
     flex: none;
     width: 34px;
     height: 34px;
-    border-radius: 3px;
-    background: var(--skin-coral);
-    color: var(--skin-paper);
-    font-family: var(--skin-serif);
-    font-size: 13px;
-    font-weight: 700;
-    transform: rotate(-4deg);
   }
   /* 지도 위 비상 도움·여행 문구 버튼: 잉크 테두리 알약 */
   .travel-preview .travel-map-tools :is(.emergency-help, .travel-phrases) {
@@ -471,4 +440,17 @@
   .travel-preview .travel-map-tools { grid-column: 1 / -1; grid-row: 2; justify-self: end; }
   .travel-preview .travel-brand-column { grid-column: 1 / -1; grid-row: 3; }
   .travel-preview .travel-map-tools :is(.emergency-help, .travel-phrases) { white-space: nowrap; }
+}
+
+/* 선택된 칩: 기존 CSS 의 연한 초록 캡슐(::before)이 잉크 배경 위를 덮어 글자가 안 보이던 문제.
+   캡슐도 잉크색으로 맞춘다. 직접 입력 칩(.activity-custom-chip)은 선택 상태가 아니므로 종이색 */
+.travel-preview :is(.activity-chip, .duration-chip):is([aria-pressed="true"], [data-selected="true"], :has(input:checked)) {
+  color: var(--skin-paper);
+}
+.travel-preview :is(.activity-chip, .duration-chip):is([aria-pressed="true"], [data-selected="true"], :has(input:checked))::before {
+  background: var(--skin-ink);
+  border-color: var(--skin-ink);
+}
+.travel-preview .activity-chip.activity-custom-chip:not([aria-pressed="true"], [data-selected="true"], :has(input:checked))::before {
+  background: var(--skin-paper);
 }
