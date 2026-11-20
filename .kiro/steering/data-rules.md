@@ -29,6 +29,9 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - 부산 격자 기본값: `nx=98`, `ny=76`
 - 단기예보는 약 3일 이내만 제공됩니다. 그 이후 날짜는 "예보 없음"으로 처리하고, 데모는 `USE_MOCK=1`의 샘플 예보로 재현합니다.
 - 도구: `get_weather(date)`
+- 캐시(`USE_MOCK=0`일 때만): DynamoDB `busan-guide-cache`(환경 변수 `CACHE_TABLE`)에 `pk="WEATHER#<날짜>"`, `sk="KMA"`로 `hourly`, `fetched_at`, `base_time`(기상청 발표 시각), `ttl`(`fetched_at` + 2일)을 저장합니다. 예보 범위 밖 날짜와 빈 예보는 저장하지 않습니다.
+- `fetched_at`이 60분 이내면 기상청을 부르지 않고 캐시를 돌려줍니다. 기상청 호출이 실패하면 60분이 넘은 캐시라도 돌려주고(`cache.stale: true`), 캐시도 없으면 오류입니다. DynamoDB가 실패하면 경고 로그만 남기고 캐시 없이 동작합니다.
+- 반환값에 `cache: {"hit", "stale", "fetched_at"}`가 붙습니다. `stale`이 `true`면 오래된 예보일 수 있다고 안내하십시오. `USE_MOCK=1`은 캐시를 쓰지 않고 `cache` 필드도 없습니다.
 
 ## 이동 시간 (추정표)
 - 도구: `get_travel_time(from_place_id, to_place_id)`. `backend/app/data/travel_times.json`을 읽습니다(`USE_MOCK`과 무관). 표에 없는 장소 ID는 오류를 돌려줍니다.
