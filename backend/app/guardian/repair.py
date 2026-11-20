@@ -327,9 +327,11 @@ def try_replace(plan: Plan, issue: Issue, ctx: CheckContext) -> list[RepairOptio
 
     - 후보는 ctx.places(places.json)에 있는 장소만 쓴다. 일정에 이미 있는 장소는 빼고 새 ID 를 만들지 않는다.
     - 후보 조건: 같은 category. rain 이면 category 가 달라도 실내(indoor) 장소를 넣는다 (요구사항 4.4).
+      crowded 이면 category 가 달라도 그 장소에서 LOCAL_COMMERCE_MAX_MIN 안의 시장·거리(도보권 상권)를 넣는다.
     - 이동 시간을 모르는 구간이 생기거나 이동 시간 증가가 REPLACE_MAX_EXTRA_MIN 을 넘으면 뺀다.
     - 바꾼 뒤 같은 Issue 가 사라지거나 낮아져야 하고, 새 high Issue 가 생기면 뺀다.
-    - 순서: rain 이면 실내 장소 먼저 → 이동 시간 증가가 작은 순 → place_id 순 (항상 같은 결과).
+    - 순서: rain 이면 실내 장소 먼저, crowded 이면 도보권 상권 먼저 → 이동 시간 증가가 작은 순 → place_id 순
+      (항상 같은 결과).
     - metrics.changed 는 1 이다 (장소가 바뀐 Stop 1곳).
     """
     stops = _ordered(plan.stops)
@@ -343,12 +345,13 @@ def try_replace(plan: Plan, issue: Issue, ctx: CheckContext) -> list[RepairOptio
         return []
 
     used = {s.place_id for s in stops}
-    found: list[tuple[tuple[bool, int, str], RepairOption]] = []
+    found: list[tuple[tuple[bool, bool, int, str], RepairOption]] = []
     for place in ctx.places.values():
         if place.place_id in used:
             continue
         same_category = place.category == current.category
-        if not (same_category or (issue.type == "rain" and place.indoor)):
+        local = issue.type == "crowded" and _local_commerce(current, place, ctx)
+        if not (same_category or (issue.type == "rain" and place.indoor) or local):
             continue
         after = list(stops)
         after[idx] = target.model_copy(update={"place_id": place.place_id})
@@ -358,9 +361,19 @@ def try_replace(plan: Plan, issue: Issue, ctx: CheckContext) -> list[RepairOptio
         if _improvement(plan, after, issue, ctx) is None:
             continue
         indoor_first = issue.type == "rain" and not place.indoor
-        found.append(((indoor_first, new_total - old_total, place.place_id), _option("replace", plan, after, ctx)))
+        found.append((
+            (indoor_first, not local, new_total - old_total, place.place_id), _option("replace", plan, after, ctx)
+        ))
     found.sort(key=lambda item: item[0])
     return [option for _, option in found]
+
+
+def _local_commerce(current: Place, place: Place, ctx: CheckContext) -> bool:
+    """붐비는 장소(current)에서 LOCAL_COMMERCE_MAX_MIN 안에 있는 시장·거리인지. 이동 시간을 모르면 아니다."""
+    if place.category not in th.LOCAL_COMMERCE_CATEGORIES:
+        return False
+    minutes = ctx.travel(current.place_id, place.place_id)
+    return minutes is not None and minutes <= th.LOCAL_COMMERCE_MAX_MIN
 
 
 # ---------- 4단계: 제외 ----------

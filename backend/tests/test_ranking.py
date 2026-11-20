@@ -110,9 +110,17 @@ def test_dispersal_bonus_for_west_and_non_landmark():
     assert east_lesser.notes.count("dispersal:not_landmark") == 1
 
 
+def test_large_commercial_gets_no_dispersal_bonus():
+    # 대형 상업시설은 대표 명소가 아니어도 분산 보너스가 없다 (동부산이라 권역 보너스도 없음)
+    mall = score_place("shinsegae-centum-city", PROFILE, make_context(), day=SAT)
+    assert mall.breakdown["dispersal"] == 0.0
+    assert "dispersal:not_landmark" not in mall.notes
+
+
 def test_landmarks_are_known_places():
     places = {p["place_id"] for p in json.loads(PLACES_PATH.read_text(encoding="utf-8"))}
     assert w.LANDMARKS <= places
+    assert w.LARGE_COMMERCIAL <= places
 
 
 def test_total_is_0_to_100_and_deterministic():

@@ -198,7 +198,7 @@ def _dispersal(place_id: str, lng: float, notes: list[str]) -> float:
     if lng < w.DISPERSAL_MAX_LNG:
         notes.append("dispersal:west")
         score += w.DISPERSAL_WEST
-    if place_id not in w.LANDMARKS:
+    if place_id not in w.LANDMARKS and place_id not in w.LARGE_COMMERCIAL:
         notes.append("dispersal:not_landmark")
         score += w.DISPERSAL_NOT_LANDMARK
     return score
