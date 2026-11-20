@@ -265,7 +265,7 @@ def test_weather_폴더_파일은_이름_규칙과_get_weather_형식을_따른�
     for f in files:
         assert re.fullmatch(r"[a-z0-9][a-z0-9-]*\.json", f.name), f.name  # 소문자·숫자·하이픈만
         data = json.loads(f.read_text(encoding="utf-8"))
-        assert set(data) == {"date", "hourly"}
+        assert {"date", "hourly"} <= set(data) <= {"date", "hourly", "note"}
         hourly = TypeAdapter(list[HourlyWeather]).validate_python(data["hourly"])
         assert all(h.time.date().isoformat() == data["date"] and h.time.utcoffset() == dt.timedelta(hours=9)
                    for h in hourly)
@@ -278,8 +278,14 @@ def test_rain_afternoon_프리셋은_13_15시만_비이고_Guardian이_읽는다
 
 
 def test_get_weather_샘플은_날짜_이름_파일만_읽는다(mock_mode):
-    # rain-afternoon 은 데모 스위치용이라, 프리셋 없이는 2026-11-28 예보가 없다
-    assert lookup.get_weather(date="2026-11-28") == {"date": "2026-11-28", "hourly": []}
+    # 데모일 기본은 맑음(weather/2026-11-28.json). rain-afternoon 은 데모 스위치로만 쓴다
+    result = lookup.get_weather(date="2026-11-28")
+    assert set(result) == {"date", "hourly"}  # 파일의 note 는 돌려주지 않는다
+    assert [h["time"][11:13] for h in result["hourly"]] == [f"{h:02d}" for h in range(9, 24)]
+    assert all((h["pop"], h["pty"]) == (20, 0) for h in result["hourly"])
+    note = json.loads((lookup.DATA_DIR / "weather" / "2026-11-28.json").read_text(encoding="utf-8"))["note"]
+    assert "데모" in note
+    assert guardian_context.load_weather_preset("2026-11-28")[0].pop == 20  # note 가 있어도 Guardian 이 읽는다
 
 
 # ---------- get_travel_time ----------
@@ -345,19 +351,40 @@ def test_get_events_기간에_날짜가_포함된_행사만_돌려준다(monkeyp
                 "place_ids": place_ids, "contentid": "1", "addr1": "부산", "lat": 35.1, "lng": 129.1}
 
     monkeypatch.setattr(lookup, "DATA_DIR", _events_dir(tmp_path, [
-        event("가", "2026-11-01", "2026-11-27", []),
-        event("나", "2026-11-28", "2026-11-28", ["haeundae-beach"]),
-        event("다", "2026-11-20", "2026-12-31", ["busan-tower"]),
-        event("라", "2026-11-29", "2026-11-30", []),
+        event("상설", "2026-01-01", "2026-12-31", ["gwangalli-beach"]),  # 긴 행사: 개막일만
+        event("빛축제", "2026-11-28", "2027-01-10", ["haeundae-beach"]),  # 긴 행사: 개막일만
+        event("하루", "2026-11-28", "2026-11-28", ["busan-tower"]),
+        event("7일", "2026-11-22", "2026-11-28", []),  # 첫날·마지막 날 포함 7일 → 기간 전체
+        event("8일", "2026-11-21", "2026-11-28", []),  # 8일 → 개막일만
     ]))
+
+    def on(date):
+        return [(e["name"], e["kind"]) for e in lookup.get_events(date)["events"]]  # Guardian 처럼 위치 인자
+
     result = lookup.get_events(date="2026-11-28")
     assert result == {"date": "2026-11-28", "events": [
-        {"name": "나", "start": "2026-11-28T00:00:00+09:00", "end": "2026-11-28T23:59:59+09:00", "place_ids": ["haeundae-beach"]},
-        {"name": "다", "start": "2026-11-20T00:00:00+09:00", "end": "2026-12-31T23:59:59+09:00", "place_ids": ["busan-tower"]},
+        {"name": "빛축제", "start": "2026-11-28T00:00:00+09:00", "end": "2027-01-10T23:59:59+09:00",
+         "place_ids": ["haeundae-beach"], "kind": "opening_day"},
+        {"name": "하루", "start": "2026-11-28T00:00:00+09:00", "end": "2026-11-28T23:59:59+09:00",
+         "place_ids": ["busan-tower"], "kind": "short"},
+        {"name": "7일", "start": "2026-11-22T00:00:00+09:00", "end": "2026-11-28T23:59:59+09:00",
+         "place_ids": [], "kind": "short"},
     ]}
-    TypeAdapter(list[Event]).validate_python(result["events"])
-    assert [e["name"] for e in lookup.get_events("2026-11-27")["events"]] == ["가", "다"]  # 경계일 포함, 위치 인자
+    TypeAdapter(list[Event]).validate_python(result["events"])  # Guardian 의 Event 모델로 읽힌다
+    assert on("2026-11-29") == []  # 빛축제 둘째 날은 행사일이 아니다
+    assert on("2026-11-22") == [("7일", "short")] and on("2026-11-25") == [("7일", "short")]
+    assert on("2026-11-21") == [("8일", "opening_day")]
+    assert on("2026-01-01") == [("상설", "opening_day")] and on("2026-06-15") == []
     assert lookup.get_events(date="2027-01-01") == {"date": "2027-01-01", "events": []}
+
+
+def test_get_events_실제_데이터_데모일에는_빛축제_개막만_나온다():
+    events = lookup.get_events(date="2026-11-28")["events"]
+    assert [(e["name"], e["kind"], e["start"][:10]) for e in events] == [("해운대 빛축제", "opening_day", "2026-11-28")]
+    assert "haeundae-beach" in events[0]["place_ids"]
+    assert lookup.get_events(date="2026-11-29")["events"] == []
+    all_events = json.loads((lookup.DATA_DIR / "events.json").read_text(encoding="utf-8"))["events"]
+    assert len(all_events) == 14 and "kind" not in all_events[0]  # 파일에는 모든 행사가 그대로 있다
 
 
 def test_get_events_잘못된_날짜와_파일이_없을_때는_오류_dict(monkeypatch, tmp_path):

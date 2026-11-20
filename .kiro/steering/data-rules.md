@@ -38,10 +38,12 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - `uv run --env-file .env python -m scripts.fetch_events`가 2026-11 기준으로 한 번 받아 `backend/app/data/events.json`에 저장합니다. `--offline`은 호출 없이 저장된 응답으로 다시 만듭니다.
 - `start`·`end`는 행사 기간의 첫날 00:00, 마지막 날 23:59입니다. API는 날짜만 주므로 하루 중 진행 시간은 모릅니다.
 - `place_ids`는 행사 좌표에서 직선거리 1km 이내인 `places.json` 장소입니다.
-- 도구: `get_events(date)`. 목록에 없는 행사는 있다고 말하지 마십시오.
+- `events.json`에는 받은 행사를 모두 둡니다(행사 레이어 표시용).
+- 도구: `get_events(date)`. 행사일만 돌려줍니다. 기간이 7일 이하(첫날·마지막 날 포함)인 행사는 기간 전체(`kind: "short"`), 7일보다 긴 행사는 개막일에만(`kind: "opening_day"`) 나옵니다. 상설 행사가 매일 행사 가중을 받지 않게 하기 위한 규칙입니다.
+- 목록에 없는 행사는 있다고 말하지 마십시오.
 
 ## 날씨 샘플 (`backend/app/data/weather/`)
-- 파일 형식은 `get_weather` 반환값과 같습니다(`{"date", "hourly"}`). 파일 이름은 소문자·숫자·하이픈만 씁니다.
+- 파일 형식은 `get_weather` 반환값과 같습니다(`{"date", "hourly"}`, 설명용 `note`는 선택). 파일 이름은 소문자·숫자·하이픈만 씁니다.
 - `{YYYY-MM-DD}.json`: `USE_MOCK=1`일 때 `get_weather`가 그 날짜의 예보로 씁니다. 파일이 없는 날짜는 예보 없음(`hourly: []`)입니다.
 - 그 밖의 이름(`rain-afternoon.json` 등): 데모 스위치 `demo.weather_preset`으로만 씁니다.
 

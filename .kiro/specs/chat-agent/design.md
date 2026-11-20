@@ -96,7 +96,7 @@
 | `get_crowd(place_id, date)` | `{"place_id", "date", "ratio": 0~100 또는 null, "source": "concentration" \| "weekday_rule" \| "event"}`. 집중률에 없는 장소는 `ratio: null`, `source: "weekday_rule"` | `crowd[place_id] = ratio` (null이면 넣지 않음) |
 | `get_hours(place_id)` | `{"place_id", "opens": "HH:MM" 또는 null, "closes": "HH:MM" 또는 null, "closed_weekdays": [0~6], "closed_dates": ["YYYY-MM-DD"]}` | `hours[place_id] = OpeningHours` |
 | `get_travel_time(from_place_id, to_place_id)` | `{"from_place_id", "to_place_id", "minutes": int, "mode": "subway" \| "bus" \| "walk" \| "taxi"}` | `travel_min[(from, to)] = minutes` |
-| `get_events(date)` | `{"date", "events": [{"name", "start", "end", "place_ids": [...]}]}` | `events: list[Event]` |
+| `get_events(date)` | `{"date", "events": [{"name", "start", "end", "place_ids": [...], "kind": "short" \| "opening_day"}]}`. 7일 이하 행사는 기간 전체, 더 긴 행사는 개막일에만 나옴 | `events: list[Event]` (`kind`는 쓰지 않음) |
 | `search_places(...)` | `Place` dict 목록 (지금 docstring 그대로) | `places` |
 
 - 실패하면 모든 도구가 `{"error": {"code": str, "message": str}}`를 돌려줍니다(API 오류 형식과 같음). 예외를 밖으로 던지지 않습니다.

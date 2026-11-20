@@ -143,6 +143,23 @@ def _travel_table(path: Path) -> tuple[frozenset[str], dict[frozenset[str], dict
     return frozenset().union(*table), table
 
 
+# ---------- 행사 ----------
+
+SHORT_EVENT_MAX_DAYS = 7  # 첫날과 마지막 날을 포함한 일수. 이보다 긴 행사는 개막일만 행사일로 본다
+
+
+def _event_kind_on(event: dict, day: dt.date) -> str | None:
+    """그 날짜가 이 행사의 행사일이면 "short"(7일 이하 행사의 기간 중) 또는 "opening_day"(긴 행사의 개막일), 아니면 None.
+
+    1년 내내 하는 상설 행사가 매일 혼잡 가중을 받지 않게 한다. events.json 에는 모든 행사가 그대로 있다.
+    """
+    start = dt.date.fromisoformat(event["start"][:10])  # 파일의 start·end 는 +09:00 ISO 시각
+    end = dt.date.fromisoformat(event["end"][:10])
+    if (end - start).days + 1 <= SHORT_EVENT_MAX_DAYS:
+        return "short" if start <= day <= end else None
+    return "opening_day" if day == start else None
+
+
 # ---------- 날씨 ----------
 
 def _sample_weather(day: dt.date) -> list[dict]:
@@ -353,20 +370,24 @@ def get_events(date: str) -> dict:
     """해당 날짜에 부산에서 열리는 축제·행사를 가져온다. 그날 갈 만한 행사를 찾거나, 행사 때문에 붐빌 장소를 확인할 때 쓴다.
     한국관광공사 행사정보(공공데이터)를 미리 받아 둔 목록이다. 목록에 없는 행사는 있다고 말하지 않는다.
     행사 이름은 한국어 원문이다.
+    붐비는 날만 돌려준다: 기간이 7일 이하인 행사는 기간 내내, 7일보다 긴 행사는 개막일에만 나온다.
+    그래서 결과에 없다고 해서 긴 행사가 그날 열리지 않는다는 뜻은 아니다.
 
     Args:
         date: 날짜 (YYYY-MM-DD)
 
     Returns:
         {"date": "YYYY-MM-DD", "events": [{"name": 행사 이름, "start": ISO 시각, "end": ISO 시각,
-        "place_ids": [행사 장소 1km 이내의 장소 ID]}]}. start·end 는 행사 기간의 첫날 00:00 과 마지막 날 23:59(+09:00)이다.
-        하루 중 진행 시간은 알 수 없다. 그날 행사가 없으면 events 가 빈 목록.
+        "place_ids": [행사 장소 1km 이내의 장소 ID], "kind": "short" | "opening_day"}]}.
+        kind 가 "short" 면 7일 이하 행사의 기간 중 하루, "opening_day" 면 7일보다 긴 행사의 개막일이다.
+        start·end 는 행사 전체 기간의 첫날 00:00 과 마지막 날 23:59(+09:00)이다. 하루 중 진행 시간은 알 수 없다.
+        해당하는 행사가 없으면 events 가 빈 목록.
         실패하면 {"error": {"code", "message"}} (invalid_date, data_unavailable 등).
     """
-    day = _parse_date(date).isoformat()
-    events = [
-        {key: event[key] for key in ("name", "start", "end", "place_ids")}
-        for event in _load_json("events.json")["events"]
-        if event["start"][:10] <= day <= event["end"][:10]  # 파일의 start·end 는 +09:00 ISO 시각
-    ]
-    return {"date": day, "events": events}
+    day = _parse_date(date)
+    events = []
+    for event in _load_json("events.json")["events"]:
+        kind = _event_kind_on(event, day)
+        if kind:
+            events.append({**{key: event[key] for key in ("name", "start", "end", "place_ids")}, "kind": kind})
+    return {"date": day.isoformat(), "events": events}
