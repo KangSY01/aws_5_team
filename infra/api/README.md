@@ -42,6 +42,7 @@ $env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Env
 ```
 - `-AllowedOrigins` 를 주지 않으면 `https://<busan-guide-base 의 CloudFrontDomain>` 만 허용한다. `-AllowLocalhost` 는 Vite 개발 서버를 더한다.
 - `-DataGoKrKey` 는 NoEcho 라 다시 배포할 때 넘기지 않으면 빈 값으로 바뀐다 (기본값은 환경 변수 `DATA_GO_KR_KEY_DECODING`).
+- `-DemoCache true` 는 데모 장면 1 대본 문장(일본어)에만 대본 일정을 돌려준다 (환경 변수 `DEMO_CACHE_ENABLED`, `app/chat/demo_cache.py`). 기본 `false` 라 지정하지 않고 다시 배포하면 꺼진다. 다른 요청은 그대로 Bedrock 을 쓴다.
 - `-ReservedConcurrency 5` 처럼 주면 동시 실행 수를 묶는다. 계정의 예약되지 않은 동시성이 10 이상 남아야 해서 기본은 0(제한 없음)이다.
 - 삭제: `aws cloudformation delete-stack --stack-name busan-guide-api --region ap-northeast-2` (테이블은 지워지지 않는다)
 

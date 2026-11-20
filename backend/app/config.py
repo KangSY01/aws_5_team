@@ -11,6 +11,8 @@ def _flag(name: str) -> bool:
 USE_MOCK = _flag("USE_MOCK")  # 외부 API 대신 app/data/ 샘플·캐시 사용
 FAKE_LLM = _flag("FAKE_LLM")  # Bedrock 호출 없이 고정 응답
 DEMO_NOW = os.environ.get("DEMO_NOW") or None  # ISO 시각 문자열. 있으면 현재 시각 대신 사용
+# 데모 장면 1 일정 캐시 (app/chat/demo_cache.py). 기본 꺼짐. 1·true·yes·on 이면 켠다
+DEMO_CACHE_ENABLED = os.environ.get("DEMO_CACHE_ENABLED", "").strip().lower() in ("1", "true", "yes", "on")
 
 # Bedrock
 MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-5-5")

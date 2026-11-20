@@ -27,12 +27,14 @@ from strands.tools.executors import SequentialToolExecutor
 
 from app import config, storage
 from app.chat import answer as chat_answer
+from app.chat import demo_cache
 from app.chat.messages import LIST_SEPARATORS, message
 from app.chat.plan_rules import load_places, place_name, validate_plan
 from app.chat.tools import (
     LOOKUP_TOOLS,
     MAX_TOOL_CALLS,
     PlanCreator,
+    ToolOutput,
     ToolRecorder,
     grounded_place_ids,
 )
@@ -41,6 +43,7 @@ from app.models.api import ChatRequest, ChatResponse
 from app.models.plan import Language, Plan, StopChange
 from app.prompts import Mode, build_system_prompt
 from app.storage import SessionNotFoundError, SessionState
+from app.tools import lookup
 from app.tools.plan_edit import PlanEditor
 
 logger = logging.getLogger(__name__)
@@ -327,6 +330,58 @@ def _finish(chat: _Chat, model_text: str) -> ChatResponse:
     return response
 
 
+def _demo_response(request: ChatRequest) -> ChatResponse:
+    """데모 장면 1 고정 일정 (app/chat/demo_cache.py). 모델을 부르지 않고, 저장은 다른 대화와 같은 경로를 쓴다.
+
+    요청마다 새 plan_id 로 새 일정을 만들어 세션에 연결한다. 이전 시연에서 바꾼 일정은 다음 시연에 남지 않는다.
+    """
+    language = request.profile.language
+    session = _resolve_session(request)
+    plan = demo_cache.build_plan(storage.new_plan_id(), request.profile)
+    problems = validate_plan(plan)
+    if problems:  # 데모 표가 잘못된 경우. 저장하지 않는다
+        logger.error("데모 캐시 일정이 검증을 통과하지 못했습니다: %s", ", ".join(problems))
+        raise ChatError("invalid_model_output", "데모 일정 검증 실패")
+
+    # 빛축제 이름과 출처는 행사 도구 결과에서 확인한다 (행사가 없으면 이름을 붙이지 않는다)
+    events = lookup.get_events(date=plan.date.isoformat())
+    festival_place = next(s.place_id for s in plan.stops if s.stop_id == demo_cache.FESTIVAL_STOP_ID)
+    festival = any(
+        e.get("name") == demo_cache.FESTIVAL_NAME and festival_place in (e.get("place_ids") or [])
+        for e in (events.get("events") or [] if isinstance(events, dict) else [])
+    )
+    places = load_places()
+    names = []
+    for stop in plan.stops:
+        name = place_name(places[stop.place_id], language)
+        if festival and stop.stop_id == demo_cache.FESTIVAL_STOP_ID:
+            name += f" ({demo_cache.FESTIVAL_NAME})" if language == "en" else f"（{demo_cache.FESTIVAL_NAME}）"
+        names.append(name)
+    text = message("plan_created", language, count=len(plan.stops), date=plan.date.isoformat(),
+                   places=LIST_SEPARATORS[language].join(names))
+    outputs = [ToolOutput(name="get_events", args={"date": plan.date.isoformat()}, data=events)] if festival else []
+    changes = [StopChange(stop_id=s.stop_id, before=None, after=s) for s in plan.stops]
+
+    try:
+        response = ChatResponse.model_validate(
+            {
+                "session_id": session.session_id,
+                "plan_id": plan.plan_id,
+                "answer": text,
+                "language": language,
+                "sources": [s.model_dump() for s in chat_answer.build_sources(outputs, set(), language)],
+                "plan_changes": [c.model_dump() for c in changes],
+            }
+        )
+    except ValueError as error:
+        logger.error("데모 응답이 ChatResponse 검증을 통과하지 못했습니다.")
+        raise ChatError("invalid_model_output", "응답 검증 실패") from error
+    storage.create_plan(plan)  # 응답이 완성된 뒤에만 저장한다 (_persist 와 같은 순서)
+    storage.link_plan(session.session_id, plan.plan_id)
+    logger.info("데모 캐시 일정을 돌려줍니다 (장면 1): plan_id=%s", plan.plan_id)
+    return response
+
+
 def _log_summary(chat: _Chat, stop_reason: str) -> None:
     """Agent 실행이 끝날 때 도구 이름별 호출 횟수를 한 번 남긴다 (요구사항 10.3). 메시지·프로필 값은 남기지 않는다."""
     rec = chat.recorder
@@ -342,6 +397,7 @@ def run_chat(request: ChatRequest) -> ChatResponse:
     입력: ChatRequest (session_id, plan_id, message, profile, demo)
     출력: ChatResponse (answer, language, sources, plan_changes)
 
+    DEMO_CACHE_ENABLED=1 이고 메시지가 데모 장면 1 대본 문장과 같으면 대본 일정을 새 plan_id 로 저장해 돌려준다 (_demo_response).
     FAKE_LLM=1 이면 Bedrock 을 호출하지 않고 backend/app/data/chat_response.json 의 고정 응답을 돌려준다.
     고정 응답의 answer·language 는 샘플(ja) 그대로다.
 
@@ -355,6 +411,8 @@ def run_chat(request: ChatRequest) -> ChatResponse:
         ChatError: 모델 오류, 시간 초과, 근거 없는 장소가 든 답변
         StorageError: 저장소 오류
     """
+    if demo_cache.matches(request.message):  # DEMO_CACHE_ENABLED=1 이고 장면 1 대본 문장일 때만. 모델을 부르지 않는다
+        return _demo_response(request)
     if config.FAKE_LLM:
         return _fake_response(request)
     chat = _prepare(request)

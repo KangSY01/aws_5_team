@@ -44,6 +44,11 @@ Parameters:
     Type: String
     Default: ""
     Description: 비어 있지 않으면 현재 시각 대신 쓰는 ISO 시각 (시간 이동 데모). 요청의 demo.now 가 있으면 그쪽이 먼저다
+  DemoCacheEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: true 면 데모 장면 1 대본 문장(일본어)에만 대본 일정을 돌려준다 (app/chat/demo_cache.py). 다른 요청은 그대로 Bedrock 을 쓴다. 시연 때만 켠다
   AllowedOrigins:
     Type: CommaDelimitedList
     Description: CORS 로 허용할 프론트엔드 오리진 목록 (예 https://d123.cloudfront.net,http://localhost:5173). 끝에 / 를 붙이지 않는다
@@ -171,6 +176,7 @@ Resources:
           UPLOADS_BUCKET: !Ref UploadsBucket
           DATA_GO_KR_KEY_DECODING: !Ref DataGoKrKey
           DEMO_NOW: !Ref DemoNow
+          DEMO_CACHE_ENABLED: !Ref DemoCacheEnabled
       FunctionUrlConfig:
         # 계약(docs/api-contract.md)에 인증이 없다. 브라우저가 직접 부르므로 NONE 이고, CORS 는 프론트 오리진만 허용한다
         AuthType: NONE
