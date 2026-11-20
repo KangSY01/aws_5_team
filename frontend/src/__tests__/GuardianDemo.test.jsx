@@ -42,21 +42,30 @@ it("runs the demo script, refreshes issue badges, locks a stop, applies a repair
     }
     if (url.endsWith("/plan/check")) {
       checkBodies.push(JSON.parse(request.body));
-      const [beach, festival] = plan.stops;
+      const beach = plan.stops.find((stop) => stop.stop_id === "beach");
+      const festival = plan.stops.find((stop) => stop.stop_id === "festival");
       const issues = [
         { issue_id: "festival", stop_id: "festival", type: "crowded", severity: festival.locked ? "low" : "high", detail: "Festival crowds" },
         { issue_id: "weather", stop_id: "beach", type: "rain", severity: "medium", detail: "Afternoon rain" },
       ];
       const repairs = {};
-      if (beach.place_id === "haeundae") {
+      if (beach?.place_id === "haeundae") {
         issues.unshift({ issue_id: "beach", stop_id: "beach", type: "crowded", severity: "high", detail: "Beach crowds" });
         repairs.beach = [{ action: "replace", changes: [{ stop_id: "beach", before: beach, after: { ...beach, place_id: "gwangalli" } }] }];
       }
       return Response.json({ plan_id: plan.plan_id, issues, repairs, places });
     }
     if (url.endsWith("/delay")) {
-      delayBodies.push(JSON.parse(request.body));
-      return Response.json({ plan_id: plan.plan_id, repairs: [], places: [] });
+      const body = JSON.parse(request.body);
+      delayBodies.push(body);
+      const beach = plan.stops.find((stop) => stop.stop_id === "beach");
+      const repairs = body.delay_min === 42 && beach ? [
+        { action: "move_time", changes: [{ stop_id: beach.stop_id, before: beach, after: {
+          ...beach, start: "2026-11-28T14:42:00+09:00", end: "2026-11-28T15:42:00+09:00",
+        } }] },
+        { action: "remove", changes: [{ stop_id: beach.stop_id, before: beach, after: null }] },
+      ] : [];
+      return Response.json({ plan_id: plan.plan_id, repairs, places: [] });
     }
     if (request.method === "PUT") {
       plan = JSON.parse(request.body);
@@ -98,10 +107,48 @@ it("runs the demo script, refreshes issue badges, locks a stop, applies a repair
   click(/장면 5 오후 비/);
   await waitFor(() => expect(checkBodies.at(-1).demo).toEqual({ now: "2026-11-28T13:00:00+09:00", weather_preset: "rain-afternoon" }));
   click(/장면 6 늦었어요/);
+  expect(screen.queryByRole("button", { name: "I’m running late" })).not.toBeInTheDocument();
+  click("Start trip");
+  expect(screen.queryByRole("button", { name: "I’m running late" })).not.toBeInTheDocument();
+  click("Itinerary");
+  expect(screen.getByRole("button", { name: "I’m running late" }).closest(".chat-heading")).toBeInTheDocument();
   click("I’m running late");
+  expect(screen.getByRole("button", { name: "30 min", pressed: true })).toBeVisible();
+  click("20 min");
   click("View delay alternatives");
   expect(await screen.findByText("No alternatives available.")).toBeVisible();
-  expect(delayBodies).toEqual([{ plan_id: plan.plan_id, delay_min: 30, demo: { now: "2026-11-28T14:00:00+09:00" } }]);
+  expect(delayBodies).toEqual([{ plan_id: plan.plan_id, delay_min: 20, demo: { now: "2026-11-28T14:00:00+09:00" } }]);
+  click("Close alternatives");
+  click("I’m running late");
+  click("Enter minutes");
+  const input = screen.getByRole("textbox", { name: "Delay in minutes" });
+  expect(input).toHaveAttribute("inputmode", "numeric");
+  fireEvent.change(input, { target: { value: "241" } });
+  click("View delay alternatives");
+  expect(screen.getByRole("alert")).toHaveTextContent("Enter a whole number from 1 to 240 minutes.");
+  expect(delayBodies).toHaveLength(1);
+  fireEvent.change(input, { target: { value: "42" } });
+  click("View delay alternatives");
+  const delayDialog = within(await screen.findByRole("dialog", { name: "Delay alternatives" }));
+  expect(delayDialog.getAllByText("Haeundae", { exact: true })).toHaveLength(1);
+  expect(delayDialog.getByText("14:00–15:00")).toBeVisible();
+  expect(delayDialog.getByText("14:42–15:42")).toBeVisible();
+  expect(delayDialog.getByRole("heading", { name: "Remove from itinerary" })).toBeVisible();
+  expect(delayBodies.at(-1).delay_min).toBe(42);
+  fireEvent.click(delayDialog.getByRole("button", { name: "Apply change" }));
+  await screen.findByRole("button", { name: "Undo" });
+  expect(saves.at(-1).stops[0].start).toContain("T14:42:");
+  expect(saves.at(-1).stops[1].locked).toBe(true);
+  click("Undo");
+  await waitFor(() => expect(saves.at(-1).stops[0].start).toContain("T14:00:"));
+  click("I’m running late");
+  click("Enter minutes");
+  fireEvent.change(screen.getByRole("textbox", { name: "Delay in minutes" }), { target: { value: "42" } });
+  click("View delay alternatives");
+  const remove = within(await screen.findByRole("dialog", { name: "Delay alternatives" }));
+  fireEvent.click(remove.getByRole("button", { name: "Remove" }));
+  await screen.findByRole("button", { name: "Undo" });
+  expect(saves.at(-1).stops.map((stop) => stop.stop_id)).toEqual(["festival"]);
 });
 
 it("opens the offline demo course at a demo time and restores the normal course on exit", async () => {

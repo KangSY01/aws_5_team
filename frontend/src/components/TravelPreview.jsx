@@ -20,6 +20,7 @@ import PlanList from "./PlanList.jsx";
 import ChatPlaceCards from "./ChatPlaceCards.jsx";
 import GuardianAlternatives from "./GuardianAlternatives.jsx";
 import TravelActionDialog from "./TravelActionDialog.jsx";
+import DelayForm from "./DelayForm.jsx";
 import { LocalCardPicker } from "../features/local-card";
 import { copyFor as localCardCopyFor } from "../features/local-card/phrases.js";
 import { SCENES, useDemoSwitch } from "../features/demo-panel";
@@ -212,7 +213,6 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const [guardianActionError, setGuardianActionError] = useState(false);
   const [alternative, setAlternative] = useState(null);
   const [undoRepair, setUndoRepair] = useState(null);
-  const [delayMinutes, setDelayMinutes] = useState("30");
   const [showDelay, setShowDelay] = useState(false);
   const [showLocalCard, setShowLocalCard] = useState(false);
   const demo = useDemoSwitch();
@@ -795,22 +795,16 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
     });
   }
 
-  function requestDelay(event) {
-    event.preventDefault();
-    const minutes = Number(delayMinutes);
-    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 240) return;
+  function requestDelay(minutes) {
     void guardianAction(async () => {
       const result = await delayTravelPlan(plan.plan_id, minutes);
       setShowDelay(false);
-      setAlternative({ plan, demo, repairs: result.repairs, places: result.places });
+      setAlternative({ plan, demo, repairs: result.repairs, places: result.places, kind: "delay" });
     });
   }
 
   function openDelay() {
     setGuardianActionError(false);
-    setShowPreferences(false);
-    setOpen(true);
-    setPanel("itinerary");
     setShowDelay(true);
   }
 
@@ -920,17 +914,12 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
               <span className="travel-brand">Busan<span>Now</span></span>
               {tripStarted && <span className="trip-status">{copy.traveling}</span>}
             </div>
-            {tab === "home" && !regionDraft && (currentPlace || mapDetail || tripStarted && liveCourse) && (
+            {tab === "home" && !regionDraft && (currentPlace || mapDetail) && (
               <div className="travel-map-cards">
                 {currentPlace && (
                   <div className="trip-next">
                     <span>{copy.currentPlace}</span>
                     <strong>{currentPlace}</strong>
-                  </div>
-                )}
-                {tripStarted && liveCourse && (
-                  <div className="travel-tool-actions">
-                    <button type="button" aria-haspopup="dialog" disabled={Boolean(pending)} onClick={openDelay}>{copy.guardian.late}</button>
                   </div>
                 )}
                 {mapDetail && (
@@ -983,6 +972,16 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
             aria-expanded={sheetExpanded} onClick={() => setSheetExpanded(!sheetExpanded)}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d={sheetExpanded ? "m6 9 6 6 6-6" : "m6 15 6-6 6 6"} /></svg>
           </button>}
+          {!showTranslation && !showChat && !showPreferences && liveCourse && tripStarted && stops.length > 0 && (
+            <button type="button" className="itinerary-delay" aria-haspopup="dialog"
+              disabled={Boolean(pending)} onClick={openDelay}>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" />
+              </svg>
+              <span>{copy.guardian.late}</span>
+            </button>
+          )}
           <button type="button" className="chat-collapse" aria-label={showTranslation ? translationCopy.close : collapseLabel} onClick={close}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
           </button>
@@ -1077,9 +1076,6 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
                   {undoRepair?.applied === plan && <button type="button" disabled={Boolean(pending)} onClick={undoGuardianRepair}>{copy.guardian.undo}</button>}
                   {(guardian?.error || (guardianActionError && !alternative && !showDelay)) && <p role="alert">{plannerCopy.requestFailed}</p>}
                   {guardian?.issues?.length === 0 && <p role="status">{copy.guardian.clear}</p>}
-                  {(tripStarted || demo.enabled && demo.now === SCENES[2].now) && (
-                    <button type="button" aria-haspopup="dialog" disabled={Boolean(pending)} onClick={openDelay}>{copy.guardian.late}</button>
-                  )}
                 </section>
               )}
               {alternative && alternative.plan === plan && alternative.demo === demo && (
@@ -1121,15 +1117,10 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
         )}
       </aside>
       {showDelay && (
-        <TravelActionDialog title={copy.guardian.late} closeLabel={copy.guardian.close} busy={Boolean(pending)} onClose={() => setShowDelay(false)}>
-          <form className="guardian-delay" onSubmit={requestDelay}>
-            <label>{copy.guardian.delayMinutes}
-              <input type="number" required min="1" max="240" value={delayMinutes} disabled={Boolean(pending)}
-                onChange={(event) => setDelayMinutes(event.target.value)} />
-            </label>
-            <button type="submit" disabled={Boolean(pending)}>{pending === "guardian" ? copy.loading : copy.guardian.delay}</button>
-            {guardianActionError && <p role="alert">{plannerCopy.requestFailed}</p>}
-          </form>
+        <TravelActionDialog title={copy.guardian.late} closeLabel={copy.guardian.delayClose} className="travel-delay-dialog"
+          busy={Boolean(pending)} onClose={() => setShowDelay(false)}>
+          <DelayForm copy={copy.guardian} language={language} busy={Boolean(pending)} loadingLabel={copy.loading}
+            requestError={guardianActionError ? plannerCopy.requestFailed : undefined} onRequest={requestDelay} />
         </TravelActionDialog>
       )}
       {showLocalCard && (

@@ -114,6 +114,20 @@ const stopLockCopy = {
 const runningLate = {
   ko: "늦었어요", en: "I’m running late", ja: "遅れそうです", "zh-Hans": "我要迟到了", "zh-Hant": "我要遲到了",
 };
+const delayFormCopy = {
+  ko: ["얼마나 늦어지나요?", "직접 입력", "분", "1~240 사이의 분을 정수로 입력해 주세요.", "닫기"],
+  en: ["How late will you be?", "Enter minutes", "min", "Enter a whole number from 1 to 240 minutes.", "Close"],
+  ja: ["何分遅れそうですか？", "分数を入力", "分", "1〜240の整数を入力してください。", "閉じる"],
+  "zh-Hans": ["预计会晚多久？", "手动输入", "分钟", "请输入 1 到 240 之间的整数分钟数。", "关闭"],
+  "zh-Hant": ["預計會晚多久？", "手動輸入", "分鐘", "請輸入 1 到 240 之間的整數分鐘數。", "關閉"],
+};
+const delayAlternativeCopy = {
+  ko: ["지연 대안", "시간 변경", "일정 제외", "변경 적용", "제외"],
+  en: ["Delay alternatives", "Time change", "Remove from itinerary", "Apply change", "Remove"],
+  ja: ["遅延時の代替案", "時間変更", "予定から除外", "変更を適用", "除外"],
+  "zh-Hans": ["延迟备选方案", "调整时间", "从行程移除", "应用更改", "移除"],
+  "zh-Hant": ["延遲替代方案", "調整時間", "從行程移除", "套用變更", "移除"],
+};
 
 export function getTravelCopy(language) {
   const [intro, prompt, example, submit, title, edit, itinerary, map, schematic, locked, languageLabel, night, loading, empty, network, timeout, http, invalidResponse, retry] = copy[language];
@@ -125,10 +139,14 @@ export function getTravelCopy(language) {
   const [check, clear, apply, move_time, reorder, replace, remove] = guardianLabels[language];
   const [options, closeOptions, noOptions, undo, lock, unlock, crowdingWarning, warning, delayMinutes, delay] = guardianActions[language];
   const [lockHint, lockStop, unlockStop] = stopLockCopy[language];
+  const [delayQuestion, delayCustom, delayUnit, delayInvalid, delayClose] = delayFormCopy[language];
+  const [delayTitle, delayTimeChange, delayRemove, delayApplyTime, delayApplyRemove] = delayAlternativeCopy[language];
   const [find, pending, denied, unavailable] = locationLabels[language];
   return {
     location: { find, pending, denied, unavailable },
     guardian: { check, clear, apply, options, close: closeOptions, noOptions, undo, lock, unlock, crowdingWarning, warning, delayMinutes, delay, late: runningLate[language],
+      delayQuestion, delayCustom, delayUnit, delayInvalid, delayClose,
+      delayTitle, delayTimeChange, delayRemove, delayApplyTime, delayApplyRemove,
       actions: { move_time, reorder, replace, remove } },
     stopLock: { hint: lockHint, label: (place, locked) => (locked ? unlockStop : lockStop).replace("{place}", () => place) },
     emergency: emergencyCopy[language],
