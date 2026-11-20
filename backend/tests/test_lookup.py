@@ -405,16 +405,19 @@ def _events_dir(tmp_path, events):
 
 
 def test_get_events_기간에_날짜가_포함된_행사만_돌려준다(monkeypatch, tmp_path):
-    def event(name, start, end, place_ids):
-        return {"name": name, "start": f"{start}T00:00:00+09:00", "end": f"{end}T23:59:59+09:00",
-                "place_ids": place_ids, "contentid": "1", "addr1": "부산", "lat": 35.1, "lng": 129.1}
+    def event(name, start, end, place_ids, playtime=None):
+        opens, closes = playtime or ("00:00:00", "23:59:59")
+        return {"name": name, "start": f"{start}T{opens}+09:00", "end": f"{end}T{closes}+09:00",
+                "place_ids": place_ids, "contentid": "1", "addr1": "부산", "lat": 35.1, "lng": 129.1,
+                **({"playtime_raw": "18:00~23:00"} if playtime else {})}
 
     monkeypatch.setattr(lookup, "DATA_DIR", _events_dir(tmp_path, [
         event("상설", "2026-01-01", "2026-12-31", ["gwangalli-beach"]),  # 긴 행사: 개막일만
-        event("빛축제", "2026-11-28", "2027-01-10", ["haeundae-beach"]),  # 긴 행사: 개막일만
+        event("빛축제", "2026-11-28", "2027-01-10", ["haeundae-beach"], ("18:00:00", "23:00:00")),  # 긴 행사 + 행사 시간
         event("하루", "2026-11-28", "2026-11-28", ["busan-tower"]),
         event("7일", "2026-11-22", "2026-11-28", []),  # 첫날·마지막 날 포함 7일 → 기간 전체
         event("8일", "2026-11-21", "2026-11-28", []),  # 8일 → 개막일만
+        event("야간 7일", "2026-12-01", "2026-12-07", [], ("18:00:00", "23:00:00")),  # 짧은 행사 + 행사 시간
     ]))
 
     def on(date):
@@ -422,14 +425,25 @@ def test_get_events_기간에_날짜가_포함된_행사만_돌려준다(monkeyp
 
     result = lookup.get_events(date="2026-11-28")
     assert result == {"date": "2026-11-28", "events": [
-        {"name": "빛축제", "start": "2026-11-28T00:00:00+09:00", "end": "2027-01-10T23:59:59+09:00",
+        # 행사 시간을 아는 행사: start·end 는 요청한 날짜의 그 시간대, 원래 기간은 period_start·period_end
+        {"name": "빛축제", "start": "2026-11-28T18:00:00+09:00", "end": "2026-11-28T23:00:00+09:00",
+         "period_start": "2026-11-28T18:00:00+09:00", "period_end": "2027-01-10T23:00:00+09:00",
          "place_ids": ["haeundae-beach"], "kind": "opening_day"},
+        # 행사 시간을 모르는 행사: 그날 00:00~23:59
         {"name": "하루", "start": "2026-11-28T00:00:00+09:00", "end": "2026-11-28T23:59:59+09:00",
+         "period_start": "2026-11-28T00:00:00+09:00", "period_end": "2026-11-28T23:59:59+09:00",
          "place_ids": ["busan-tower"], "kind": "short"},
-        {"name": "7일", "start": "2026-11-22T00:00:00+09:00", "end": "2026-11-28T23:59:59+09:00",
+        {"name": "7일", "start": "2026-11-28T00:00:00+09:00", "end": "2026-11-28T23:59:59+09:00",
+         "period_start": "2026-11-22T00:00:00+09:00", "period_end": "2026-11-28T23:59:59+09:00",
          "place_ids": [], "kind": "short"},
     ]}
-    TypeAdapter(list[Event]).validate_python(result["events"])  # Guardian 의 Event 모델로 읽힌다
+    events = TypeAdapter(list[Event]).validate_python(result["events"])  # Guardian 의 Event 모델로 읽힌다 (period_* 는 무시)
+    assert all(e.start.date() == e.end.date() == dt.date(2026, 11, 28) and e.start < e.end for e in events)
+    # 기간 중간 날짜를 물으면 그 날짜의 시간대가 나온다. kind 는 원래 기간(7일)으로 정한다
+    middle = lookup.get_events(date="2026-12-03")["events"]
+    assert [(e["name"], e["kind"], e["start"], e["end"], e["period_start"], e["period_end"]) for e in middle] == [
+        ("야간 7일", "short", "2026-12-03T18:00:00+09:00", "2026-12-03T23:00:00+09:00",
+         "2026-12-01T18:00:00+09:00", "2026-12-07T23:00:00+09:00")]
     assert on("2026-11-29") == []  # 빛축제 둘째 날은 행사일이 아니다
     assert on("2026-11-22") == [("7일", "short")] and on("2026-11-25") == [("7일", "short")]
     assert on("2026-11-21") == [("8일", "opening_day")]
@@ -444,6 +458,17 @@ def test_get_events_실제_데이터_데모일에는_빛축제_개막만_나온�
     assert lookup.get_events(date="2026-11-29")["events"] == []
     all_events = json.loads((lookup.DATA_DIR / "events.json").read_text(encoding="utf-8"))["events"]
     assert len(all_events) == 14 and "kind" not in all_events[0]  # 파일에는 모든 행사가 그대로 있다
+    # 빛축제는 행사 시간(playtime)을 확인했다: 개막일 18:00~23:00. 원래 기간(1/10 까지)은 period_* 로 나온다
+    assert (events[0]["start"], events[0]["end"]) == ("2026-11-28T18:00:00+09:00", "2026-11-28T23:00:00+09:00")
+    assert (events[0]["period_start"], events[0]["period_end"]) == ("2026-11-28T18:00:00+09:00", "2027-01-10T23:00:00+09:00")
+    # 파일은 기간 + playtime_raw 그대로다
+    festival = next(e for e in all_events if e["name"] == "해운대 빛축제")
+    assert (festival["start"], festival["end"]) == (events[0]["period_start"], events[0]["period_end"])
+    with_playtime = [e for e in all_events if "playtime_raw" in e]
+    assert [(e["name"], e["playtime_raw"]) for e in with_playtime] == [("해운대 빛축제", "18:00~23:00")]
+    for e in all_events:  # 나머지 행사는 날짜만 안다
+        if "playtime_raw" not in e:
+            assert e["start"].endswith("T00:00:00+09:00") and e["end"].endswith("T23:59:59+09:00")
 
 
 def test_get_events_잘못된_날짜와_파일이_없을_때는_오류_dict(monkeypatch, tmp_path):
@@ -475,6 +500,18 @@ def test_fetch_events_build_events():
     assert events[1] == {"name": "빛축제", "start": "2026-11-28T00:00:00+09:00", "end": "2027-01-17T23:59:59+09:00",
                          "place_ids": ["near"], "contentid": "1", "addr1": "부산광역시 해운대구", "lat": 35.165, "lng": 129.1604}
     assert json.loads(fetch_events.dump_events({"api": "x"}, events)) == {"source": {"api": "x"}, "events": events}
+
+    # 행사 시간 원문이 단순한 한 구간이면 첫날 시작 시각·마지막 날 종료 시각으로 쓰고, 원문을 playtime_raw 에 둔다
+    timed = fetch_events.build_events(items, places, {"1": "18:00~23:00"})
+    assert [e["name"] for e in timed] == ["좌표 없는 행사", "빛축제"]  # 순서는 날짜 기준 그대로
+    assert (timed[1]["start"], timed[1]["end"], timed[1]["playtime_raw"]) == (
+        "2026-11-28T18:00:00+09:00", "2027-01-17T23:00:00+09:00", "18:00~23:00")
+    assert "playtime_raw" not in timed[0]
+    # 애매한 원문은 시각을 바꾸지 않고 원문만 남긴다
+    for vague in ("일몰 후 ~ 23:00", "평일 18:00~23:00 / 주말 17:00~24:00", "18:00~23:00 (점등식 19:00)"):
+        event = fetch_events.build_events(items, places, {"1": vague})[1]
+        assert (event["start"], event["end"], event["playtime_raw"]) == (
+            "2026-11-28T00:00:00+09:00", "2027-01-17T23:59:59+09:00", vague)
     assert json.loads(fetch_events.dump_events({}, [])) == {"source": {}, "events": []}
     one = {"response": {"body": {"items": {"item": items[0]}}}}
     assert fetch_events.festival_items(one) == [items[0]]

@@ -97,7 +97,7 @@
 | `get_hours(place_id)` | `{"place_id", "opens": "HH:MM" 또는 null, "closes": "HH:MM" 또는 null, "closed_weekdays": [0~6], "closed_dates": ["YYYY-MM-DD"], "raw_text": 한국어 원문 또는 null}`. `hours.json`(한국관광공사 소개정보)을 읽음 | `hours[place_id] = OpeningHours` (`raw_text`는 쓰지 않음) |
 | `get_place_info(place_id)` | `Place` 필드 + `"curation": {"tags", "foreigner_friendly": 0~3, "crowd_alternatives": [place_id], "rain_alternatives": [place_id], "source": "rule" \| "manual"}` + `"hours"`(`get_hours`에서 `place_id`를 뺀 값) | 없음 (Agent 전용) |
 | `get_travel_time(from_place_id, to_place_id)` | `{"from_place_id", "to_place_id", "minutes": int, "mode": "subway" \| "bus" \| "walk" \| "taxi"}` | `travel_min[(from, to)] = minutes` |
-| `get_events(date)` | `{"date", "events": [{"name", "start", "end", "place_ids": [...], "kind": "short" \| "opening_day"}]}`. 7일 이하 행사는 기간 전체, 더 긴 행사는 개막일에만 나옴 | `events: list[Event]` (`kind`는 쓰지 않음) |
+| `get_events(date)` | `{"date", "events": [{"name", "start", "end", "period_start", "period_end", "place_ids": [...], "kind": "short" \| "opening_day"}]}`. 7일 이하 행사는 기간 전체, 더 긴 행사는 개막일에만 나옴. `start`·`end`는 요청한 날짜의 행사 시간대(모르면 그날 00:00~23:59), `period_*`는 원래 기간 | `events: list[Event]` (`kind`·`period_*`는 쓰지 않음) |
 | `search_places(...)` | `Place` dict 목록 (지금 docstring 그대로) | `places` |
 
 - 실패하면 모든 도구가 `{"error": {"code": str, "message": str}}`를 돌려줍니다(API 오류 형식과 같음). 예외를 밖으로 던지지 않습니다.
