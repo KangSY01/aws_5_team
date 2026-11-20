@@ -1,7 +1,7 @@
 """데모 장면 1 일정 캐시. DEMO_CACHE_ENABLED=1 이고 대본 문장이 그대로 들어왔을 때만 쓴다. LLM 을 부르지 않는다.
 
 배포 API 의 실제 Bedrock 은 같은 문장에도 매번 다른 일정을 만들어 시연이 흔들린다 (docs/demo-readiness.md 「점검 2」 결정).
-그래서 대본 문장 하나에 한해 대본 일정(흰여울 → 자갈치 → 해운대 → 해운대 빛축제)을 돌려준다.
+그래서 대본 문장 하나에 한해 대본 일정(소촌갈비찜 → 해리단길 → 보노베리 → 해목 → 해운대 빛축제)을 돌려준다.
 
 - 문장 비교는 유니코드 정규화(NFKC)와 공백 제거만 한다. 뜻이 비슷한 다른 문장에는 쓰지 않는다.
 - 장소 ID 는 places.json 에 있는 값이다. 빛축제는 행사이고, 그 장소가 haeundae-beach 다 (events.json, Guardian 장면 1 과 같다).
@@ -23,15 +23,16 @@ TRIGGER = "11月28日(土)に釜山で一日過ごしたいです。海が見え
 DATE = dt.date(2026, 11, 28)
 KST = dt.timezone(dt.timedelta(hours=9))
 FESTIVAL_NAME = "해운대 빛축제"  # events.json 의 행사 이름 (한국어 원문 그대로 답변에 쓴다)
-FESTIVAL_STOP_ID = "s4"
-# (stop_id, place_id, 시작, 끝). 빛축제 자리(s4)는 처음에 고정하지 않는다. 발표자가 화면에서 누른다
+FESTIVAL_STOP_ID = "s5"
+# (stop_id, place_id, 시작, 끝). 빛축제 자리는 발표자가 화면에서 고정한다.
 STOPS: tuple[tuple[str, str, str, str], ...] = (
-    # 11/20 결정: 발표 범위를 해운대 권역 파일럿으로 좁혀 일정 전체를 해운대 권역으로 바꿈 (동백섬 → 로데오거리 점심)
-    ("s1", "dongbaekseom", "10:00", "11:30"),
-    ("s2", "haeundae-rodeo-street", "12:00", "13:00"),
-    ("s3", "haeundae-beach", "14:30", "16:00"),
-    (FESTIVAL_STOP_ID, "haeundae-beach", "17:30", "19:30"),
+    ("s1", "sochon-galbijjim", "12:00", "13:00"),
+    ("s2", "haeridan-gil", "13:00", "15:30"),
+    ("s3", "bonoberry-haeundae", "15:30", "18:00"),
+    ("s4", "haemok-haeundae", "18:00", "19:00"),
+    (FESTIVAL_STOP_ID, "haeundae-beach", "19:00", "21:00"),
 )
+
 
 
 def normalize(text: str) -> str:

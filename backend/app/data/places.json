@@ -331,5 +331,32 @@
     "category": "street",
     "indoor": false,
     "nearest_station": "Dongbaek"
+  },
+  {
+    "place_id": "sochon-galbijjim",
+    "names": {"en": "Sochon Galbijjim", "ja": "ソチョンカルビチム", "zh-Hans": "小村炖牛排骨", "zh-Hant": "小村燉牛排骨"},
+    "lat": 35.16447525991479,
+    "lng": 129.15810385337295,
+    "category": "restaurant",
+    "indoor": true,
+    "nearest_station": "Haeundae"
+  },
+  {
+    "place_id": "bonoberry-haeundae",
+    "names": {"en": "Bonoberry Haeundae", "ja": "ボノベリー海雲台店", "zh-Hans": "Bonoberry 海云台店", "zh-Hant": "Bonoberry 海雲臺店"},
+    "lat": 35.1629832,
+    "lng": 129.1625952,
+    "category": "cafe",
+    "indoor": true,
+    "nearest_station": "Haeundae"
+  },
+  {
+    "place_id": "haemok-haeundae",
+    "names": {"en": "Haemok Haeundae", "ja": "ヘモク海雲台店", "zh-Hans": "海木海云台店", "zh-Hant": "海木海雲臺店"},
+    "lat": 35.1618601408,
+    "lng": 129.1596828783,
+    "category": "restaurant",
+    "indoor": true,
+    "nearest_station": "Haeundae"
   }
 ]

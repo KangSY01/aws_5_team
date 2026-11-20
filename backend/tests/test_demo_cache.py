@@ -26,10 +26,11 @@ from scripts.local_invoke import make_event
 TRIGGER = "11月28日(土)に釜山で一日過ごしたいです。海が見える所と、夜は光の祭りに行きたいです。辛いものは苦手です。"
 PROFILE = {"language": "ja", "interests": ["sea"], "companions": "couple", "diet": []}
 EXPECTED_STOPS = [
-    ("s1", "dongbaekseom", "2026-11-28T10:00:00+09:00", "2026-11-28T11:30:00+09:00"),
-    ("s2", "haeundae-rodeo-street", "2026-11-28T12:00:00+09:00", "2026-11-28T13:00:00+09:00"),
-    ("s3", "haeundae-beach", "2026-11-28T14:30:00+09:00", "2026-11-28T16:00:00+09:00"),
-    ("s4", "haeundae-beach", "2026-11-28T17:30:00+09:00", "2026-11-28T19:30:00+09:00"),
+    ("s1", "sochon-galbijjim", "2026-11-28T12:00:00+09:00", "2026-11-28T13:00:00+09:00"),
+    ("s2", "haeridan-gil", "2026-11-28T13:00:00+09:00", "2026-11-28T15:30:00+09:00"),
+    ("s3", "bonoberry-haeundae", "2026-11-28T15:30:00+09:00", "2026-11-28T18:00:00+09:00"),
+    ("s4", "haemok-haeundae", "2026-11-28T18:00:00+09:00", "2026-11-28T19:00:00+09:00"),
+    ("s5", "haeundae-beach", "2026-11-28T19:00:00+09:00", "2026-11-28T21:00:00+09:00"),
 ]
 DEMO_NOW = {"now": "2026-11-28T09:00:00+09:00"}  # 시연 기준 시각 (11/28 빛축제 개막일 아침)
 FIELDS = {"session_id", "plan_id", "answer", "language", "sources", "plan_changes"}
@@ -133,7 +134,7 @@ def test_trigger_returns_the_script_plan_and_saves_it(demo_on, api_storage):
 
     assert [(c.stop_id, c.before) for c in response.plan_changes] == [(s, None) for s, *_ in EXPECTED_STOPS]
     assert [c.after for c in response.plan_changes] == stored.stops
-    names = [place_name(load_places()[pid], "ja") for _, pid, _, _ in EXPECTED_STOPS[:3]]
+    names = [place_name(load_places()[pid], "ja") for _, pid, _, _ in EXPECTED_STOPS]
     assert response.language == "ja" and all(name in response.answer for name in names)
     assert "해운대 빛축제" in response.answer and "[place:" not in response.answer
     assert [(s.tool, s.id) for s in response.sources] == [("get_events", "2026-11-28")]
@@ -141,7 +142,7 @@ def test_trigger_returns_the_script_plan_and_saves_it(demo_on, api_storage):
 
 def test_answer_follows_the_profile_language(demo_on):
     _, body = chat(profile={"language": "en"})
-    assert body["language"] == "en" and "4-stop plan for 2026-11-28" in body["answer"]
+    assert body["language"] == "en" and "5-stop plan for 2026-11-28" in body["answer"]
     assert "Haeundae Beach (해운대 빛축제)" in body["answer"]
 
 
@@ -171,9 +172,9 @@ def test_guardian_badges_alternatives_apply_and_undo_on_the_demo_plan(demo_on):
     assert status == 200
     check = CheckResponse.model_validate(check)
     issues = {i.issue_id: i for i in check.issues}
-    assert issues["s3-crowded"].severity == "high"  # 해운대 🔴 (집중률 + 행사일 가중)
-    replaced = [c.after.place_id for o in check.repairs["s3-crowded"] if o.action == "replace" for c in o.changes if c.after]
-    # 해운대 혼잡 대안: 도보권 상권(시장·거리)이 먼저 오고, 첫 대안은 걸어서 6분 해운대시장 (장면 2)
+    assert issues["s2-crowded"].severity == "high"  # 해리단길 🔴 (집중률 + 행사일 가중)
+    replaced = [c.after.place_id for o in check.repairs["s2-crowded"] if o.action == "replace" for c in o.changes if c.after]
+    # 해리단길 혼잡 대안은 도보권 상권(시장·거리)을 우선한다
     assert replaced[0] == "haeundae-market"
     places = load_places()
     commerce = [places[place_id].category in ("market", "street") for place_id in replaced]
@@ -181,14 +182,14 @@ def test_guardian_badges_alternatives_apply_and_undo_on_the_demo_plan(demo_on):
 
     # 발표자가 화면에서 빛축제를 잠근다 (PUT) → 빛축제 배지는 고정 일정으로 낮아진다
     locked = json.loads(json.dumps(original))
-    locked["stops"][3]["locked"] = True
+    locked["stops"][-1]["locked"] = True
     assert call("PUT", f"/plan/{plan_id}", locked)[0] == 200
     after_lock = CheckResponse.model_validate(call("POST", "/plan/check", {"plan_id": plan_id, "demo": DEMO_NOW})[1])
-    s4 = next(i for i in after_lock.issues if i.issue_id == "s4-crowded")
-    assert s4.severity != "high" and not after_lock.repairs.get("s4-crowded")
+    festival_issue = next(i for i in after_lock.issues if i.issue_id == "s5-crowded")
+    assert festival_issue.severity != "high" and not after_lock.repairs.get("s5-crowded")
 
-    # 해운대시장 대안 적용 → 해운대 🔴 가 낮아진다 → 되돌리기
-    option = next(o for o in after_lock.repairs["s3-crowded"]
+    # 해운대시장 대안 적용 → 해리단길 🔴 가 낮아진다 → 되돌리기
+    option = next(o for o in after_lock.repairs["s2-crowded"]
                   if any(c.after and c.after.place_id == "haeundae-market" for c in o.changes))
     applied = json.loads(json.dumps(locked))
     for change in option.changes:
@@ -196,9 +197,9 @@ def test_guardian_badges_alternatives_apply_and_undo_on_the_demo_plan(demo_on):
         applied["stops"][index] = json.loads(change.after.model_dump_json())
     assert call("PUT", f"/plan/{plan_id}", applied)[0] == 200
     rechecked = CheckResponse.model_validate(call("POST", "/plan/check", {"plan_id": plan_id, "demo": DEMO_NOW})[1])
-    # 해운대 🔴 high 가 해운대시장으로 바뀌면 low 로 내려간다 (빛축제 근처라 행사일 가중은 남는다)
+    # 해리단길 🔴 high 가 해운대시장으로 바뀌면 low 로 내려간다 (빛축제 근처라 행사일 가중은 남는다)
     after = {i.issue_id: i.severity for i in rechecked.issues}
-    assert after.get("s3-crowded") in (None, "low")
+    assert after.get("s2-crowded") in (None, "low")
 
     assert call("PUT", f"/plan/{plan_id}", locked)[0] == 200  # 되돌리기
     assert PlanResponse.model_validate(call("GET", f"/plan/{plan_id}")[1]).plan == Plan.model_validate(locked)

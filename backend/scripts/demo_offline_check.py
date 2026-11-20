@@ -165,8 +165,8 @@ def run_checks() -> tuple[list[Result], int]:
             rows, "1·2·5", "POST /plan/check",
             lambda: _handler_call(handler, make_event, "POST", "/plan/check", check_body),
             lambda value: _require(
-                {"s3-crowded", "s3-rain"} <= {issue["issue_id"] for issue in value["issues"]}
-                and bool(value["repairs"].get("s3-crowded")),
+                {"s2-crowded", "s2-rain", "s5-crowded"} <= {issue["issue_id"] for issue in value["issues"]}
+                and bool(value["repairs"].get("s2-crowded")),
                 "혼잡·비 점검 또는 대안이 없습니다.",
             ),
             lambda value: f"issues={len(value['issues'])}",
