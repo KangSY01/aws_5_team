@@ -1,0 +1,53 @@
+/* 출처 표시·비 예보 배너 (D). 색은 components/travel-preview.css 의 토큰을 쓴다(다크 모드 포함). */
+
+.chat-sources {
+  justify-self: start;
+  max-width: 92%;
+  margin: -4px 0 0 12px;
+  color: var(--color-muted);
+  font-size: .75rem;
+  line-height: 1.4;
+}
+.chat-sources__label { font-weight: 600; }
+
+.rain-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: 100%;
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-selected);
+  color: var(--color-selected-text);
+  box-shadow: var(--coast-card-shadow);
+  pointer-events: auto;
+}
+.rain-notice__text { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.rain-notice__text span { font-size: .85rem; }
+.rain-notice__open {
+  flex: none;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-action);
+  color: var(--color-on-action, #fff);
+  font: inherit;
+  font-size: .85rem;
+  cursor: pointer;
+}
+.rain-notice__open:disabled { opacity: .6; cursor: default; }
+.rain-notice__close {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.rain-notice__open:focus-visible,
+.rain-notice__close:focus-visible { outline: 2px solid var(--coast-focus); outline-offset: 2px; }
