@@ -593,3 +593,6 @@
   stroke-linecap: round;
   stroke-opacity: .85;
 }
+
+/* 다른 핀·이름표와 겹쳐 둘 자리가 없는 이름표 (핀 번호와 title 로 식별) */
+.busan-map-pin[data-label-hidden] .busan-map-pin__label { visibility: hidden; }
