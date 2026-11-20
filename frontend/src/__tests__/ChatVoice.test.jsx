@@ -1,11 +1,13 @@
 import { EventStreamCodec } from "@smithy/eventstream-codec";
 import { fromUtf8, toUtf8 } from "@smithy/util-utf8";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import App from "../App.jsx";
 import { createPcmEncoder } from "../api/chatVoice.js";
 
 const codec = new EventStreamCodec(toUtf8, fromUtf8);
+
+beforeEach(() => localStorage.setItem("busannow.traveler-profile", "{}"));
 
 afterEach(() => {
   vi.unstubAllEnvs();

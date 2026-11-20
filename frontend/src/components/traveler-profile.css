@@ -1,0 +1,100 @@
+.traveler-onboarding {
+  min-height: 100dvh;
+  background: #fff;
+  color: #24292e;
+  padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+}
+.traveler-onboarding > section { max-width: 420px; margin-inline: auto; }
+.traveler-onboarding h1 { margin: 0 0 6px; font-size: 1.5rem; font-weight: 750; }
+.traveler-profile-form { display: grid; gap: 12px; color: #24292e; }
+.traveler-profile-form label { display: grid; gap: 5px; min-width: 0; font-size: .875rem; font-weight: 600; }
+.traveler-profile-form :is(input, select, textarea, button) {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--panel-divider, #d6d9dd);
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+.traveler-profile-form :is(input, select, textarea) { font-size: 1rem; }
+.traveler-profile-form textarea {
+  field-sizing: content;
+  min-height: calc(2lh + 18px);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  resize: vertical;
+}
+.traveler-profile-form textarea::placeholder { color: #6b737c; opacity: 1; }
+.traveler-profile-form footer button { overflow-wrap: anywhere; }
+.traveler-profile-form footer button[type="submit"] {
+  background: var(--trip-green, #145440);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 650;
+}
+.traveler-profile-row, .traveler-profile-form footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+.traveler-profile-row { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+@media (max-width: 340px) {
+  .traveler-profile-row { grid-template-columns: minmax(0, 1fr); }
+}
+.traveler-profile-optional { margin: 0 0 2px; font-size: .8125rem; color: #525b64; }
+.traveler-profile-photo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.traveler-profile-form .traveler-profile-photo button { width: auto; font-size: .875rem; }
+.traveler-profile-form button:disabled { opacity: .55; }
+.traveler-avatar { flex: none; border-radius: 50%; object-fit: cover; }
+.traveler-profile-summary {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 12px;
+}
+.traveler-profile-details { min-width: 0; max-width: 100%; }
+.travel-preview .traveler-profile-edit {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--trip-green);
+}
+.traveler-profile-edit:only-child { margin-inline-start: auto; }
+.traveler-profile-edit span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: inherit;
+  background: var(--selection-mint);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.traveler-profile-edit svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@media (max-width: 340px) {
+  .traveler-profile-details { flex-basis: 100%; }
+}
+.travel-preview .traveler-profile-dialog { background: #fff; color: #24292e; }

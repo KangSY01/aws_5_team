@@ -454,3 +454,9 @@
 .travel-preview .activity-chip.activity-custom-chip:not([aria-pressed="true"], [data-selected="true"], :has(input:checked))::before {
   background: var(--skin-paper);
 }
+
+/* 모바일: 비 예보 배너(지혜님 연결, .travel-rain-notice)는 상단 4번째 줄 전체 폭 */
+@media (max-width: 899px) {
+  .travel-preview .travel-header > .travel-rain-notice { grid-column: 1 / -1; grid-row: 4; min-width: 0; }
+  .travel-preview .travel-rain-notice .rain-notice { width: 100%; box-sizing: border-box; }
+}

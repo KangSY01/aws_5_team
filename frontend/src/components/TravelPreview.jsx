@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import TravelerProfileForm, { travelerCopy } from "./TravelerProfile.jsx";
+import { ChatSources, CrowdLegend, RainNotice } from "../features/data-notices";
 import { getTravelCopy, languages } from "../constants/travelCopy.js";
 import { closeLandmark, mapLandmarks } from "../constants/mapLandmarks.js";
 import { getPlannerCopy, transportPreferenceIds, durationIds, areaIds } from "../constants/plannerCopy.js";
@@ -34,7 +36,6 @@ import { demoItineraryPrompt, makeLocalDemoCourse } from "../features/demo-panel
 import TravelPreferences from "./TravelPreferences.jsx";
 import TripAlbum from "../features/trip-poster/TripAlbum.jsx";
 import { saveCompletedTrip } from "../features/trip-poster/album.js";
-import { CrowdLegend } from "../features/data-notices";
 import "./travel-preview.css";
 
 // 디자인 실험(design/giljabi-ui): 넓은 화면에서는 왼쪽 사이드바 패널을 항상 연다.
@@ -184,7 +185,7 @@ function save(key, value) {
   }
 }
 
-function getSavedLanguage() {
+export function getSavedLanguage() {
   try {
     const saved = window.localStorage.getItem(languageStorageKey);
     if (Object.hasOwn(languages, saved)) return saved;
@@ -209,8 +210,13 @@ function LanguageOptions({ language, onSelect }) {
   ));
 }
 
-function ProfilePage({ copy, plannerCopy, language, onLanguageChange, demoMode, albumRevision, archiveError }) {
+function ProfilePage({ copy, language, onLanguageChange, demoMode, albumRevision, archiveError, traveler, onTravelerSave }) {
   const [languageOpen, setLanguageOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const labels = travelerCopy(language);
+  const { name, age, gender, country, photo } = traveler;
+  const ageLabel = age ? new Intl.NumberFormat(language, { style: "unit", unit: "year", unitDisplay: "long" }).format(Number(age)) : "";
+  const details = [ageLabel, gender && labels.genderNames[gender], country].filter(Boolean);
   const heading = useRef(null);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, []);
 
@@ -219,29 +225,48 @@ function ProfilePage({ copy, plannerCopy, language, onLanguageChange, demoMode, 
       <div className="profile-content">
         <header>
           <h1 id="profile-heading" ref={heading} tabIndex={-1}>{copy.profile}</h1>
-          <p>{plannerCopy.demoAccount}</p>
+          <div className="profile-person">
+            {photo && <img className="traveler-avatar" src={photo} alt="" width="68" height="68" />}
+            <div className="traveler-profile-summary">
+              {(name || details.length > 0) && <div className="traveler-profile-details">
+                {name && <strong>{name}</strong>}
+                {details.length > 0 && <p>{details.join(" · ")}</p>}
+              </div>}
+              <button type="button" className="traveler-profile-edit" onClick={() => setEditing(true)}>
+                <span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m15 5 4 4M4 20l4-.8L20 7l-3-3L5 16Z" />
+                  </svg>
+                  {labels.edit}
+                </span>
+              </button>
+            </div>
+          </div>
         </header>
-        <div className="profile-settings">
+        <TripAlbum language={language} demoMode={demoMode} revision={albumRevision} archiveError={archiveError}
+          formatDate={(date) => formatDate(date, language)} />
+        <section className="profile-settings" aria-labelledby="profile-settings-title">
+          <h2 id="profile-settings-title">{copy.settings}</h2>
           <button type="button" className="profile-language-row" aria-expanded={languageOpen}
             aria-controls="profile-languages" onClick={() => setLanguageOpen(!languageOpen)}>
             <span>{copy.languageLabel}</span>
             <span className="profile-language-value" lang={language}>{languages[language]}</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
               strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="m6 9 6 6 6-6" />
+              <path d="m9 6 6 6-6 6" />
             </svg>
           </button>
           <div id="profile-languages" className="profile-language-options" hidden={!languageOpen}
             role="group" aria-label={copy.languageLabel}>
             <LanguageOptions language={language} onSelect={onLanguageChange} />
           </div>
-          <TripAlbum language={language} demoMode={demoMode} revision={albumRevision} archiveError={archiveError} />
-          <section className="profile-account">
-            <h2>{copy.account}</h2>
-            <p>{copy.accountUnavailable}</p>
-          </section>
-        </div>
+        </section>
       </div>
+      {editing && <TravelActionDialog title={labels.edit}
+        onClose={() => setEditing(false)} className="traveler-profile-dialog">
+        <TravelerProfileForm language={language} initial={traveler} onCancel={() => setEditing(false)}
+          onSave={(profile) => { onTravelerSave(profile); setEditing(false); }} />
+      </TravelActionDialog>}
     </section>
   );
 }
@@ -254,7 +279,7 @@ function formatDate(date, language) {
   }).format(day);
 }
 
-export default function TravelPreview({ night = false, demoMode = false } = {}) {
+export default function TravelPreview({ night = false, demoMode = false, traveler = {}, onTravelerSave } = {}) {
   const suffix = demoMode ? ".demo" : "";
   const courseKey = courseStorageKey + suffix;
   const activeTripKey = activeTripStorageKey + suffix;
@@ -332,6 +357,10 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const places = course?.places ?? emptyPlaces;
   const placesById = useMemo(() => buildPlacesById(places), [places]);
   const stops = plan.stops;
+  const rainIssue = guardian?.plan === plan && guardian.demo === demo
+    ? guardian.issues?.find((issue) => issue.type === "rain" && guardian.repairs[issue.issue_id]?.length)
+    : null;
+  const rainStop = rainIssue && stops.find((stop) => stop.stop_id === rainIssue.stop_id);
   const demoTime = demoMode ? Date.parse(demo.now ?? SCENES[0].now) : NaN;
   const events = useMapEvents(liveApi, demoTime, placesById);
   const mapDetail = selectedMapDetail?.contentid
@@ -356,7 +385,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const showTranslation = translationMode !== null;
   const sheetOpen = open || showTranslation || sidebar;
   const sheetExpanded = showTranslation ? translationExpanded : expanded;
-  const tab = showTranslation ? "translation" : baseTab;
+  const tab = showTranslation || translationMenu ? "translation" : baseTab;
   const showChat = panel === "chat";
   const collapseLabel = showChat ? copy.collapse : copy.collapseItinerary;
   const closeLabel = showChat ? copy.close : copy.closeItinerary;
@@ -365,8 +394,11 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const voiceAvailable = liveApi && language !== "ko";
   const voice = useChatVoice(voiceAvailable && sheetOpen && showChat && !showTranslation, language, setDraft);
 
+  const initialDemoCourse = useRef({ course, tripStarted });
+
   useEffect(() => {
-    if (!demoMode || course) return;
+    const { course: cached, tripStarted: active } = initialDemoCourse.current;
+    if (!demoMode || (cached && (!liveApi || active || !cached.plan.stops.length))) return;
     const request = new AbortController();
     requestInProgress.current = true;
     setPending("recommend");
@@ -382,7 +414,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
         if (request.signal.aborted) return;
       }
       if (request.signal.aborted) return;
-      next = { ...(next ?? makeLocalDemoCourse()), preferences: defaultPreferences };
+      next = { ...(next ?? cached ?? makeLocalDemoCourse()), preferences: cached?.preferences ?? defaultPreferences };
       setCourse(next);
       save(courseKey, next);
       setSelectedId(next.plan.stops[0].stop_id);
@@ -391,7 +423,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
     }
     void initializeDemo();
     return () => request.abort();
-  }, [demoMode, liveApi, course, courseKey]);
+  }, [demoMode, liveApi, courseKey]);
 
   useEffect(() => {
     setAlternative(null);
@@ -406,7 +438,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
       if (request.signal.aborted) return;
       const manual = manualGuardianCheck.current?.plan === plan && manualGuardianCheck.current.demo === demo;
       manualGuardianCheck.current = null;
-      setGuardian({ ...result, plan, manual });
+      setGuardian({ ...result, plan, demo, manual });
       if (manual && result.issues.length === 1) {
         const [issue] = result.issues;
         const target = plan.stops.find((stop) => stop.stop_id === issue.stop_id);
@@ -695,6 +727,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
           values.transport && "Transport: " + (english.transportLabels[values.transport] ?? values.transport),
           values.less_walking && "Prefer shorter walks.",
           values.lodging && "Include lodging suggestions when available.",
+          traveler.notes && "Respect these traveler notes when recommending places and building the itinerary: " + traveler.notes,
         ].filter(Boolean).join("\n");
         const chat = runDemo
           ? await sendTravelMessage(demoItineraryPrompt, "ja", null)
@@ -707,7 +740,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
         }
         result = { ...saved, session_id: chat.session_id };
       } else {
-        result = runDemo ? makeLocalDemoCourse() : await recommendDemo(values, language);
+        result = runDemo ? makeLocalDemoCourse() : await recommendDemo(values, language, traveler.notes);
       }
       if (!result?.plan?.plan_id || !result.plan.stops?.length || !Array.isArray(result.places)) throw new Error();
       const next = { ...result, preferences: values };
@@ -836,7 +869,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
           const { options, text } = chatRecommendations(answer, chat.sources, placesById, language);
           setMessages((previous) => [
             ...previous,
-            ...(text ? [{ text, lang: answerLanguage, role: "assistant" }] : []),
+            { text, sources: chat.sources, lang: answerLanguage, role: "assistant" },
             ...(options.length ? [{ options, readOnly: true, lang: answerLanguage }] : []),
           ]);
         } else {
@@ -881,7 +914,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
               : plannerCopy.chatPlanUnchanged;
           }
         }
-        setMessages((previous) => [...previous, { text: answer, lang: language, role: "assistant" }]);
+        setMessages((previous) => [...previous, { text: answer, sources: chat.sources, lang: language, role: "assistant" }]);
         return;
       }
       const result = await suggestDemo({
@@ -1143,6 +1176,15 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
             </button>
           </div>
           <LanguageTrigger className="travel-language-trigger" label={languageLabel} />
+          {!regionDraft && <div className="travel-rain-notice">
+            <RainNotice key={demo.weatherPreset} language={language}
+              placeName={rainStop && resolvePlaceName(rainStop, placesById, language).name}
+              disabled={guardianLoading || Boolean(pending)}
+              onOpen={rainIssue ? () => {
+                setGuardianActionError(false);
+                setAlternative(issueAlternative(guardian, plan, demo, rainIssue, rainStop));
+              } : undefined} />
+          </div>}
           <div id="travel-language-menu" className="travel-language-menu" ref={languageMenu}
             popover="auto" role="group" aria-label={copy.languageLabel}>
             <LanguageOptions language={language} onSelect={(code) => {
@@ -1152,8 +1194,9 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
           </div>
         </header>
       </div>
-      {profile && <ProfilePage copy={copy} plannerCopy={plannerCopy} language={language} onLanguageChange={changeLanguage}
-        demoMode={demoMode} albumRevision={albumRevision} archiveError={archiveError} />}
+      {profile && <ProfilePage copy={copy} language={language} onLanguageChange={changeLanguage}
+        demoMode={demoMode} albumRevision={albumRevision} archiveError={archiveError}
+        traveler={traveler} onTravelerSave={onTravelerSave} />}
       {wide && isMap && (
         <button type="button" className="sidebar-toggle" aria-controls="travel-chat" aria-expanded={!sidebarCollapsed}
           aria-label={(SIDEBAR_TOGGLE_COPY[language] ?? SIDEBAR_TOGGLE_COPY.en)[sidebarCollapsed ? 1 : 0]}
@@ -1239,7 +1282,10 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
             {messages.map((message, index) => {
               if (message.options) return <ChatPlaceCards key={index} message={message} language={language}
                 copy={plannerCopy.placeCards} busy={Boolean(pending)} currentPlan={plan} onConfirm={confirmChatPlace} />;
-              if (!message.result) return <p key={index} className="chat-bubble" role={message.error ? "alert" : undefined} data-role={message.role} lang={message.lang}>{message.text}</p>;
+              if (!message.result) return <Fragment key={index}>
+                {message.text && <p className="chat-bubble" role={message.error ? "alert" : undefined} data-role={message.role} lang={message.lang}>{message.text}</p>}
+                <ChatSources sources={message.sources} language={language} />
+              </Fragment>;
               const { result, target, snapshot } = message;
               const original = snapshot.places.find((place) => place.place_id === target.place_id);
               const failure = { locked: "lockedStop", catalog_limit: "catalogLimit", no_candidate: "noCandidate" };
@@ -1328,12 +1374,6 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
                   )}
                 </section>
               )}
-              {alternative && alternative.plan === plan && alternative.demo === demo && (
-                <GuardianAlternatives alternative={alternative} copy={copy.guardian} placeCopy={plannerCopy.placeCards} language={language} events={events}
-                  placesById={buildPlacesById([...places, ...alternative.places])} busy={Boolean(pending)}
-                  error={guardianActionError ? plannerCopy.requestFailed : undefined}
-                  onApply={applyRepair} onClose={() => setAlternative(null)} />
-              )}
             </section>
           ))}
         </div>
@@ -1389,6 +1429,12 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
           </div>
         </TravelActionDialog>
       )}
+      {alternative && alternative.plan === plan && alternative.demo === demo && (
+        <GuardianAlternatives alternative={alternative} copy={copy.guardian} placeCopy={plannerCopy.placeCards} language={language} events={events}
+          placesById={buildPlacesById([...places, ...alternative.places])} busy={Boolean(pending)}
+          error={guardianActionError ? plannerCopy.requestFailed : undefined}
+          onApply={applyRepair} onClose={() => setAlternative(null)} />
+      )}
       {showDelay && (
         <TravelActionDialog title={copy.guardian.late} closeLabel={copy.guardian.delayClose} className="travel-delay-dialog"
           busy={Boolean(pending)} onClose={() => setShowDelay(false)}>
@@ -1412,6 +1458,12 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
             aria-expanded={name === "translation" ? translationMenu || showTranslation : name === "chat" || name === "itinerary" ? tab === name : undefined}
             onClick={() => {
               if (name === "translation") {
+                navigatePage("map");
+                setOpen(false);
+                setExpanded(false);
+                setTranslationMode(null);
+                setTranslationExpanded(false);
+                setMapDetail(null);
                 setTranslationMenu(!translationMenu);
                 return;
               }
