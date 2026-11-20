@@ -317,3 +317,16 @@ def test_stations_json은_CSV로_다시_만든_값과_같고_환승역은_한_�
     assert by_name[ro.DEFAULT_DESTINATION_STATION] and by_name["Haeundae"]["name_ko"] == "해운대역"
     # places.json 의 nearest_station 중 표에 없는 값은 동해선 OSIRIA 하나뿐이다
     assert {p["nearest_station"] for p in load("places.json")} - set(names) - {None} == {"OSIRIA"}
+
+
+def test_작은따옴표가_든_역_이름은_1개로_복원한_값이다():
+    # busan_stations.csv 원본의 이중 이스케이프(Nat''''''''l)를 작은따옴표 1개로 고쳤다
+    by_name = {s["station"]: s["name_ko"] for s in load("stations.json")["stations"]}
+    fixed = {"Busan Nat'l Univ. of Edu.": "교대역", "Pusan Nat'l Univ.": "부산대역",
+             "Kyungsung Univ. Pukyong Nat'l Univ.": "경성대부경대역",
+             "Busan Int'l Finance Center Busan Bank": "국제금융센터부산은행역",
+             "Pusan Nat'l Univ. Yangsan Campus": "부산대양산캠퍼스역"}
+    assert {name: by_name.get(name) for name in fixed} == fixed
+    assert {name for name in by_name if "'" in name} == set(fixed) and not any("''" in name for name in by_name)
+    result = get_return_options(date=DAY, event_name=FESTIVAL, destination_station="pusan nat'l univ.")
+    assert result["destination"]["station"] == "Pusan Nat'l Univ."
