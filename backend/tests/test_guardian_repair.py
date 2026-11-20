@@ -4,7 +4,16 @@ import datetime as dt
 
 from app.guardian.check import check_plan
 from app.guardian.context import Event, OpeningHours
-from app.guardian.repair import try_move_time, try_remove, try_reorder, try_replace
+from app.guardian import thresholds as th
+from app.guardian.repair import (
+    apply_option,
+    new_places,
+    propose_repairs,
+    try_move_time,
+    try_remove,
+    try_reorder,
+    try_replace,
+)
 from app.models.plan import Plan, RepairOption
 from guardian_fixtures import BASE_TRAVEL_MIN, at, hourly_weather, load_sample_plan, make_context
 
@@ -301,3 +310,113 @@ def test_remove_middle_stop_keeps_other_times():
 def test_remove_skips_locked_target():
     ctx = make_context(hours={"jagalchi-market": OpeningHours(closed_weekdays=[5])})
     assert try_remove(PLAN, issue_of(PLAN, ctx, "s2-closed"), ctx) == []
+
+
+# ---------- 5.6 propose_repairs ----------
+
+def rain_15_17_ctx():
+    """15~17시 비. 시간 이동(+90분)·순서 변경(+10분)·교체(신세계 +5분)가 모두 가능한 상황."""
+    return make_context(
+        weather=hourly_weather(rain_hours=range(15, 17)),
+        travel_min=REORDER_TRAVEL | {("busan-tower", "shinsegae-centum-city"): 45},
+    )
+
+
+def test_propose_sorts_by_changed_then_extra_travel_then_stage():
+    ctx = rain_15_17_ctx()
+    options = propose_repairs(PLAN, issue_of(PLAN, ctx, "s4-rain"), ctx)
+
+    assert [o.action for o in options] == ["move_time", "reorder", "replace"]
+    assert [(o.metrics.changed, o.metrics.extra_travel_min) for o in options] == [(0, 0), (0, 10), (1, 5)]
+    # 다른 단계 해결안이 있으면 remove 는 넣지 않는다 (요구사항 4.9)
+    assert "remove" not in {o.action for o in options}
+
+
+def test_propose_returns_at_most_max_repairs(monkeypatch):
+    monkeypatch.setattr(th, "MAX_REPAIRS", 2)
+    ctx = rain_15_17_ctx()
+    options = propose_repairs(PLAN, issue_of(PLAN, ctx, "s4-rain"), ctx)
+    assert [o.action for o in options] == ["move_time", "reorder"]
+
+
+def test_propose_rain_first_is_indoor_replace_like_design_table():
+    # design.md 테스트 표: 15~18시 비 → 첫 해결안 replace(실내), locked_kept true
+    ctx = make_context(
+        weather=hourly_weather(rain_hours=range(15, 18)),
+        travel_min=travel_with(shinsegae_centum_city=45, gwangalli_beach=30),
+    )
+    options = propose_repairs(PLAN, issue_of(PLAN, ctx, "s4-rain"), ctx)
+
+    first = options[0]
+    assert first.action == "replace"
+    assert ctx.places[after_of(first, "s4").place_id].indoor is True
+    assert first.metrics.locked_kept is True
+    assert [p.place_id for p in new_places(PLAN, options, ctx)] == ["shinsegae-centum-city"]
+
+
+def test_propose_remove_only_when_nothing_else():
+    # 계약 예시 s1-crowded: 시간 이동 근거 없음 · 이웃이 고정 · 같은 분류 후보 없음 → remove 하나
+    ctx = make_context()
+    options = propose_repairs(PLAN, issue_of(PLAN, ctx, "s1-crowded"), ctx)
+    assert [o.action for o in options] == ["remove"]
+    m = options[0].metrics
+    assert (m.changed, m.kept, m.extra_travel_min, m.locked_kept) == (1, 3, -15, True)
+    assert new_places(PLAN, options, ctx) == []
+
+
+def test_propose_locked_issue_has_no_repairs():
+    # 고정 일정(자갈치) 휴무 → closed low, 해결안 없음 (design.md 테스트 표, 요구사항 3.2)
+    ctx = make_context(hours={"jagalchi-market": OpeningHours(closed_weekdays=[5])})
+    issue = issue_of(PLAN, ctx, "s2-closed")
+    assert issue.severity == "low"
+    assert propose_repairs(PLAN, issue, ctx) == []
+
+
+def test_propose_never_touches_locked_stop_in_any_scenario():
+    # 여러 상황의 모든 Issue·모든 해결안에서 자갈치 place_id·start·end 그대로 (design.md 테스트 표)
+    contexts = [
+        rain_15_17_ctx(),
+        make_context(weather=hourly_weather(rain_hours=range(15, 18)), travel_min=travel_with(shinsegae_centum_city=45)),
+        make_context(hours={"busan-tower": OpeningHours(opens=dt.time(14))}),
+        make_context(events=[Event(name="테스트 행사", start=at(15), end=at(17), place_ids=["haeundae-beach"])],
+                     travel_min=REORDER_TRAVEL),
+        make_context(travel_min=dict(BASE_TRAVEL_MIN) | {("busan-tower", "haeundae-beach"): 70}),  # tight_transfer high
+    ]
+    seen = 0
+    for ctx in contexts:
+        for issue in check_plan(PLAN, ctx):
+            for option in propose_repairs(PLAN, issue, ctx):
+                seen += 1
+                assert_locked_untouched(option)
+                kept = next(s for s in apply_option(PLAN, option).stops if s.stop_id == LOCKED.stop_id)
+                assert (kept.place_id, kept.start, kept.end) == (LOCKED.place_id, LOCKED.start, LOCKED.end)
+    assert seen > 0
+
+
+def test_propose_drops_option_when_same_type_high_remains():
+    # 15~17시 비에 광안리(실외 beach)로 교체해도 rain high 가 남으므로 후보에 없다
+    ctx = make_context(weather=hourly_weather(rain_hours=range(15, 17)), travel_min=travel_with(gwangalli_beach=30))
+    issue = issue_of(PLAN, ctx, "s4-rain")
+    for option in propose_repairs(PLAN, issue, ctx):
+        assert after_of(option, "s4") is None or after_of(option, "s4").place_id != "gwangalli-beach"
+        after = check_plan(apply_option(PLAN, option), ctx)
+        assert not any(i.type == "rain" and i.severity == "high" and i.stop_id == "s4" for i in after)
+
+
+def test_propose_is_deterministic_and_accepts_dict_context():
+    ctx = rain_15_17_ctx()
+    issue = issue_of(PLAN, ctx, "s4-rain")
+    first = propose_repairs(PLAN, issue, ctx)
+    assert propose_repairs(PLAN, issue, ctx) == first
+    assert propose_repairs(PLAN, issue, ctx.model_dump()) == first
+
+
+def test_apply_option_and_new_places():
+    ctx = rain_15_17_ctx()
+    options = propose_repairs(PLAN, issue_of(PLAN, ctx, "s4-rain"), ctx)
+    replaced = apply_option(PLAN, options[2])
+    assert [s.place_id for s in replaced.stops] == ["gamcheon-village", "jagalchi-market", "busan-tower", "shinsegae-centum-city"]
+    assert PLAN.stops[3].place_id == "haeundae-beach"  # 원래 일정은 그대로
+    # 새 장소는 한 번씩만, 시간 이동·순서 변경은 새 장소가 없다
+    assert [p.place_id for p in new_places(PLAN, options + options, ctx)] == ["shinsegae-centum-city"]
+    assert new_places(PLAN, options[:2], ctx) == []

@@ -5,12 +5,13 @@ locked=true 인 Stop 의 place_id·start·end 는 어떤 해결안에서도 바�
 """
 
 import datetime as dt
+from collections.abc import Iterable
 
 from app.guardian import thresholds as th
 from app.guardian.check import check_plan
 from app.guardian.context import CheckContext, Event
 from app.guardian.metrics import compute_metrics, total_travel_min
-from app.models.plan import Issue, Plan, RepairAction, RepairOption, Severity, Stop, StopChange
+from app.models.plan import Issue, Place, Plan, RepairAction, RepairOption, Severity, Stop, StopChange
 
 # 남은 문제의 심각도 순위. 문제가 사라지면 -1
 _SEVERITY_RANK: dict[Severity, int] = {"low": 0, "medium": 1, "high": 2}
@@ -19,13 +20,80 @@ _SEVERITY_RANK: dict[Severity, int] = {"low": 0, "medium": 1, "high": 2}
 def propose_repairs(plan: Plan, issue: Issue, context: CheckContext | dict) -> list[RepairOption]:
     """Issue 하나에 대한 해결안을 변경이 작은 순서로 돌려준다.
 
-    입력: plan, 해결할 issue, check_plan 과 같은 context
-    출력: RepairOption 목록. 순서는 시간 이동 → 순서 변경 → 비슷한 장소로 교체 → 제외.
-          각 해결안의 metrics 에 보전 지표(changed, kept, extra_travel_min, locked_kept)를 채운다.
-
-    TODO(Guardian 담당, 스펙 작업 5.4~5.6): replace·remove, 고정 일정 검증, 정렬, 상위 3개.
+    입력: plan, 해결할 issue, check_plan 과 같은 context (dict 이면 CheckContext 로 검증한다)
+    출력: RepairOption 목록 (최대 MAX_REPAIRS 개). 각 해결안의 metrics 에 보전 지표를 채운다.
+      - 탐색 순서: 시간 이동 → 순서 변경 → 비슷한 장소로 교체. 셋 다 없을 때만 제외 (요구사항 4.1, 4.9)
+      - 대상 Stop 이 고정 일정이면 [] (요구사항 3.2)
+      - 고정 일정의 place_id·start·end 를 바꾸는 해결안은 버린다 (요구사항 4.2)
+      - 적용 후 다시 점검해 대상 Stop 이나 바뀐 Stop 에 같은 유형 high Issue 가 남으면 버린다 (요구사항 4.5)
+      - 정렬: changed → extra_travel_min → 단계 순서. 같으면 단계 안의 순서를 유지한다 (요구사항 4.6)
+      대화 에이전트는 첫 번째 해결안을 쓴다 (요구사항 5.2). 해결안에 새로 나온 장소는 new_places 로 모은다.
     """
-    raise NotImplementedError("TODO(Guardian 담당)")
+    ctx = context if isinstance(context, CheckContext) else CheckContext.model_validate(context)
+    target = next((s for s in plan.stops if s.stop_id == issue.stop_id), None)
+    if target is None or target.locked:
+        return []
+
+    staged: list[tuple[int, RepairOption]] = []
+    for stage, search in enumerate((try_move_time, try_reorder, try_replace)):
+        staged += [(stage, option) for option in search(plan, issue, ctx)]
+    if not staged:
+        staged = [(3, option) for option in try_remove(plan, issue, ctx)]
+
+    valid = [
+        (stage, option) for stage, option in staged
+        if _keeps_locked(plan, option) and not _same_high_remains(plan, option, issue, ctx)
+    ]
+    valid.sort(key=lambda item: (item[1].metrics.changed, item[1].metrics.extra_travel_min, item[0]))
+    return [option for _, option in valid[: th.MAX_REPAIRS]]
+
+
+def apply_option(plan: Plan, option: RepairOption) -> Plan:
+    """해결안의 changes 를 일정에 반영한 새 Plan. 원래 plan 은 바꾸지 않는다 (저장은 프론트엔드가 한다).
+
+    after=None 이면 제거, before=None 이면 추가, 그 밖에는 같은 stop_id 를 after 로 바꾼다. Stop 은 시각순.
+    """
+    by_id = {s.stop_id: s for s in plan.stops}
+    for change in option.changes:
+        if change.after is None:
+            by_id.pop(change.stop_id, None)
+        else:
+            by_id[change.stop_id] = change.after
+    return _with_stops(plan, _ordered(list(by_id.values())))
+
+
+def new_places(plan: Plan, options: Iterable[RepairOption], context: CheckContext | dict) -> list[Place]:
+    """해결안에 새로 등장하는 장소의 Place 목록 (CheckResponse.places, 요구사항 4.8).
+
+    원래 일정에 없던 place_id 만, 처음 나온 순서대로 한 번씩 넣는다. places.json 에 없는 ID 는 넣지 않는다.
+    """
+    ctx = context if isinstance(context, CheckContext) else CheckContext.model_validate(context)
+    seen = {s.place_id for s in plan.stops}
+    result: list[Place] = []
+    for option in options:
+        for change in option.changes:
+            if change.after is None or change.after.place_id in seen:
+                continue
+            seen.add(change.after.place_id)
+            place = ctx.places.get(change.after.place_id)
+            if place is not None:
+                result.append(place)
+    return result
+
+
+def _keeps_locked(plan: Plan, option: RepairOption) -> bool:
+    """고정 Stop 이 changes 에 없고 metrics.locked_kept 가 True 인지. 하나라도 어기면 버린다."""
+    locked = {s.stop_id for s in plan.stops if s.locked}
+    return option.metrics.locked_kept and not any(c.stop_id in locked for c in option.changes)
+
+
+def _same_high_remains(plan: Plan, option: RepairOption, issue: Issue, ctx: CheckContext) -> bool:
+    """적용 후 대상 Stop 이나 바뀐 Stop 에 issue 와 같은 유형의 high Issue 가 있으면 True."""
+    watched = {issue.stop_id} | {c.stop_id for c in option.changes if c.after is not None}
+    return any(
+        i.type == issue.type and i.severity == "high" and i.stop_id in watched
+        for i in check_plan(apply_option(plan, option), ctx)
+    )
 
 
 # ---------- 공통 도구 ----------
