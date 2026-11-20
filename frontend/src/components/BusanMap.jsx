@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { buildPlacesById, resolvePlaceName } from "../lib/resolvePlaceName.js";
+import RegionMap from "./RegionMap.jsx";
 
 const tileOverride = import.meta.env.VITE_MAP_TILE_URL;
 const osmTileUrl = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -17,13 +18,21 @@ const eventIcons = {
   market: "M4 10h16l-2-5H6zm2 0v9h12v-9m-7 9v-5h4",
 };
 
-export default function BusanMap({ plan, places, events, onEventSelect, language, label, selectedId, nextStopId, onSelect, focusRequest }) {
+export default function BusanMap({ plan, places, events, onEventSelect, language, label, selectedId, nextStopId, onSelect, focusRequest, regionPicker }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const fittedPlan = useRef(null);
   const markersRef = useRef(new Map());
   const languageRef = useRef(language);
   const updateMapLanguage = useRef(null);
+  const updateBridge = useRef(null);
+  const selectingRegions = Boolean(regionPicker);
+  const selectingRegionsRef = useRef(selectingRegions);
+
+  useEffect(() => {
+    selectingRegionsRef.current = selectingRegions;
+    updateBridge.current?.();
+  }, [selectingRegions]);
   const mappedStops = useMemo(() => {
     const placesById = buildPlacesById(places);
     return plan.stops.map((stop) => {
@@ -83,7 +92,17 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
           throw error;
         }
         updateMapLanguage.current = updateLanguage;
-        layer.getMaplibreMap().once("style.load", updateLanguage);
+        const vectorMap = layer.getMaplibreMap();
+        const syncBridge = () => {
+          if (vectorMap.getLayer("gwangan-bridge")) {
+            vectorMap.setLayoutProperty("gwangan-bridge", "visibility", selectingRegionsRef.current ? "none" : "visible");
+          }
+        };
+        updateBridge.current = syncBridge;
+        vectorMap.once("style.load", () => {
+          updateLanguage();
+          syncBridge();
+        });
       }).catch(() => {
         if (!disposed) addRaster();
       });
@@ -98,6 +117,7 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
       disposed = true;
       styleRequest.abort();
       updateMapLanguage.current = null;
+      updateBridge.current = null;
       observer?.disconnect();
       map.remove();
       mapRef.current = null;
@@ -270,5 +290,10 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
     map.panTo(map.unproject(center), { animate: !window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches });
   }, [focusRequest]);
 
-  return <div ref={container} className="busan-map" role="region" aria-label={label} />;
+  return (
+    <>
+      <div ref={container} className="busan-map" role="region" aria-label={label} />
+      {regionPicker && <RegionMap mapRef={mapRef} {...regionPicker} />}
+    </>
+  );
 }

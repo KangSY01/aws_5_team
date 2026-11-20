@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getTravelCopy, languages } from "../constants/travelCopy.js";
-import { getPlannerCopy } from "../constants/plannerCopy.js";
+import { getPlannerCopy, transportPreferenceIds } from "../constants/plannerCopy.js";
 import { recommendDemo, suggestDemo } from "../lib/demoPlanner.js";
+import { normalizeActivities } from "../lib/activityPreferences.js";
 import koreanFlag from "../assets/flags/kr.svg";
 import englishFlag from "../assets/flags/gb.svg";
 import japaneseFlag from "../assets/flags/jp.svg";
@@ -49,7 +50,8 @@ const preferencesStorageKey = "busannow.preferences";
 const emptyPlan = { stops: [] };
 const emptyPlaces = [];
 const defaultPreferences = {
-  duration: "day", regions: [], activities: [], food: "", transport: "", origin: "", less_walking: false, lodging: false,
+  duration: "day", regions: [], activities: [], customActivities: [], foodTags: [], customFoods: [],
+  transport: "", less_walking: false, lodging: false,
 };
 
 function loadSaved(key) {
@@ -58,6 +60,20 @@ function loadSaved(key) {
   } catch {
     return null;
   }
+}
+
+function loadPreferences() {
+  const { food, origin, ...saved } = loadSaved(preferencesStorageKey) ?? {};
+  const values = { ...defaultPreferences, ...saved };
+  if (typeof food === "string" && food.trim() && !values.customFoods.length) values.customFoods = [food.trim()];
+  if (!transportPreferenceIds.includes(values.transport)) {
+    const previous = values.transport;
+    values.transport = /대중교통|지하철|버스|transit|subway|metro|\bbus\b|公共交通|大眾運輸/iu.test(previous) ? "public_transit"
+      : /차량|자동차|택시|\bcar\b|taxi|汽車|汽车/iu.test(previous) ? "car"
+      : /도보|걷기|walk|徒歩|步行/iu.test(previous) ? "walking"
+      : /상관없|no preference|こだわらない|无偏好|無偏好/iu.test(previous) ? "any" : "";
+  }
+  return values;
 }
 
 function save(key, value) {
@@ -152,9 +168,12 @@ export default function TravelPreview({ night = false } = {}) {
       return false;
     }
   });
-  const [preferences, setPreferences] = useState(() => ({ ...defaultPreferences, ...loadSaved(preferencesStorageKey) }));
+  const [preferences, setPreferences] = useState(loadPreferences);
   const [showPreferences, setShowPreferences] = useState(false);
   const [event, setEvent] = useState(null);
+  const [regionDraft, setRegionDraft] = useState(null);
+  const regionSession = useRef(null);
+  const restorePreferencesScroll = useRef(null);
   const [editId, setEditId] = useState(null);
   const [reviewStatus, setReviewStatus] = useState(null);
   const [planError, setPlanError] = useState(null);
@@ -205,16 +224,33 @@ export default function TravelPreview({ night = false } = {}) {
   }, [open, messages, tab, pending, reviewStatus]);
 
   useEffect(() => {
-    if (tab === "itinerary" && log.current) log.current.scrollTop = 0;
+    if (tab === "itinerary" && log.current) {
+      log.current.scrollTop = restorePreferencesScroll.current ?? 0;
+      restorePreferencesScroll.current = null;
+    }
   }, [tab, showPreferences]);
 
   useEffect(() => {
-    if (open) chatHeading.current?.focus();
+    if (open) chatHeading.current?.focus({ preventScroll: true });
   }, [open, tab]);
+
+  const exitRegionPicker = useCallback((restorePanel) => {
+    if (!regionSession.current) return;
+    const { scroll, expanded: wasExpanded } = regionSession.current;
+    regionSession.current = null;
+    setRegionDraft(null);
+    if (restorePanel) {
+      restorePreferencesScroll.current = scroll;
+      setPanel("itinerary");
+      setExpanded(wasExpanded);
+      setOpen(true);
+    }
+  }, []);
 
   useEffect(() => {
     function syncPage() {
       const next = window.location.hash === "#profile";
+      if (!window.history.state?.busanRegionPicker) exitRegionPicker(!next);
       setProfile(next);
       if (next) {
         setOpen(false);
@@ -227,7 +263,28 @@ export default function TravelPreview({ night = false } = {}) {
       window.removeEventListener("popstate", syncPage);
       window.removeEventListener("hashchange", syncPage);
     };
-  }, []);
+  }, [exitRegionPicker]);
+
+  function showRegions() {
+    if (regionSession.current) return;
+    regionSession.current = { scroll: log.current?.scrollTop ?? 0, expanded };
+    window.history.pushState({ ...window.history.state, busanRegionPicker: true }, "");
+    setRegionDraft([...preferences.regions]);
+    setEvent(null);
+    setExpanded(false);
+    setOpen(false);
+  }
+
+  function finishRegions(commit) {
+    if (!regionSession.current) return;
+    if (commit) updatePreferences({ ...preferences, regions: regionDraft });
+    exitRegionPicker(true);
+    if (window.history.state?.busanRegionPicker) {
+      const { busanRegionPicker, ...previousHistoryState } = window.history.state;
+      window.history.replaceState(previousHistoryState, "");
+      window.history.back();
+    }
+  }
 
   function changeLanguage(code) {
     setLanguage(code);
@@ -285,7 +342,9 @@ export default function TravelPreview({ night = false } = {}) {
   async function recommendCourse(event) {
     event.preventDefault();
     if (requestInProgress.current) return;
-    const values = { ...preferences, lodging: ["overnight", "long"].includes(preferences.duration) && preferences.lodging };
+    const { foodTags, customFoods, ...answers } = preferences;
+    const values = { ...answers, activities: normalizeActivities(preferences.activities), food: [...foodTags, ...customFoods].join(", "),
+      lodging: ["overnight", "long"].includes(preferences.duration) && preferences.lodging };
     requestInProgress.current = true;
     setPending("recommend");
     setPlanError(null);
@@ -377,11 +436,15 @@ export default function TravelPreview({ night = false } = {}) {
 
   return (
     <main ref={root} className="travel-preview" data-night={night} data-page={profile ? "profile" : "map"} data-sheet={open ? "open" : "closed"} data-expanded={expanded}
-      data-compact-itinerary={!showChat && !showPreferences && !stops.length} lang={language}>
+      data-compact-itinerary={!showChat && !showPreferences && !stops.length} data-region-picker={regionDraft !== null} lang={language}>
       <div className="travel-shell" inert={profile} aria-hidden={profile}>
         <BusanMap plan={plan} places={places} events={sampleEvents} onEventSelect={setEvent}
           language={language} label={copy.map}
-          selectedId={selectedId} nextStopId={nextStop?.stop_id} onSelect={setSelectedId} focusRequest={mapFocus} />
+          selectedId={selectedId} nextStopId={nextStop?.stop_id} onSelect={setSelectedId} focusRequest={mapFocus}
+          regionPicker={regionDraft && {
+            selected: regionDraft, onChange: setRegionDraft, copy: plannerCopy,
+            onDone: () => finishRegions(true), onCancel: () => finishRegions(false),
+          }} />
         <header className="travel-header">
           <div className="travel-brand-group">
             <span className="travel-brand">Busan<span>Now</span></span>
@@ -406,7 +469,7 @@ export default function TravelPreview({ night = false } = {}) {
           </section>
         )}
       </div>
-      {tab === "home" && nextPlace && (
+      {tab === "home" && !regionDraft && nextPlace && (
         <div className="trip-next">
           <span>{copy.nextPlace}</span>
           <strong>{nextPlace}</strong>
@@ -462,7 +525,7 @@ export default function TravelPreview({ night = false } = {}) {
           </div>
 
           {!showChat && (showPreferences ? (
-            <TravelPreferences value={preferences} onChange={updatePreferences} onSubmit={recommendCourse} copy={plannerCopy}
+            <TravelPreferences value={preferences} onChange={updatePreferences} onSubmit={recommendCourse} copy={plannerCopy} onShowRegions={showRegions}
               busy={Boolean(pending)} error={plannerCopy[planError]} backLabel={copy.itinerary} onBack={() => setShowPreferences(false)} />
           ) : (
             <section className="travel-panel" aria-label={copy.itinerary}>
@@ -472,6 +535,13 @@ export default function TravelPreview({ night = false } = {}) {
                 selected={selected} onSelect={selectStop} lockedLabel={copy.locked} onEdit={openEdit} editLabel={plannerCopy.editStop}
                 formatStopDate={(date) => formatDate(date, language)} /> : <EmptyState message={copy.empty} />}
               {course?.lodging_unavailable && <p>{plannerCopy.lodgingUnavailable}</p>}
+              {course?.limited_places && <p>{plannerCopy.limitedPlaces}</p>}
+              {course?.unmatched_activities?.length > 0 && (
+                <div className="activity-unmatched" role="status">
+                  <p>{plannerCopy.activityCopy.unmatched}</p>
+                  <ul>{course.unmatched_activities.map((activity) => <li key={activity}>{activity}</li>)}</ul>
+                </div>
+              )}
               {stops.length > 1 && <small>{plannerCopy.schematicRoute}</small>}
             </section>
           ))}
@@ -505,7 +575,7 @@ export default function TravelPreview({ night = false } = {}) {
           </div>
         )}
       </aside>
-      <nav ref={tabBar} className="travel-tabs" data-active-tab={tab} aria-label={copy.navigation}>
+      <nav ref={tabBar} className="travel-tabs" data-active-tab={tab} aria-label={copy.navigation} inert={regionDraft !== null}>
         <span className="travel-tab-indicator" aria-hidden="true" />
         {Object.entries(tabIcons).map(([name, path]) => (
           <button key={name} data-tab={name}

@@ -1,0 +1,83 @@
+[
+  {
+    "place_id": "songdo-beach",
+    "names": {"ko":"송도해수욕장","en":"Songdo Beach","ja":"松島海水浴場","zh-Hans":"松岛海水浴场","zh-Hant":"松島海水浴場"},
+    "lat": 35.07619,
+    "lng": 129.01803,
+    "category": "beach",
+    "indoor": false,
+    "nearest_station": null
+  },
+  {
+    "place_id": "songdo-cable-car",
+    "names": {"ko":"송도해상케이블카 송도베이스테이션","en":"Songdo Cable Car · Bay Station","ja":"松島海上ケーブルカー乗り場","zh-Hans":"松岛海上缆车湾站","zh-Hant":"松島海上纜車灣站"},
+    "lat": 35.07633,
+    "lng": 129.02354,
+    "category": "cable_car",
+    "indoor": false,
+    "nearest_station": null
+  },
+  {
+    "place_id": "dadaepo-beach",
+    "names": {"ko":"다대포해수욕장","en":"Dadaepo Beach","ja":"多大浦海水浴場","zh-Hans":"多大浦海水浴场","zh-Hant":"多大浦海水浴場"},
+    "lat": 35.047,
+    "lng": 128.96323,
+    "category": "beach",
+    "indoor": false,
+    "nearest_station": null
+  },
+  {
+    "place_id": "eulsukdo-eco-park",
+    "names": {"ko":"을숙도 생태공원","en":"Eulsukdo Ecological Park","ja":"乙淑島生態公園","zh-Hans":"乙淑岛生态公园","zh-Hant":"乙淑島生態公園"},
+    "lat": 35.097115,
+    "lng": 128.94031,
+    "category": "park",
+    "indoor": false,
+    "nearest_station": null
+  },
+  {
+    "place_id": "geumjeong-east-gate",
+    "names": {"ko":"금정산성 동문","en":"Geumjeong Fortress East Gate","ja":"金井山城 東門","zh-Hans":"金井山城东门","zh-Hant":"金井山城東門"},
+    "lat": 35.2454,
+    "lng": 129.06369,
+    "category": "historic",
+    "indoor": false,
+    "nearest_station": null
+  },
+  {
+    "place_id": "geumgang-park",
+    "names": {"ko":"금강공원","en":"Geumgang Park","ja":"金剛公園","zh-Hans":"金刚公园","zh-Hant":"金剛公園"},
+    "lat": 35.220731,
+    "lng": 129.07433,
+    "category": "park",
+    "indoor": false,
+    "nearest_station": null
+  },
+  {
+    "place_id": "coralani",
+    "names": {"ko":"코랄라니","en":"Coralani","ja":"コラルラニ","zh-Hans":"Coralani 咖啡馆","zh-Hant":"Coralani 咖啡館"},
+    "lat": 35.1824072,
+    "lng": 129.2088791,
+    "category": "cafe",
+    "indoor": true,
+    "nearest_station": null
+  },
+  {
+    "place_id": "fm-coffee-house",
+    "names": {"ko":"에프엠커피하우스","en":"FM Coffee House","ja":"FMコーヒーハウス","zh-Hans":"FM 咖啡馆","zh-Hant":"FM 咖啡館"},
+    "lat": 35.1546455,
+    "lng": 129.0637738,
+    "category": "cafe",
+    "indoor": true,
+    "nearest_station": "Jeonpo"
+  },
+  {
+    "place_id": "busan-moca",
+    "names": {"ko":"부산현대미술관","en":"Busan Museum of Contemporary Art","ja":"釜山現代美術館","zh-Hans":"釜山现代美术馆","zh-Hant":"釜山現代美術館"},
+    "lat": 35.109277,
+    "lng": 128.942746,
+    "category": "museum",
+    "indoor": true,
+    "nearest_station": null
+  }
+]

@@ -31,6 +31,12 @@ npm test         # 테스트 실행 (vitest --run)
 
 ## 지도 타일 출처
 
+여행 취향 지도는 메인 지도를 재사용합니다. 권역 마커는 대표 장소의 좌표에 고정되며, 가까운 마커는 연결선으로 실제 위치를 가리킵니다.
+
+지역 카드의 사진은 미리보기 크기에 맞춰 축소해 저장하고 화면에 맞게 잘라 표시합니다. 각 카드의 출처 링크에서 Wikimedia Commons 원본과 라이선스를 확인할 수 있습니다.
+
+새 권역의 프론트 데모 장소 여섯 곳은 기존 장소 형식에 맞춰 `src/mocks/regionalPlaces.json`에 저장합니다. 좌표는 OpenStreetMap과 OpenFreeMap에서 확인했습니다. 이 파일은 백엔드 샘플을 갱신할 때 덮어쓰지 않습니다.
+
 별도 래스터 타일을 사용하려면 `VITE_MAP_TILE_URL`에 타일 주소를, `VITE_MAP_TILE_ATTRIBUTION`에 공급자가 안내한 출처 문구와 링크를 설정합니다. 출처에는 링크를 포함한 HTML을 사용할 수 있습니다. 기본 OpenStreetMap 래스터 타일에는 OpenStreetMap 출처가 자동으로 표시됩니다.
 
 벡터 타일 공급자를 바꿀 때는 `public/maps/busan-poster.json`의 해당 소스에서 URL과 `attribution`을 함께 갱신합니다. 스타일에 출처를 지정하지 않으면 소스의 TileJSON 출처를 사용합니다.
