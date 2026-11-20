@@ -11,7 +11,7 @@ PLACE_WEIGHTS = {
     "travel": 2.0,  # 이전 장소에서 걸리는 시간
     "weather": 2.0,  # 체류 시간대 비 (실내 가점)
     "foreigner": 1.0,  # 다국어 관광정보 제공 언어 수 (curation.foreigner_friendly)
-    "dispersal": 1.0,  # 원도심·서부산 가점
+    "dispersal": 1.0,  # 원도심·서부산, 대표 명소가 아닌 곳 가점
 }
 
 NEUTRAL = 0.5  # 판단할 데이터가 없을 때의 항목 점수 (가점도 감점도 하지 않음)
@@ -23,10 +23,25 @@ TRAVEL_SCORE_MAX_MIN = 60  # 이동 시간 점수: 0분 = 1.0, 이 값 이상 = 
 
 FOREIGNER_FRIENDLY_MAX = 3  # curation.foreigner_friendly 최댓값 (영어·일본어·중국어)
 
-# 분산 보너스: 경도가 이 값보다 작으면(서쪽) 원도심·서부산으로 본다.
-# 월 방문자 데이터가 저장소에 없어서 권역 규칙으로 대신한다. 행정 구역 경계가 아닌 근사다.
+# 분산 보너스 = 원도심·서부산이면 DISPERSAL_WEST + 대표 명소가 아니면 DISPERSAL_NOT_LANDMARK (합 1.0).
+# 월 방문자 데이터가 저장소에 없어서 권역 규칙과 대표 명소 목록으로 대신한다.
+# 권역: 경도가 이 값보다 작으면(서쪽) 원도심·서부산으로 본다. 행정 구역 경계가 아닌 근사다.
 # 129.07 은 범어사(129.070)·태종대(129.080)·국립해양박물관(129.080) 바로 서쪽이다.
 DISPERSAL_MAX_LNG = 129.07
+DISPERSAL_WEST = 0.5
+DISPERSAL_NOT_LANDMARK = 0.5
+
+# 대표 명소: 처음 오는 관광객이 대부분 들르는 곳. 팀이 정한 목록이며 방문자 통계로 고른 값이 아니다.
+# curation.json 에는 "덜 알려진 장소"를 나타내는 필드가 없어서 여기 둔다. place_id 는 places.json 기준.
+LANDMARKS = frozenset({
+    "haeundae-beach",
+    "gwangalli-beach",
+    "gamcheon-village",
+    "haedong-yonggungsa",
+    "jagalchi-market",
+    "gukje-market",
+    "taejongdae",
+})
 
 # ---------- 방문 순서 점수 (rank_orders) ----------
 # 순서 점수 = -(이동 분 × W_TRAVEL) - (비 노출 × W_RAIN) + (고정 일정 앞 여유 분, 상한 적용 × W_SLACK). 높을수록 좋다.

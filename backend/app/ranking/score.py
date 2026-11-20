@@ -79,7 +79,7 @@ def score_place(
         "travel": _travel(prev_place_id, place_id, ctx, notes),
         "weather": _weather(stop, ctx, place.indoor, window is not None, notes),
         "foreigner": _foreigner(info, notes),
-        "dispersal": _dispersal(place.lng, notes),
+        "dispersal": _dispersal(place_id, place.lng, notes),
     }
     total = sum(w.PLACE_WEIGHTS[k] * v for k, v in breakdown.items()) / sum(w.PLACE_WEIGHTS.values()) * 100
     return PlaceScore(
@@ -193,8 +193,12 @@ def _foreigner(info: dict, notes: list[str]) -> float:
     return min(value, w.FOREIGNER_FRIENDLY_MAX) / w.FOREIGNER_FRIENDLY_MAX
 
 
-def _dispersal(lng: float, notes: list[str]) -> float:
+def _dispersal(place_id: str, lng: float, notes: list[str]) -> float:
+    score = 0.0
     if lng < w.DISPERSAL_MAX_LNG:
         notes.append("dispersal:west")
-        return 1.0
-    return 0.0
+        score += w.DISPERSAL_WEST
+    if place_id not in w.LANDMARKS:
+        notes.append("dispersal:not_landmark")
+        score += w.DISPERSAL_NOT_LANDMARK
+    return score
