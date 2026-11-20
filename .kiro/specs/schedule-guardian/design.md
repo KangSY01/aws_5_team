@@ -45,7 +45,7 @@ backend/app/guardian/
 | `TRANSFER_BUFFER_MIN` | 10 | 이동 여유(분). 미만이면 `medium`, 0 미만이면 `high` |
 | `MIN_DWELL_MIN` | 45 | 체류 시간 축소 하한(분) |
 | `SHIFT_STEPS_MIN` | 30, 60, 90 | `move_time` 시도 폭(분) |
-| `REPLACE_MAX_EXTRA_MIN` | 30 | `replace` 이동 시간 증가 상한(분) |
+| `REPLACE_MAX_EXTRA_MIN` | 40 | `replace`·`reorder` 이동 시간 증가 상한(분). 데모 장면 2(해운대→송정 +37분)에 맞춰 30→40 |
 | `MAX_REPAIRS` | 3 | Issue당 해결안 수 |
 
 `WEEKDAY_RULE_PLACES`의 ID는 `places.json`에 있는 값만 씁니다. `data-rules.md` 「혼잡도」의 "집중률에 없는 장소"가 `places.json`에 추가되면 함께 넣습니다.
@@ -62,6 +62,7 @@ backend/app/guardian/
 - 고정 일정의 Issue는 `severity`를 `low`로 낮춥니다.
 - `detail` 예: `"토요일 요일 규칙, 집중률 데이터 없음"`, `"15:30-17:00 최대 강수확률 80%, 강수 시간 100%, 실외 장소"`
 - 정렬: `severity` 높은 순, 같으면 Stop `start` 이른 순.
+- 점검 범위: 기준 시각(`context.now`)에 이미 끝난 Stop(`end <= now`)은 점검하지 않습니다(여행 중 모드, 데모 장면 5). 빠듯한 이동은 다음 Stop이 아직 끝나지 않았으면 점검합니다.
 
 ## 해결안 탐색 (`repair.py`)
 ```
@@ -86,7 +87,7 @@ propose_repairs(plan, issue, ctx) -> list[RepairOption]
 
 ### 3단계 `replace`
 - 후보: 같은 `category`인 장소. `rain`이면 `indoor: true`인 장소를 먼저 봅니다.
-- 조건: 이동 시간 증가 30분 이하, 바꾼 뒤 같은 유형 `high` Issue 없음. 시각은 그대로 둡니다.
+- 조건: 이동 시간 증가 `REPLACE_MAX_EXTRA_MIN`(40분) 이하, 바꾼 뒤 같은 유형 `high` Issue 없음. 시각은 그대로 둡니다.
 
 ### 4단계 `remove`
 - 대상 Stop을 뺍니다. 다른 단계 해결안이 없을 때만 돌려줍니다.
@@ -99,7 +100,7 @@ propose_repairs(plan, issue, ctx) -> list[RepairOption]
 | 필드 | 계산 |
 |---|---|
 | `changed` | 장소가 교체·제거된 Stop 수. 시각·순서만 바뀐 Stop은 세지 않습니다 |
-| `kept` | 원래 `place_id` 중 새 일정에 남은 수 |
+| `kept` | 원래 Stop 중 같은 `stop_id`로 같은 장소가 남은 수 (= 원래 Stop 수 − `changed`). 같은 장소가 두 번 있어도 Stop마다 셉니다 |
 | `extra_travel_min` | 새 일정 총 이동 시간 − 원래 총 이동 시간 (음수 가능) |
 | `locked_kept` | 모든 고정 Stop의 `place_id`·`start`·`end`가 같으면 `true` |
 

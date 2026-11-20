@@ -98,3 +98,14 @@ def test_unknown_travel_gives_zero_extra():
     after = replace(BEFORE, "s4", place_id="beomeosa-temple")  # 범어사 이동 시간 없음
     m = compute_metrics(BEFORE, after, make_context())
     assert (m.changed, m.kept, m.extra_travel_min) == (1, 3, 0)
+
+
+def test_kept_counts_stops_when_place_repeats():
+    # 같은 장소가 두 번 있는 일정 (해운대 방문 + 해운대 빛축제). 5곳 중 해운대 하나를 빼면 4곳 유지
+    # (장소 ID 기준으로 세면 다른 해운대 Stop 때문에 5로 잘못 센다)
+    twice = BEFORE[:3] + [BEFORE[3], BEFORE[3].model_copy(update={"stop_id": "s5", "start": at(17, 30), "end": at(19)})]
+    after = [s for s in twice if s.stop_id != "s4"]
+    m = compute_metrics(twice, after, make_context())
+    assert (m.changed, m.kept) == (1, 4)  # Stop 5개 중 1개 제외
+    replaced = [s.model_copy(update={"place_id": "gwangalli-beach"}) if s.stop_id == "s4" else s for s in twice]
+    assert compute_metrics(twice, replaced, make_context()).kept == 4

@@ -31,5 +31,5 @@ TRANSFER_BUFFER_MIN = 10  # 이동 여유(분). 미만이면 medium, 0 미만이
 # 해결안 탐색
 MIN_DWELL_MIN = 45  # 체류 시간 축소 하한(분)
 SHIFT_STEPS_MIN = (30, 60, 90)  # move_time 시도 폭(분)
-REPLACE_MAX_EXTRA_MIN = 30  # replace·reorder 이동 시간 증가 상한(분)
+REPLACE_MAX_EXTRA_MIN = 40  # replace·reorder 이동 시간 증가 상한(분). 데모 장면 2(해운대→송정 +37분)에 맞춰 30→40
 MAX_REPAIRS = 3  # Issue 하나당 돌려줄 해결안 수
