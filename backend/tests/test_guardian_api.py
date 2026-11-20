@@ -130,7 +130,10 @@ def test_with_repair_travel_adds_candidates_for_issue_stops_only():
     assert ctx.travel("busan-tower", "shinsegae-centum-city") == 45
     asked = {c[1:] for c in calls if c[0] == "get_travel_time"}
     assert ("busan-tower", "gwangalli-beach") in asked  # 같은 beach
-    assert all("busan-tower" == a for a, _ in asked)  # s4 의 이웃(부산타워)에서만
+    # s4 의 이웃(부산타워)에서, 또는 s4 장소(해운대)에서 시장·거리까지 (도보권 상권 판정)
+    local = {pid for pid, p in ctx.places.items() if p.category in ("market", "street")}
+    assert all(a == "busan-tower" or (a == "haeundae-beach" and b in local) for a, b in asked)
+    assert any(a == "haeundae-beach" for a, _ in asked)
     assert ("busan-tower", "haeundae-beach") not in asked  # 이미 아는 구간은 다시 묻지 않는다
 
 

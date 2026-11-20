@@ -43,6 +43,17 @@ LANDMARKS = frozenset({
     "taejongdae",
 })
 
+# 대형 상업시설: 대표 명소가 아니어도 분산 보너스(DISPERSAL_NOT_LANDMARK)를 주지 않는다.
+# 대형 시설로 몰린 소비를 중소 상권으로 옮기는 목적과 반대이기 때문. place_id 는 places.json 기준.
+LARGE_COMMERCIAL = frozenset({
+    "shinsegae-centum-city",
+    "lotte-outlet-dongbusan",
+    "lotte-world-busan",
+    "the-bay-101",
+    "busan-x-the-sky",
+    "sea-life-busan",
+})
+
 # ---------- 방문 순서 점수 (rank_orders) ----------
 # 순서 점수 = -(이동 분 × W_TRAVEL) - (비 노출 × W_RAIN) + (고정 일정 앞 여유 분, 상한 적용 × W_SLACK). 높을수록 좋다.
 ORDER_W_TRAVEL = 1.0  # 총 이동 시간 1분당
