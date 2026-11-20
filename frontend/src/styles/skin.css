@@ -414,3 +414,61 @@
   .travel-preview .travel-map-tools { grid-column: 2; grid-row: 2; display: flex; flex-direction: row; }
   .travel-preview .travel-brand-group:not(:has(.trip-status)) { display: none; }
 }
+
+/* ---------- 데스크톱 사이드바 접기·펼치기 탭 ---------- */
+.sidebar-toggle { display: none; }
+@media (min-width: 900px) {
+  .travel-preview .sidebar-toggle {
+    position: absolute;
+    z-index: 5;
+    top: 50%;
+    left: 0;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    min-width: 24px;
+    height: 56px;
+    padding: 0;
+    border: 1.5px solid var(--skin-ink);
+    border-left: 0;
+    border-radius: 0 8px 8px 0;
+    background: var(--skin-card);
+    color: var(--skin-ink);
+    transform: translateY(-50%);
+  }
+  .travel-preview[data-sidebar="true"] .sidebar-toggle { left: 380px; }
+  .travel-preview .sidebar-toggle svg { width: 18px; height: 18px; }
+  .travel-preview .sidebar-toggle:focus-visible { outline: 2px solid var(--skin-ink); outline-offset: 2px; }
+}
+
+/* ---------- 모바일: 비상 도움·여행 문구 = 아이콘 + 짧은 글자 ---------- */
+@media (max-width: 899px) {
+  .travel-preview .travel-map-tools :is(.emergency-help, .travel-phrases) {
+    width: auto;
+    height: 38px;
+    min-height: 38px;
+    gap: 5px;
+    padding: 0 12px 0 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .travel-preview .travel-map-tools :is(.emergency-help, .travel-phrases) svg { width: 18px; height: 18px; }
+  .travel-preview .travel-map-tools .emergency-help::after { content: "Help" / ""; }
+  .travel-preview .travel-map-tools .travel-phrases::after { content: "Phrases" / ""; }
+  .travel-preview:lang(ko) .travel-map-tools .emergency-help::after { content: "비상" / ""; }
+  .travel-preview:lang(ko) .travel-map-tools .travel-phrases::after { content: "문구" / ""; }
+  .travel-preview:lang(ja) .travel-map-tools .emergency-help::after { content: "緊急" / ""; }
+  .travel-preview:lang(ja) .travel-map-tools .travel-phrases::after { content: "会話" / ""; }
+  .travel-preview:lang(zh-Hans) .travel-map-tools .emergency-help::after { content: "紧急" / ""; }
+  .travel-preview:lang(zh-Hans) .travel-map-tools .travel-phrases::after { content: "会话" / ""; }
+  .travel-preview:lang(zh-Hant) .travel-map-tools .emergency-help::after { content: "緊急" / ""; }
+  .travel-preview:lang(zh-Hant) .travel-map-tools .travel-phrases::after { content: "會話" / ""; }
+}
+
+/* 모바일 상단 3줄: 1 = 알약 + 언어, 2 = 아이콘 버튼(오른쪽), 3 = 지도 카드 */
+@media (max-width: 899px) {
+  .travel-preview .travel-map-tools { grid-column: 1 / -1; grid-row: 2; justify-self: end; }
+  .travel-preview .travel-brand-column { grid-column: 1 / -1; grid-row: 3; }
+  .travel-preview .travel-map-tools :is(.emergency-help, .travel-phrases) { white-space: nowrap; }
+}

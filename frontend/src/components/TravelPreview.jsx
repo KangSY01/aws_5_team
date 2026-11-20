@@ -40,6 +40,22 @@ import "./travel-preview.css";
 // 디자인 실험(design/giljabi-ui): 넓은 화면에서는 왼쪽 사이드바 패널을 항상 연다.
 // jsdom 처럼 matchMedia 가 없으면 false 라 기존 동작과 같다.
 const WIDE_QUERY = "(min-width: 900px)";
+// 모바일 검색 알약 문구 (레퍼런스 "Search or ask Giljabi" 방식, 이름은 BusanNow)
+const ASK_COPY = {
+  ko: "BusanNow에게 물어보세요",
+  en: "Search or ask BusanNow",
+  ja: "BusanNowに聞いてみる",
+  "zh-Hans": "向 BusanNow 提问",
+  "zh-Hant": "向 BusanNow 提問",
+};
+// 데스크톱 사이드바 접기·펼치기 버튼 이름
+const SIDEBAR_TOGGLE_COPY = {
+  ko: ["패널 접기", "패널 펼치기"],
+  en: ["Collapse panel", "Expand panel"],
+  ja: ["パネルを閉じる", "パネルを開く"],
+  "zh-Hans": ["收起面板", "展开面板"],
+  "zh-Hant": ["收起面板", "展開面板"],
+};
 function useWideScreen() {
   const [wide, setWide] = useState(() => Boolean(globalThis.matchMedia?.(WIDE_QUERY).matches));
   useEffect(() => {
@@ -247,6 +263,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const page = route;
   const [open, setOpen] = useState(false);
   const wide = useWideScreen();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [course, setCourse] = useState(() => {
     const saved = loadSaved(courseKey);
     return Array.isArray(saved?.plan?.stops) && Array.isArray(saved?.places) ? saved : null;
@@ -329,7 +346,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const isMap = page === "map";
   const translationCopy = getTranslationCopy(language);
   // 넓은 화면은 프로필 화면에서도 사이드바를 유지한다(하단 탭 위치가 바뀌지 않게). 지도 상세 카드는 홈 탭이 아니어도 보인다
-  const sidebar = wide;
+  const sidebar = wide && !sidebarCollapsed;
   const sidebarMap = sidebar && isMap;
   const baseTab = isMap ? open || sidebarMap ? panel : "home" : page;
   const showTranslation = translationMode !== null;
@@ -1080,7 +1097,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
         <header className="travel-header">
           <button type="button" className="travel-ask" aria-controls="travel-chat" onClick={openChat}>
             <span className="travel-ask__mark" aria-hidden="true">부산</span>
-            <span className="travel-ask__text">{copy.placeholder}</span>
+            <span className="travel-ask__text">{ASK_COPY[language] ?? ASK_COPY.en}</span>
           </button>
           <div className="travel-brand-column">
             <div className="travel-brand-group">
@@ -1133,6 +1150,15 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
       </div>
       {profile && <ProfilePage copy={copy} plannerCopy={plannerCopy} language={language} onLanguageChange={changeLanguage}
         demoMode={demoMode} albumRevision={albumRevision} archiveError={archiveError} />}
+      {wide && isMap && (
+        <button type="button" className="sidebar-toggle" aria-controls="travel-chat" aria-expanded={!sidebarCollapsed}
+          aria-label={(SIDEBAR_TOGGLE_COPY[language] ?? SIDEBAR_TOGGLE_COPY.en)[sidebarCollapsed ? 1 : 0]}
+          onClick={() => setSidebarCollapsed((value) => !value)}>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d={sidebarCollapsed ? "m9 6 6 6-6 6" : "m15 6-6 6 6 6"} />
+          </svg>
+        </button>
+      )}
       <aside id="travel-chat" className="travel-chat" data-translation={showTranslation} hidden={!sheetOpen} inert={!sheetOpen} aria-hidden={!sheetOpen} aria-labelledby="travel-panel-title"
         onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
         {sidebar && <div className="sidebar-brand" aria-hidden="true"><span className="travel-brand">Busan<span>Now</span></span></div>}
@@ -1395,6 +1421,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
                 return;
               }
               navigatePage("map");
+              if (name !== "home") setSidebarCollapsed(false);
               if (name === "home") {
                 setOpen(false);
                 setExpanded(false);
