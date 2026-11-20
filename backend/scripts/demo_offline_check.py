@@ -19,6 +19,8 @@ DEMO_DATE = "2026-11-28"
 DEMO_NOW = "2026-11-28T09:00:00+09:00"
 DELAY_NOW = "2026-11-28T13:40:00+09:00"
 FESTIVAL = "해운대 빛축제"
+RETURN_DEPARTURE = "22:40"  # 장면 7: 막차 전 출발
+RETURN_LAST_TRAINS = {"baseline": "23:29", "Dongbaek": "23:31", "Jung-dong": "23:28"}  # 서면 방향 토요일 막차
 
 
 class NetworkBlocked(RuntimeError):
@@ -67,6 +69,25 @@ def _record(rows: list[Result], scene: str, name: str, run, validate, detail) ->
 def _require(condition: bool, message: str) -> None:
     if not condition:
         raise AssertionError(message)
+
+
+def check_return_options(value: dict) -> None:
+    """장면 7(22:40 출발) 결과의 막차 시각·경고·ranked·time_source 를 확인한다. 하나라도 다르면 AssertionError."""
+    _require("error" not in value and bool(value.get("options")), "귀가 선택지가 없습니다.")
+    options = {(o["type"], o["station"]): o for o in value["options"]}
+    got = {
+        "baseline": value["baseline"].get("last_train"),
+        "Dongbaek": options.get(("walk_to_station", "Dongbaek"), {}).get("last_train"),
+        "Jung-dong": options.get(("walk_to_station", "Jung-dong"), {}).get("last_train"),
+    }
+    _require(got == RETURN_LAST_TRAINS, f"막차 시각이 다릅니다: {got}")
+    later = options.get(("shift_later", "Haeundae"))
+    _require(later is not None and "last_train_missed" in later["warnings"], "shift_later 에 last_train_missed 가 없습니다.")
+    ranked = value.get("ranked") or []
+    _require(all(row["option"]["type"] != "shift_later" for row in ranked), "막차를 놓치는 shift_later 가 ranked 에 있습니다.")
+    _require(bool(ranked) and "best" in ranked[0]["labels"], "ranked 첫 항목에 best 가 없습니다.")
+    sources = {row.get("time_source") for row in (value["baseline"], *value["options"], *(r["option"] for r in ranked))}
+    _require(sources == {"estimate"}, f"time_source 가 estimate 가 아닙니다: {sorted(map(str, sources))}")
 
 
 def _handler_call(handler, make_event, method: str, path: str, body: dict | None = None,
@@ -128,9 +149,12 @@ def run_checks() -> tuple[list[Result], int]:
             lambda value: f"{len(value['hourly'])}시간",
         )
         _record(
-            rows, "7", "get_return_options", lambda: return_options.get_return_options(date=DEMO_DATE, event_name=FESTIVAL),
-            lambda value: _require("error" not in value and bool(value.get("options")), "귀가 선택지가 없습니다."),
-            lambda value: f"{len(value['options'])}개",
+            rows, "7", "get_return_options",
+            lambda: return_options.get_return_options(
+                date=DEMO_DATE, event_name=FESTIVAL, planned_departure=RETURN_DEPARTURE
+            ),
+            check_return_options,
+            lambda value: f"막차 {value['baseline']['last_train']}·ranked {len(value['ranked'])}개",
         )
 
         check_body = {
