@@ -27,13 +27,16 @@ def test_short_trip_walks_on_osm_path(monkeypatch):
 
 
 def test_long_trip_uses_transit_legs_with_walks_to_stations(monkeypatch):
-    legs = [{"mode": "SUBWAY", "lines": ["2호선"], "minutes": 30, "path": [[35.163, 129.158], [35.157, 129.060]]}]
+    legs = [{"mode": "SUBWAY", "lines": ["2호선"], "minutes": 30, "path": [[35.163, 129.158], [35.157, 129.060]],
+             "from_name": "해운대역", "to_name": "서면역"}]
     monkeypatch.setattr(route_path, "fetch_transit", lambda a, b: [{"total_minutes": 40, "legs": legs}])
     monkeypatch.setattr(route_path, "osm_walk", lambda a, b: {"minutes": 3, "distance_m": 200, "path": [list(a), list(b)]})
     route = route_path.route_between(RODEO, SEOMYEON)
     assert (route["mode"], route["minutes"], route["source"]) == ("transit", 40, "kakao")
     assert [s["mode"] for s in route["segments"]] == ["WALKING", "SUBWAY", "WALKING"]
     assert route["segments"][1]["lines"] == ["2호선"]
+    assert (route["segments"][1]["from_name"], route["segments"][1]["to_name"]) == ("해운대역", "서면역")
+    assert route_path.RouteResponse.model_validate(route).segments[0].from_name is None
 
 
 def test_falls_back_to_straight_line_when_lookups_fail():

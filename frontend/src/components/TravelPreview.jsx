@@ -26,6 +26,7 @@ import { getTranslationCopy } from "../constants/translationCopy.js";
 import EmergencyHelp from "./EmergencyHelp.jsx";
 import "./emergency-help.css";
 import PlanList from "./PlanList.jsx";
+import TransitLeg from "./TransitLeg.jsx";
 import ChatPlaceCards from "./ChatPlaceCards.jsx";
 import GuardianAlternatives from "./GuardianAlternatives.jsx";
 import TravelActionDialog from "./TravelActionDialog.jsx";
@@ -332,6 +333,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
   const [selectedId, setSelectedId] = useState(() => course?.plan.stops[0]?.stop_id ?? null);
   const [mapFocus, setMapFocus] = useState(null);
   const [returnPaths, setReturnPaths] = useState(null);
+  const [legs, setLegs] = useState({}); // 출발 stop_id → GET /route 결과 (지도에서 조회)
   const dragStart = useRef(null);
   const root = useRef(null);
   const tabBar = useRef(null);
@@ -1192,7 +1194,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
           language={language} label={copy.map} locationCopy={copy.location}
           events={events} returnPaths={returnPaths}
           selectedId={selectedId} nextStopId={nextStop?.stop_id}
-          onSelect={selectPin} focusRequest={mapFocus} crowdLevels={crowdLevels}
+          onSelect={selectPin} onRoutes={setLegs} focusRequest={mapFocus} crowdLevels={crowdLevels}
           regionPicker={regionDraft && {
             selected: regionDraft, onChange: setRegionDraft, copy: plannerCopy,
             onDone: () => finishRegions(true), onCancel: () => finishRegions(false),
@@ -1384,6 +1386,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
               {stops.length ? <PlanList plan={plan} places={places} displayLanguage={language} events={events}
                 selected={selected} tripStopId={nextStop?.stop_id} onSelect={selectMode ? toggleChecked : selectStop} lockedLabel={copy.locked}
                 checkedIds={selectMode ? checkedIds : undefined}
+                legs={legs} renderLeg={(route) => <TransitLeg route={route} language={language} />}
                 formatStopDate={(date) => formatDate(date, language)}
                 onSaveStops={selectMode ? undefined : saveStops} busy={Boolean(pending)}
                 saveError={scheduleSaveFailed ? plannerCopy.requestFailed : undefined}

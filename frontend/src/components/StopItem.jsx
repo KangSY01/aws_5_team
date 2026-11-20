@@ -28,7 +28,7 @@ function LockIcon({ locked }) {
   );
 }
 
-export default function StopItem({ stop, place, language, number, active, tripTarget, onSelect, lockedLabel = LOCKED_LABEL, onEdit, editLabel, day, formatStopDate, timing, overlap, dragging, insertion, checks, lock, eventName = "", checked }) {
+export default function StopItem({ stop, place, language, number, active, tripTarget, onSelect, lockedLabel = LOCKED_LABEL, onEdit, editLabel, day, formatStopDate, timing, overlap, dragging, insertion, checks, lock, eventName = "", checked, leg }) {
   // resolvePlaceName 은 Map 을 받으므로 단일 장소를 Map 으로 감싸 전달한다
   const placesById = place ? new Map([[stop.place_id, place]]) : new Map();
   const { name, isFallbackToId } = resolvePlaceName(stop, placesById, language);
@@ -108,6 +108,7 @@ export default function StopItem({ stop, place, language, number, active, tripTa
           </div>
         </div>
       ) : content}
+      {leg}
     </li>
   );
 }
