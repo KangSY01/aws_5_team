@@ -23,7 +23,7 @@ Parameters:
     Description: 예약 실행 켜기/끄기. 처음에는 DISABLED 로 배포하고, 수동 호출로 확인한 뒤 ENABLED 로 바꾼다. 끄면 Lambda 는 남고 자동 실행만 멈춘다
   ScheduleExpression:
     Type: String
-    Default: cron(15 2,5,8,11,14,17,20,23 * * ? *)
+    Default: rate(10 minutes)
     Description: 실행 시각 (Asia/Seoul 기준). 기본값은 단기예보 발표(02·05·08·11·14·17·20·23시) 15분 뒤
   DataGoKrKey:
     Type: String
