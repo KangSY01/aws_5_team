@@ -517,11 +517,19 @@ it("keeps a saved traveler profile across reloads and sends only its notes with 
   expect(screen.getByText("28 years · Woman · Japan")).toBeVisible();
   await user.click(screen.getByRole("button", { name: "Itinerary", exact: true }));
   await user.click(screen.getByRole("button", { name: "Get an AI itinerary" }));
+  fireEvent.change(screen.getByLabelText(/Start time/), { target: { value: "14:30" } });
   await user.click(screen.getByRole("button", { name: "Create itinerary" }));
   await waitFor(() => expect(chat).toHaveBeenCalledTimes(1));
   const request = chat.mock.calls[0][0];
+  expect(request.message).toContain("Start time (required, Korea Standard Time): 14:30");
   expect(request.message).toContain("Please keep walking distances short.");
   expect(JSON.stringify(request)).not.toMatch(/Private nickname|Japan|woman|\b28\b/);
+});
+
+it("starts offline itinerary recommendations at the chosen local time", async () => {
+  const course = await recommendDemo({ regions: ["oldtown"], duration: "day", activities: [], startTime: "19:20" }, "en");
+  expect(course.plan.stops[0].start).toBe(course.plan.date + "T19:20:00+09:00");
+  expect(course.plan.stops.every((stop) => stop.start.startsWith(course.plan.date))).toBe(true);
 });
 
 it("remembers skipping traveler setup and lets the traveler edit their optional profile later", async () => {

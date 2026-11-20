@@ -133,7 +133,7 @@ const emptyPlan = { stops: [] };
 const emptyPlaces = [];
 const defaultPreferences = {
   duration: "day", regions: [], activities: [], customActivities: [], foodTags: [], customFoods: [],
-  transport: "", less_walking: false, lodging: false,
+  transport: "", less_walking: false, lodging: false, startTime: "",
 };
 
 function loadSaved(key) {
@@ -147,6 +147,7 @@ function loadSaved(key) {
 function loadPreferences(storageKey) {
   const { food, origin, ...saved } = loadSaved(storageKey) ?? {};
   const values = { ...defaultPreferences, ...saved };
+  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(values.startTime)) values.startTime = "";
   if (typeof food === "string" && food.trim() && !values.customFoods.length) values.customFoods = [food.trim()];
   if (!transportPreferenceIds.includes(values.transport)) {
     const previous = values.transport;
@@ -682,7 +683,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
     save(preferencesKey, next);
   }
 
-  async function recommendCourse(event, runDemo = demoMode) {
+  async function recommendCourse(event, runDemo = demoMode && !preferences.startTime) {
     event.preventDefault();
     if (requestInProgress.current) return;
     const { foodTags, customFoods, ...answers } = preferences;
@@ -700,6 +701,8 @@ export default function TravelPreview({ night = false, demoMode = false, travele
         const message = [
           "Create and save a new Busan travel itinerary for today in Busan.",
           "Duration (required): " + english.durations[durationIds.indexOf(values.duration)],
+          values.startTime && "Start time (required, Korea Standard Time): " + values.startTime +
+            ". Pass this exact value as the start argument to the itinerary builder and do not schedule visits before it.",
           "Area, activity, cuisine, transport, and lodging preferences below are ranking hints.",
           "Plan around mealtimes even when no cuisine is selected. Set aside 45–60 minutes for lunch when the itinerary spans midday, and for dinner if it spans the evening meal.",
           "Prefer a verified food market or another catalog location where visitors can eat as a meal stop. If no verified food venue fits, leave an actual meal break between stops rather than filling that time with sightseeing. Never invent venues.",
@@ -725,7 +728,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
         }
         result = { ...saved, session_id: chat.session_id };
       } else {
-        result = runDemo ? makeLocalDemoCourse() : await recommendDemo(values, language, traveler.notes);
+        result = runDemo ? makeLocalDemoCourse() : await recommendDemo(values, language, traveler.notes, demoTime);
       }
       if (!result?.plan?.plan_id || !result.plan.stops?.length || !Array.isArray(result.places)) throw new Error();
       const next = { ...result, preferences: values };
@@ -1287,7 +1290,6 @@ export default function TravelPreview({ night = false, demoMode = false, travele
               busy={Boolean(pending)} error={planError} backLabel={copy.itinerary} onBack={() => setShowPreferences(false)} />
           ) : (
             <section className="travel-panel" aria-label={copy.itinerary}>
-              {course?.demo && <small>{plannerCopy.demoCourse}</small>}
               {stops.length ? <PlanList plan={plan} places={places} displayLanguage={language}
                 selected={selected} tripStopId={nextStop?.stop_id} onSelect={selectStop} lockedLabel={copy.locked} onEdit={openEdit} editLabel={plannerCopy.editStop}
                 formatStopDate={(date) => formatDate(date, language)}

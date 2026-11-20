@@ -65,13 +65,13 @@
   color: var(--skin-ink);
   font-weight: 600;
 }
-.travel-preview :is(.chat-suggestions button, .activity-chip, .duration-chip, .travel-tool-actions button) {
+.travel-preview :is(.chat-suggestions button, .travel-tool-actions button) {
   border: 1.5px solid var(--skin-ink);
   border-radius: 999px;
   background: transparent;
   color: var(--skin-ink);
 }
-.travel-preview :is(.chat-suggestions button, .activity-chip, .duration-chip)[aria-pressed="true"] {
+.travel-preview .chat-suggestions button[aria-pressed="true"] {
   background: var(--skin-ink);
   color: var(--skin-card);
 }
@@ -514,19 +514,6 @@
   .travel-preview:lang(zh-Hans) .travel-map-tools .travel-phrases::after { content: "会话" / ""; }
   .travel-preview:lang(zh-Hant) .travel-map-tools .emergency-help::after { content: "緊急" / ""; }
   .travel-preview:lang(zh-Hant) .travel-map-tools .travel-phrases::after { content: "會話" / ""; }
-}
-
-/* 선택된 칩: 기존 CSS 의 연한 초록 캡슐(::before)이 잉크 배경 위를 덮어 글자가 안 보이던 문제.
-   캡슐도 잉크색으로 맞춘다. 직접 입력 칩(.activity-custom-chip)은 선택 상태가 아니므로 종이색 */
-.travel-preview :is(.activity-chip, .duration-chip):is([aria-pressed="true"], [data-selected="true"], :has(input:checked)) {
-  color: var(--skin-paper);
-}
-.travel-preview :is(.activity-chip, .duration-chip):is([aria-pressed="true"], [data-selected="true"], :has(input:checked))::before {
-  background: var(--skin-ink);
-  border-color: var(--skin-ink);
-}
-.travel-preview .activity-chip.activity-custom-chip:not([aria-pressed="true"], [data-selected="true"], :has(input:checked))::before {
-  background: var(--skin-paper);
 }
 
 /* 모바일: 비 예보 배너는 지도 버튼 아래 전체 폭 */
