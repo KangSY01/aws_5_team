@@ -8,6 +8,7 @@ import datetime as dt
 import logging
 import uuid
 
+from app.guardian.thresholds import TRANSFER_BUFFER_MIN  # Guardian 의 "빠듯한 이동" 기준. 그쪽이 바뀌면 같이 맞춰진다
 from app.models.plan import Plan, Profile, Stop
 from app.tools.lookup import KST, LookupFailure, _load_places, get_travel_time
 
@@ -90,7 +91,9 @@ def build_plan(
     - places.json 에 없는 place_id 는 빼고, 중복은 처음 것만 남긴다.
     - 방문 순서: place_ids[0] 을 출발점으로 고정, 나머지는 get_travel_time 기준 최근접 이웃 + 2-opt.
     - 체류 시간은 DWELL_MIN (category 별 기본값, 데이터 아님).
-    - 첫 Stop 은 start(없으면 10:00)에 시작. 다음 Stop 시작 = 이전 end + 이동 시간을 10분 단위로 올림.
+    - 첫 Stop 은 start(없으면 10:00)에 시작. 다음 Stop 시작 = 이전 end + 이동 시간 + 이동 여유(TRANSFER_BUFFER_MIN,
+      Guardian 기준값)를 10분 단위로 올림. 그래서 이동 여유(다음 start - 이전 end - 이동 시간)는 항상
+      TRANSFER_BUFFER_MIN 이상이고, 만든 일정에 Guardian 의 tight_transfer 가 붙지 않는다.
       시각은 Asia/Seoul(+09:00). 이동 시간 조회가 실패하면 30분으로 둔다.
     - Stop 구간은 겹치지 않고 각 start < end 다. 22:00 을 넘겨도 자르지 않고 경고 로그만 남긴다.
 
@@ -138,8 +141,9 @@ def build_plan(
     begin = dt.datetime.combine(day, start_time.replace(tzinfo=None), KST)
     for n, place_id in enumerate(order, start=1):
         if stops:
-            arrive = stops[-1].end + dt.timedelta(minutes=travel(stops[-1].place_id, place_id))
-            begin = _ceil_to(arrive, ROUND_MIN)
+            # 도착한 뒤 이동 여유까지 지난 시각. 여유가 이 값보다 작으면 Guardian 이 tight_transfer 를 붙인다
+            ready = stops[-1].end + dt.timedelta(minutes=travel(stops[-1].place_id, place_id) + TRANSFER_BUFFER_MIN)
+            begin = _ceil_to(ready, ROUND_MIN)
         end = begin + dt.timedelta(minutes=DWELL_MIN.get(category[place_id], DEFAULT_DWELL_MIN))
         stops.append(Stop(stop_id=f"s{n}", place_id=place_id, start=begin, end=end, locked=False))
 
