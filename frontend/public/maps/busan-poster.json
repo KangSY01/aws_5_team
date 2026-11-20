@@ -82,8 +82,8 @@
       "source": "openmaptiles",
       "source-layer": "water",
       "paint": {
-        "fill-color": "#A8D8E8",
-        "fill-outline-color": "#94C5D4"
+        "fill-color": "#A9CCD5",
+        "fill-outline-color": "#8FB4BE"
       }
     },
     {
@@ -93,7 +93,7 @@
       "source-layer": "waterway",
       "minzoom": 10,
       "paint": {
-        "line-color": "#A8D8E8",
+        "line-color": "#A9CCD5",
         "line-width": [
           "interpolate",
           [

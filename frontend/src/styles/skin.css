@@ -1,0 +1,146 @@
+/* 디자인 스킨 (design/giljabi-ui 브랜치 시험). 화면 구조는 바꾸지 않고 색·글꼴·버튼·말풍선·지도 마커만 덮어쓴다.
+   main.jsx 에서 마지막에 불러온다. 되돌리려면 main.jsx 의 import 한 줄을 지우면 된다.
+   지도는 위치를 알아보는 도로·지명·해안선은 그대로 두고, 마커·경로선만 바꾼다(바다색은 public/maps/busan-poster.json). */
+
+.travel-preview:not([data-night="true"]) {
+  --skin-paper: #f3f1eb;
+  --skin-card: #fbfaf6;
+  --skin-ink: #1c2331;
+  --skin-line: #d8d2c6;
+  --color-bg: var(--skin-card);
+  --color-surface: var(--skin-paper);
+  --color-text: var(--skin-ink);
+  --color-muted: #5e6672;
+  --color-border: var(--skin-line);
+  --color-selected: #e6ece8;
+  --color-selected-text: var(--skin-ink);
+  --color-action: var(--skin-ink);
+  --color-shadow: #1c233122;
+  --capsule-surface: rgb(251 250 246 / 96%);
+  --trip-green: var(--skin-ink);
+}
+
+.travel-preview {
+  --skin-coral: #a5402a;
+  --skin-coral-surface: #f6e4dd;
+  --skin-ochre: #c99a3c;
+  --skin-calm: #4c7366;
+  --skin-serif: Georgia, "Noto Serif KR", "Noto Serif JP", "Noto Serif CJK KR", "Source Han Serif", "Yu Mincho", "Batang", serif;
+  --coast-coral: var(--skin-coral);
+  --coast-coral-surface: var(--skin-coral-surface);
+}
+.travel-preview[data-night="true"] {
+  --skin-ink: #f2f4f6;
+  --skin-coral: #f0a48f;
+  --skin-coral-surface: #4a3330;
+  --trip-green: #4c7366;
+}
+
+/* ---------- 글꼴: 장소 이름은 serif ---------- */
+.travel-preview :is(.stop-item__name, .chat-place-card h3, .guardian-alternative-place h3, .guardian-replacement-heading, .map-event-card h2) {
+  font-family: var(--skin-serif);
+  font-weight: 400;
+  font-size: 1.08em;
+  letter-spacing: 0;
+}
+.travel-preview .chat-heading h2,
+.travel-preview .travel-panel > h2 {
+  letter-spacing: -.01em;
+}
+
+/* ---------- 버튼 ---------- */
+/* 주 버튼: 잉크색 채움, 모서리 6px */
+.travel-preview :is(.trip-actions button:last-child, .guardian-apply, .planner-actions button[type="submit"]) {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 6px;
+  background: var(--skin-ink);
+  color: var(--color-bg);
+  font-weight: 650;
+}
+/* 보조 버튼: 잉크색 테두리 */
+.travel-preview :is(.trip-actions[data-has-stops="true"] button:first-child, .guardian-review button, .guardian-candidate-toggle) {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--skin-ink);
+  font-weight: 600;
+}
+/* 칩: 알약 모양 테두리 */
+.travel-preview :is(.chat-suggestions button, .activity-chip, .duration-chip) {
+  border: 1px solid var(--skin-ink);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--skin-ink);
+}
+.travel-preview :is(.chat-suggestions button, .activity-chip, .duration-chip)[aria-pressed="true"] {
+  background: var(--skin-ink);
+  color: var(--color-bg);
+}
+
+/* ---------- 채팅 말풍선 ---------- */
+.travel-preview .chat-bubble {
+  border-radius: 12px;
+  background: var(--color-bg);
+  border-color: var(--color-border);
+  line-height: 1.55;
+}
+.travel-preview .chat-bubble[data-role="user"] {
+  border-color: var(--skin-ink);
+  border-radius: 12px;
+  background: var(--skin-ink);
+  color: var(--color-bg);
+}
+
+/* ---------- 카드 ---------- */
+.travel-preview :is(.chat-place-card, .guardian-candidate, .map-event-card) {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 10px;
+  background: var(--color-bg);
+  box-shadow: none;
+}
+
+/* ---------- 혼잡 배지·점: 여유·보통·혼잡 = 세이지·오커·코랄 ---------- */
+.travel-preview .guardian-dot { background: var(--skin-coral); }
+.travel-preview .guardian-stop-controls .guardian-badge[data-crowding="true"] {
+  border-color: transparent;
+  background: var(--skin-coral-surface);
+  color: var(--skin-coral);
+}
+.travel-preview .stop-number {
+  border-radius: 6px;
+  background: var(--skin-ink);
+  color: var(--color-bg);
+}
+
+/* ---------- 하단 탭 ---------- */
+.travel-preview .travel-tabs [aria-current="page"] {
+  background: var(--skin-ink);
+  color: var(--color-bg);
+}
+
+/* ---------- 지도: 일정 마커와 경로선 ---------- */
+.busan-map-pin {
+  --pin-fill: #1c2331;
+  --pin-ink: #fbfaf6;
+  --pin-edge: #fbfaf6;
+}
+.busan-map-pin path { stroke-width: 2px; }
+.travel-preview:not([data-trip-active="true"]) .busan-map-pin[aria-pressed="true"],
+.busan-map-pin[data-next-stop] {
+  --pin-fill: #a5402a;
+  --pin-ink: #fbfaf6;
+  --pin-edge: #fbfaf6;
+}
+.busan-map-pin[data-next-stop] path {
+  filter: drop-shadow(0 0 1px #a5402a) drop-shadow(0 0 3px #a5402a88);
+}
+.busan-visit-line {
+  stroke: #a5402a;
+  stroke-width: 3px;
+  stroke-dasharray: 2 7;
+  stroke-linecap: round;
+  stroke-opacity: .9;
+}
+
+/* 패널을 열 때 프로그램이 포커스를 옮기는 제목(tabIndex -1)에는 키보드 포커스 테두리를 그리지 않는다 */
+.travel-preview [tabindex="-1"]:focus-visible { outline: none; }
