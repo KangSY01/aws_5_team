@@ -14,11 +14,12 @@ export const WEATHER_PRESETS = [
 ];
 
 // 노션 「데모 시나리오 대본」 장면별 기준 시각 (docs/demo-readiness.md 에서 확인한 값).
+// 장면 7: 귀가 대안의 "22:20 일찍 출발"(#95)이 지난 시각이 되지 않도록 22:00. 대본 입력은 "23時ごろ帰ります".
 export const SCENES = [
   { id: "scene1", label: "장면 1·2 일정·혼잡", now: "2026-11-28T09:00:00+09:00", weatherPreset: null },
   { id: "scene5", label: "장면 5 오후 비", now: "2026-11-28T13:00:00+09:00", weatherPreset: "rain-afternoon" },
   { id: "scene6", label: "장면 6 늦었어요", now: "2026-11-28T14:00:00+09:00", weatherPreset: null },
-  { id: "scene7", label: "장면 7 귀가", now: "2026-11-28T22:50:00+09:00", weatherPreset: null },
+  { id: "scene7", label: "장면 7 귀가", now: "2026-11-28T22:00:00+09:00", weatherPreset: null },
 ];
 
 const INITIAL = Object.freeze({ enabled: false, now: null, weatherPreset: null });
