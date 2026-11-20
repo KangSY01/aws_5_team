@@ -602,8 +602,9 @@ def test_fallback_plan_created_lists_places_with_the_enumeration_comma(chat, api
     assert ", " not in response.answer
     if language == "ja":
         assert response.answer == f"2026-11-28の旅程（4か所）を作りました：{'、'.join(names)}。"
-    # ChatResponse 구조는 그대로다
-    assert set(response.model_dump(mode="json")) == {"session_id", "plan_id", "answer", "language", "sources", "plan_changes"}
+    # ChatResponse 구조는 그대로다. search_places 결과에 순위를 매겼으니 v0.3 score_breakdown 이 함께 있다
+    assert set(response.model_dump(mode="json")) == {"session_id", "plan_id", "answer", "language", "sources", "plan_changes",
+                                                    "score_breakdown"}
     assert response.language == language and len(response.plan_changes) == 4
 
 
