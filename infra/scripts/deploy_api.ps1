@@ -4,6 +4,7 @@
 # -ReviewOnly: zip 업로드와 변경 세트 생성까지만 하고 스택은 바꾸지 않는다. Replacement·Remove 가 있는지 본 뒤 옵션 없이 다시 실행한다.
 # -FakeLlm 1: Bedrock 을 부르지 않는 고정 응답 (배포 경로만 확인). -UseMock 1: 날씨·음성 샘플 (저장소는 항상 DynamoDB).
 # -AllowedOrigins: CORS 허용 오리진. 기본값은 공용 스택(busan-guide-base)의 CloudFront 도메인 https://<도메인>.
+# -DemoCache true: 데모 장면 1 대본 문장에만 대본 일정을 돌려준다 (DEMO_CACHE_ENABLED). 기본 false. 시연이 끝나면 false 로 다시 배포한다.
 # -AllowLocalhost: Vite 개발 서버(http://localhost:5173, http://127.0.0.1:5173)도 허용한다.
 # -DataGoKrKey: 공공데이터포털 Decoding 키. 기본값은 환경 변수 DATA_GO_KR_KEY_DECODING. NoEcho 라 다시 읽을 수 없어서
 #               배포할 때마다 넘겨야 한다. 비어 있으면 날씨 도구가 missing_key 오류를 돌려준다 (대화는 계속된다).
@@ -17,6 +18,7 @@ param(
     [ValidateRange(0, 1000)] [int]$ReservedConcurrency = 0,
     [string]$DataGoKrKey = $env:DATA_GO_KR_KEY_DECODING,
     [string]$DemoNow = "",
+    [ValidateSet("true", "false")] [string]$DemoCache = "false",
     [string]$StackName = "busan-guide-api",
     [switch]$ReviewOnly
 )
@@ -39,6 +41,7 @@ function Get-BaseOutput($key) {
     return $value.Trim()
 }
 $TableName = Get-BaseOutput "SessionsTableName"
+$UploadsBucket = Get-BaseOutput "UploadsBucketName"   # 사진 인식이 쓰는 업로드 버킷 (공용 스택이 만든다. 새로 만들지 않는다)
 if (-not $AllowedOrigins) { $AllowedOrigins = "https://" + (Get-BaseOutput "CloudFrontDomain") }
 $Origins = @($AllowedOrigins -split "," | ForEach-Object { $_.Trim().TrimEnd("/") } | Where-Object { $_ })
 if ($AllowLocalhost) { $Origins += "http://localhost:5173", "http://127.0.0.1:5173" }
@@ -49,8 +52,10 @@ foreach ($origin in $Origins) {
 $OriginList = ($Origins | Select-Object -Unique) -join ","
 
 Write-Host "DynamoDB 테이블: $TableName"
+Write-Host "사진 업로드 버킷: $UploadsBucket"
 Write-Host "CORS 허용 오리진: $OriginList"
 Write-Host "모델: $ModelId / FAKE_LLM=$FakeLlm / USE_MOCK=$UseMock (저장소는 DynamoDB) / 예약 동시성: $ReservedConcurrency (0=제한 없음)"
+Write-Host "데모 장면 1 캐시: $DemoCache (지정하지 않으면 false 로 배포된다)"
 if ($UseMock -eq "0" -and -not $DataGoKrKey) { Write-Warning "DATA_GO_KR_KEY_DECODING 이 비어 있어 날씨 도구가 missing_key 오류를 돌려줍니다 (대화는 계속됩니다)." }
 
 # 1) zip 빌드
@@ -77,8 +82,9 @@ Assert-Ok "zip 업로드"
 
 # 3) 배포
 $Overrides = @(
-    "CodeBucket=$Bucket", "CodeKey=$Key", "DynamoDbTable=$TableName", "BedrockModelId=$ModelId",
-    "FakeLlm=$FakeLlm", "UseMock=$UseMock", "AllowedOrigins=$OriginList", "ReservedConcurrency=$ReservedConcurrency"
+    "CodeBucket=$Bucket", "CodeKey=$Key", "DynamoDbTable=$TableName", "UploadsBucket=$UploadsBucket", "BedrockModelId=$ModelId",
+    "FakeLlm=$FakeLlm", "UseMock=$UseMock", "AllowedOrigins=$OriginList", "ReservedConcurrency=$ReservedConcurrency",
+    "DemoCacheEnabled=$DemoCache"
 )
 if ($DataGoKrKey) { $Overrides += "DataGoKrKey=$DataGoKrKey" }
 if ($DemoNow) { $Overrides += "DemoNow=$DemoNow" }

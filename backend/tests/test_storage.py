@@ -549,6 +549,7 @@ def test_non_mock_mode_uses_dynamodb(monkeypatch, table):
 
 def test_missing_keys_requires_table_name_only_outside_mock_mode(monkeypatch):
     monkeypatch.setenv("DATA_GO_KR_KEY_DECODING", "dummy")
+    monkeypatch.setenv("UPLOADS_BUCKET", "busan-guide-uploads-test")  # 사진 인식 버킷 (이 테스트의 대상이 아니다)
     monkeypatch.delenv("DYNAMODB_TABLE", raising=False)
 
     monkeypatch.setattr(config, "USE_MOCK", False)

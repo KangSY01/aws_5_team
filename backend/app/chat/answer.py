@@ -51,6 +51,15 @@ def render_answer(text: str, language: Language, grounded: set[str]) -> str:
     return rendered
 
 
+def _return_route(data: dict) -> tuple[str, str] | None:
+    """get_return_options 결과의 (출발역, 도착역). 계산 결과가 아니면(오류 dict 등) None. 역 이름은 도구가 준 영어 이름 그대로다."""
+    origin = (data.get("baseline") or {}).get("station")
+    destination = (data.get("destination") or {}).get("station")
+    if isinstance(origin, str) and origin and isinstance(destination, str) and destination:
+        return origin, destination
+    return None
+
+
 def build_sources(outputs: list[ToolOutput], referenced: set[str], language: Language) -> list[Source]:
     """성공한 도구 결과에서 답변의 근거를 만든다. 같은 (tool, id) 는 처음 한 번만, 나온 순서대로 넣는다.
 
@@ -89,4 +98,8 @@ def build_sources(outputs: list[ToolOutput], referenced: set[str], language: Lan
             add("get_travel_time", f"{origin}>{destination}", title)
         elif out.name == "get_events" and isinstance(data, dict) and data.get("events"):
             add("get_events", data.get("date", ""), message("source_events", language, date=data.get("date", "")))
+        elif out.name == "get_return_options" and isinstance(data, dict) and _return_route(data):
+            origin, destination = _return_route(data)
+            title = message("source_return", language, origin=origin, destination=destination)
+            add("get_return_options", f"{data.get('date', '')}:{origin}>{destination}", title)
     return list(found.values())

@@ -31,6 +31,10 @@ Parameters:
     Default: "0"
     AllowedValues: ["0", "1"]
     Description: 1이면 날씨·음성을 외부 API 대신 app/data 샘플로 쓴다 (통제 테스트). 저장소는 이 값과 무관하게 항상 DynamoDB 다
+  UploadsBucket:
+    Type: String
+    AllowedPattern: "[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]"
+    Description: 사진 업로드 S3 버킷 이름. 공용 스택(busan-guide-base)의 UploadsBucketName 출력값 (deploy_api.ps1 이 조회해서 넘긴다). 이 스택은 버킷을 만들지 않는다
   DataGoKrKey:
     Type: String
     NoEcho: true
@@ -40,6 +44,11 @@ Parameters:
     Type: String
     Default: ""
     Description: 비어 있지 않으면 현재 시각 대신 쓰는 ISO 시각 (시간 이동 데모). 요청의 demo.now 가 있으면 그쪽이 먼저다
+  DemoCacheEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: true 면 데모 장면 1 대본 문장(일본어)에만 대본 일정을 돌려준다 (app/chat/demo_cache.py). 다른 요청은 그대로 Bedrock 을 쓴다. 시연 때만 켠다
   AllowedOrigins:
     Type: CommaDelimitedList
     Description: CORS 로 허용할 프론트엔드 오리진 목록 (예 https://d123.cloudfront.net,http://localhost:5173). 끝에 / 를 붙이지 않는다
@@ -96,6 +105,12 @@ Resources:
                 Effect: Allow
                 Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem]
                 Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DynamoDbTable}
+              # 날씨 캐시 (B 의 get_weather, /chat·/plan/check 가 쓴다). 읽기(GetItem)·저장(PutItem)만. 테이블은 공용 스택이 만들고,
+              # 이름은 config.CACHE_TABLE 기본값과 같아서 환경 변수로 따로 넘기지 않는다
+              - Sid: WeatherCache
+                Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:PutItem]
+                Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/busan-guide-cache
               # 모델 직접 호출(지역 모델 ID) 또는 추론 프로필 호출. Strands 는 ConverseStream 을 쓰므로 스트리밍 권한도 필요하다
               - Sid: BedrockModelOrProfile
                 Effect: Allow
@@ -113,6 +128,17 @@ Resources:
                 Condition:
                   StringEquals:
                     bedrock:InferenceProfileArn: !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${BedrockModelId}
+              # 사진 인식 (D 의 app/photo). presigned PUT URL 은 서명한 역할의 권한으로 올라가므로 PutObject 가 필요하고,
+              # Textract 는 호출한 역할의 권한으로 S3 사진을 읽으므로 GetObject 가 필요하다. 서버가 발급하는 키(photos/)만 허용한다
+              - Sid: PhotoUploads
+                Effect: Allow
+                Action: [s3:PutObject, s3:GetObject]
+                Resource: !Sub arn:${AWS::Partition}:s3:::${UploadsBucket}/photos/*
+              # Textract 동기 API 는 리소스 단위 권한을 지원하지 않는다
+              - Sid: PhotoTextract
+                Effect: Allow
+                Action: textract:DetectDocumentText
+                Resource: "*"
               # POST /speak (B 의 음성 출력). Polly 는 리소스 단위 권한을 지원하지 않는다
               - Sid: PollySpeak
                 Effect: Allow
@@ -147,8 +173,10 @@ Resources:
           USE_MOCK: !Ref UseMock
           STORAGE_BACKEND: dynamodb
           DYNAMODB_TABLE: !Ref DynamoDbTable
+          UPLOADS_BUCKET: !Ref UploadsBucket
           DATA_GO_KR_KEY_DECODING: !Ref DataGoKrKey
           DEMO_NOW: !Ref DemoNow
+          DEMO_CACHE_ENABLED: !Ref DemoCacheEnabled
       FunctionUrlConfig:
         # 계약(docs/api-contract.md)에 인증이 없다. 브라우저가 직접 부르므로 NONE 이고, CORS 는 프론트 오리진만 허용한다
         AuthType: NONE

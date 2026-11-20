@@ -224,7 +224,7 @@ def test_template_env_vars_are_the_ones_config_reads(function):
     read_by_config = set(re.findall(r'os\.environ\.get\("([A-Z_]+)"', Path(config.__file__).read_text(encoding="utf-8")))
     read_by_config |= set(re.findall(r'_flag\("([A-Z_]+)"\)', Path(config.__file__).read_text(encoding="utf-8")))
     assert set(env) <= read_by_config
-    assert {"BEDROCK_MODEL_ID", "FAKE_LLM", "USE_MOCK", "STORAGE_BACKEND", "DYNAMODB_TABLE"} <= set(env)
+    assert {"BEDROCK_MODEL_ID", "FAKE_LLM", "USE_MOCK", "STORAGE_BACKEND", "DYNAMODB_TABLE", "UPLOADS_BUCKET"} <= set(env)
     assert "AWS_REGION" not in env  # Lambda 예약 변수. 스택 리전(ap-northeast-2)이 들어간다
     assert env["STORAGE_BACKEND"] == "dynamodb"
 
@@ -287,6 +287,29 @@ def test_dynamodb_permissions_match_what_the_api_calls(template):
     assert "list_plan_ids" not in Path(handler_module.__file__).read_text(encoding="utf-8")
 
 
+def test_api_can_use_the_weather_cache_and_no_other_table(template, function):
+    from app.tools import lookup
+
+    found = statements(template)
+    cache = found["WeatherCache"]
+    assert set(cache["Action"]) == {"dynamodb:GetItem", "dynamodb:PutItem"}
+    assert cache["Resource"] == {"Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/busan-guide-cache"}
+    base_cache = load_template(BASE_TEMPLATE)["Resources"]["CacheTable"]["Properties"]["TableName"]
+    default = re.search(r'os\.environ\.get\("CACHE_TABLE", "([^"]*)"\)', Path(config.__file__).read_text(encoding="utf-8"))
+    assert default.group(1) == base_cache == "busan-guide-cache"
+    assert "CACHE_TABLE" not in function["Environment"]["Variables"]  # 기본값을 쓴다. 권한의 테이블 이름과 어긋나지 않게
+    used = set(re.findall(r"_cache_table\(\)\.(\w+)\(", Path(lookup.__file__).read_text(encoding="utf-8")))
+    assert used == {"get_item", "put_item"}
+
+    # DynamoDB 권한은 세션 테이블과 캐시 테이블 두 곳뿐이다
+    dynamo = [s for s in found.values() if any(a.startswith("dynamodb:") for a in (s["Action"] if isinstance(s["Action"], list) else [s["Action"]]))]
+    assert {s["Sid"] for s in dynamo} == {"SessionsTable", "WeatherCache"}
+    assert all("*" not in s["Resource"]["Fn::Sub"] for s in dynamo)
+    # 다른 권한은 그대로 있다
+    assert {"Logs", "SessionsTable", "BedrockModelOrProfile", "BedrockModelsBehindProfile", "PhotoUploads", "PhotoTextract",
+            "PollySpeak", "WeatherCache"} == set(found)
+
+
 def test_deployed_storage_is_dynamodb_even_with_sample_data(monkeypatch):
     sentinel = object()
     built = []
@@ -308,6 +331,39 @@ def test_deployed_storage_is_dynamodb_even_with_sample_data(monkeypatch):
     store = storage_service.get_storage()
 
     assert built == [True] and store._backend is sentinel
+
+
+# ---- 사진 인식 (D 의 app/photo) ----
+
+
+def test_photo_uses_the_existing_uploads_bucket(template, function):
+    param = template["Parameters"]["UploadsBucket"]
+    assert "Default" not in param  # 배포할 때 공용 스택 출력값을 반드시 넘긴다
+    assert function["Environment"]["Variables"]["UPLOADS_BUCKET"] == {"Ref": "UploadsBucket"}
+    assert not any(r["Type"] == "AWS::S3::Bucket" for r in template["Resources"].values())  # 버킷을 새로 만들지 않는다
+    base_outputs = load_template(BASE_TEMPLATE)["Outputs"]
+    assert base_outputs["UploadsBucketName"]["Value"] == {"Ref": "UploadsBucket"}
+    script = DEPLOY_SCRIPT.read_text(encoding="utf-8-sig")
+    assert 'Get-BaseOutput "UploadsBucketName"' in script and '"UploadsBucket=$UploadsBucket"' in script
+
+
+def test_photo_permissions_cover_presign_textract_and_only_photo_keys(template):
+    found = statements(template)
+    s3 = found["PhotoUploads"]
+    assert set(s3["Action"]) == {"s3:PutObject", "s3:GetObject"}  # presigned PUT 서명, Textract 의 S3 읽기
+    assert s3["Resource"] == {"Fn::Sub": "arn:${AWS::Partition}:s3:::${UploadsBucket}/photos/*"}
+    from app.photo import upload
+
+    assert upload.KEY_PREFIX == "photos/"  # 권한 범위가 D 가 발급하는 키 접두사와 같다
+    assert found["PhotoTextract"]["Action"] == "textract:DetectDocumentText"
+    assert "BedrockModelOrProfile" in found and "BedrockModelsBehindProfile" in found  # 사진 번역도 같은 Bedrock 권한을 쓴다
+
+
+def test_photo_service_reads_the_bucket_from_config(monkeypatch):
+    from app.photo import service
+
+    monkeypatch.setattr(config, "UPLOADS_BUCKET", "busan-guide-uploads-123456789012")
+    assert service._bucket() == "busan-guide-uploads-123456789012"
 
 
 # ---- IAM: Bedrock·로그 ----

@@ -22,10 +22,11 @@ Lambda 하나가 `app.handler.handler` 로 모든 경로를 처리하고 Lambda 
 | `ApiFunction` | Python 3.13, arm64, 1024MB, 제한 시간 30초(파라미터), 핸들러 `app.handler.handler` |
 | `ApiFunctionUrl` (SAM 이 생성) | `AuthType: NONE`, `InvokeMode: BUFFERED`, CORS 는 `AllowedOrigins` 만 |
 | 공개 호출 권한 2개 (SAM 이 생성) | `lambda:InvokeFunctionUrl`(`FunctionUrlAuthType=NONE`), `lambda:InvokeFunction`(`InvokedViaFunctionUrl=true`) |
-| `ApiRole` | 로그(이 스택 로그 그룹), DynamoDB `GetItem`·`PutItem`·`UpdateItem`(세션 테이블만), Bedrock `InvokeModel`·`InvokeModelWithResponseStream`(이 모델·추론 프로필만), Polly `SynthesizeSpeech` |
+| `ApiRole` | 로그(이 스택 로그 그룹), DynamoDB `GetItem`·`PutItem`·`UpdateItem`(세션 테이블만), 날씨 캐시 `GetItem`·`PutItem`(`busan-guide-cache`만), Bedrock `InvokeModel`·`InvokeModelWithResponseStream`(이 모델·추론 프로필만), Polly `SynthesizeSpeech`, 사진 인식용 S3 `PutObject`·`GetObject`(업로드 버킷의 `photos/*`만)와 `textract:DetectDocumentText` |
 | `ApiLogGroup` | `/aws/lambda/busan-guide-api-handler`, 14일 보관, JSON 형식, INFO 이상 |
 
 환경 변수: `BEDROCK_MODEL_ID`, `FAKE_LLM`(기본 0), `USE_MOCK`(기본 0), `STORAGE_BACKEND=dynamodb`(고정), `DYNAMODB_TABLE`,
+`UPLOADS_BUCKET`(공용 스택의 `UploadsBucketName`, `deploy_api.ps1` 이 조회해서 넘긴다),
 `DATA_GO_KR_KEY_DECODING`(NoEcho 파라미터), `DEMO_NOW`. `AWS_REGION` 은 Lambda 예약 변수라 스택 리전(`ap-northeast-2`)이 들어간다.
 
 - `USE_MOCK=1` 로 배포해도 저장소는 DynamoDB 다. 날씨·음성만 `app/data` 샘플을 쓴다 (실시간 공공데이터 검증 전 통제 테스트).
@@ -41,6 +42,7 @@ $env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Env
 ```
 - `-AllowedOrigins` 를 주지 않으면 `https://<busan-guide-base 의 CloudFrontDomain>` 만 허용한다. `-AllowLocalhost` 는 Vite 개발 서버를 더한다.
 - `-DataGoKrKey` 는 NoEcho 라 다시 배포할 때 넘기지 않으면 빈 값으로 바뀐다 (기본값은 환경 변수 `DATA_GO_KR_KEY_DECODING`).
+- `-DemoCache true` 는 데모 장면 1 대본 문장(일본어)에만 대본 일정을 돌려준다 (환경 변수 `DEMO_CACHE_ENABLED`, `app/chat/demo_cache.py`). 기본 `false` 라 지정하지 않고 다시 배포하면 꺼진다. 다른 요청은 그대로 Bedrock 을 쓴다.
 - `-ReservedConcurrency 5` 처럼 주면 동시 실행 수를 묶는다. 계정의 예약되지 않은 동시성이 10 이상 남아야 해서 기본은 0(제한 없음)이다.
 - 삭제: `aws cloudformation delete-stack --stack-name busan-guide-api --region ap-northeast-2` (테이블은 지워지지 않는다)
 

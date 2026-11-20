@@ -11,6 +11,8 @@ def _flag(name: str) -> bool:
 USE_MOCK = _flag("USE_MOCK")  # 외부 API 대신 app/data/ 샘플·캐시 사용
 FAKE_LLM = _flag("FAKE_LLM")  # Bedrock 호출 없이 고정 응답
 DEMO_NOW = os.environ.get("DEMO_NOW") or None  # ISO 시각 문자열. 있으면 현재 시각 대신 사용
+# 데모 장면 1 일정 캐시 (app/chat/demo_cache.py). 기본 꺼짐. 1·true·yes·on 이면 켠다
+DEMO_CACHE_ENABLED = os.environ.get("DEMO_CACHE_ENABLED", "").strip().lower() in ("1", "true", "yes", "on")
 
 # Bedrock
 MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-5-5")
@@ -24,6 +26,10 @@ DATA_GO_KR_KEY_ENCODING = os.environ.get("DATA_GO_KR_KEY_ENCODING", "")  # 선�
 # DynamoDB 단일 테이블 이름 (메모리 저장소면 필요 없음). 일정·세션이 같은 테이블에 pk/sk 로 저장된다
 DYNAMODB_TABLE = os.environ.get("DYNAMODB_TABLE", "")
 CACHE_TABLE = os.environ.get("CACHE_TABLE", "busan-guide-cache")  # 외부 API 응답 캐시 테이블 (get_weather). infra/base
+
+# 사진 업로드 버킷 (공용 스택 busan-guide-base 출력 UploadsBucketName). USE_MOCK=1 이면 필요 없음.
+# app/photo 가 presigned PUT URL 서명과 Textract 읽기에 쓴다
+UPLOADS_BUCKET = os.environ.get("UPLOADS_BUCKET", "")
 
 # 저장소 종류: "memory" | "dynamodb" | "" (비우면 USE_MOCK 을 따른다: 1 이면 memory, 아니면 dynamodb)
 # AWS 배포는 "dynamodb" 로 고정한다. 그래야 USE_MOCK=1(샘플 데이터)로 통제 테스트를 해도 일정이 DynamoDB 에 남는다
@@ -48,7 +54,7 @@ def missing_keys() -> list[str]:
 
     AWS 자격 증명은 boto3 기본 체인(프로필·Lambda 역할)에 맡기므로 여기서 보지 않는다.
     """
-    required = [] if USE_MOCK else ["DATA_GO_KR_KEY_DECODING"]
+    required = [] if USE_MOCK else ["DATA_GO_KR_KEY_DECODING", "UPLOADS_BUCKET"]
     if not use_memory_storage():
         required.append("DYNAMODB_TABLE")
     return [name for name in required if not os.environ.get(name)]

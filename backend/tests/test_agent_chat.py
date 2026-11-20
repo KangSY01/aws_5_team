@@ -23,7 +23,8 @@ from app.tools.schedule import PlanBuildError, build_plan
 from scripts.local_invoke import make_event
 
 PLAN_ID = "plan-1"  # 샘플 일정(conftest): s1 감천 · s2 자갈치(고정) · s3 부산타워 · s4 해운대
-LOOKUP = {"search_places", "get_place_info", "get_crowd", "get_weather", "get_hours", "get_travel_time", "get_events"}
+LOOKUP = {"search_places", "get_place_info", "get_crowd", "get_weather", "get_hours", "get_travel_time", "get_events",
+          "get_return_options"}
 EDITING = {"replace_stop", "add_stop", "remove_stop", "move_stop"}
 IDS = ["gamcheon-village", "jagalchi-market", "busan-tower", "haeundae-beach"]
 NOW_1128 = {"now": "2026-11-28T09:00:00+09:00"}
@@ -148,6 +149,40 @@ def test_alternatives_from_get_place_info_count_as_grounded(chat):
     response = chat(model, demo=NOW_1128)
 
     assert "[place:" not in response.answer and ("get_place_info", "haeundae-beach") in [(s.tool, s.id) for s in response.sources]
+
+@pytest.mark.parametrize("language", ["en", "ja"])
+def test_event_return_question_calls_get_return_options_and_grounds_its_places(chat, api_storage, language):
+    # 장면 7: 행사를 찾고(get_events) 그 행사 이름으로 귀가 분산을 묻는다. 도구 결과는 B 의 실제 계산이다
+    model = ScriptedModel([
+        tool_turn(("get_events", {"date": "2026-11-28"})),
+        tool_turn(("get_return_options", {"date": "2026-11-28", "event_name": "해운대 빛축제"})),
+        text_turn("After 해운대 빛축제, the station near [place:sea-life-busan] is expected to be crowded. "
+                  "Walking to Dongbaek station adds about 15 minutes."),
+    ])
+
+    response = chat(model, message="How do I get back to Seomyeon after the light festival?", language=language,
+                    demo=NOW_1128)
+
+    assert "get_return_options" in model.tool_names
+    results = model.tool_results()
+    assert [status for status, _ in results] == ["success", "success"]
+    assert '"main_place_id": "sea-life-busan"' in results[1][1] and '"congested": true' in results[1][1]
+    assert "[place:" not in response.answer and place_name(load_places()["sea-life-busan"], language) in response.answer
+    assert ("get_return_options", "2026-11-28:Haeundae>Seomyeon") in [(s.tool, s.id) for s in response.sources]
+    assert response.plan_changes == [] and api_storage.get_plan(response.plan_id).stops == []  # 질문만 했으니 일정은 비어 있다
+
+
+def test_return_options_error_is_passed_to_the_model_and_the_chat_continues(chat):
+    model = ScriptedModel([
+        tool_turn(("get_return_options", {"date": "2026-11-21", "event_name": "없는 행사"})),
+        text_turn("I could not find that event on that day."),
+    ])
+
+    response = chat(model)
+
+    [(status, text)] = model.tool_results()
+    assert status == "success" and "event_not_found" in text  # B 의 도구는 실패를 오류 dict 로 돌려준다
+    assert response.answer == "I could not find that event on that day." and response.sources == []
 
 # ---- 일정 생성 ----
 

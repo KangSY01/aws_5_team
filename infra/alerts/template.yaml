@@ -67,11 +67,17 @@ Resources:
                 Effect: Allow
                 Action: [logs:CreateLogStream, logs:PutLogEvents]
                 Resource: !GetAtt CheckLogGroup.Arn
-              # 점검이 쓰는 DynamoDB 동작만: 일정 읽기(GetItem), 일정 목록(Scan), 점검 결과 저장(PutItem)
+              # 점검이 세션 테이블에 쓰는 DynamoDB 동작만: 일정 읽기(GetItem), 일정 목록(Scan), 점검 결과 저장(PutItem)
               - Sid: PlansAndAlerts
                 Effect: Allow
                 Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:Scan]
                 Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DynamoDbTable}
+              # 날씨 캐시 (B 의 get_weather). 읽기(GetItem)·저장(PutItem)만. 테이블은 공용 스택이 만들고,
+              # 이름은 config.CACHE_TABLE 기본값과 같아서 환경 변수로 따로 넘기지 않는다
+              - Sid: WeatherCache
+                Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:PutItem]
+                Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/busan-guide-cache
 
   CheckFunction:
     Type: AWS::Serverless::Function

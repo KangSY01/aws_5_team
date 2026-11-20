@@ -82,6 +82,13 @@ MESSAGES: dict[str, dict[Language, str]] = {
         "zh-Hans": "交通时间估算：{origin} → {destination}",
         "zh-Hant": "交通時間估算：{origin} → {destination}",
     },
+    # get_return_options 출처. 역 이름은 도구가 준 영어 이름 그대로 넣는다. 번역은 초안이라 D 검수가 필요하다
+    "source_return": {
+        "en": "Return trip estimate after the event: {origin} → {destination}",
+        "ja": "イベント後の帰り道の目安：{origin} → {destination}",
+        "zh-Hans": "活动结束后返程估算：{origin} → {destination}",
+        "zh-Hant": "活動結束後返程估算：{origin} → {destination}",
+    },
 }
 
 # PlanBuildError 코드 중 사용자에게 안내문을 주는 것. 모르는 코드는 no_valid_places 가 아니라 incomplete 로 안내한다
