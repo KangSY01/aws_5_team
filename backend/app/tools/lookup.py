@@ -6,6 +6,8 @@ Guardian 의 build_context 도 이 함수들을 그대로 부른다.
 
 - 실패하면 예외를 던지지 않고 {"error": {"code": str, "message": str}} 를 돌려준다.
 - config.USE_MOCK 이면 날씨는 외부 API 를 부르지 않고 app/data/weather/{날짜}.json 샘플을 쓴다.
+- USE_MOCK=0 의 날씨는 DynamoDB 캐시(config.CACHE_TABLE)를 거친다. 60분 이내 값은 그대로 쓰고, 기상청 호출이
+  실패하면 오래된 값이라도 돌려준다. DynamoDB 가 실패하면 캐시 없이 동작한다.
 - 외부 API 는 타임아웃 5초, 재시도 1회. serviceKey 는 로그와 오류 메시지에 남기지 않는다.
 - 모르는 값(운영시간, 집중률)은 null·빈 목록으로 돌려준다. 지어내지 않는다.
 - 이동 시간(travel_times.json), 행사(events.json), 운영시간(hours.json), 큐레이션(curation.json),
@@ -23,6 +25,8 @@ import urllib.request
 from collections.abc import Callable
 from pathlib import Path
 
+import boto3
+from botocore.config import Config as BotocoreConfig
 from strands import tool
 
 from app import config
@@ -41,6 +45,11 @@ KMA_BASE_HOURS = (2, 5, 8, 11, 14, 17, 20, 23)  # 발표 시각. 발표 10분 �
 KMA_PUBLISH_DELAY_MIN = 10
 KMA_MAX_DAYS_AHEAD = 4  # 이보다 먼 날짜는 호출하지 않고 "예보 없음". 범위 안이라도 응답에 없으면 빈 목록이 된다
 KMA_ROWS = 1500  # 한 번에 받는다 (약 3일 × 24시간 × 12개 항목)
+
+# 날씨 캐시 (DynamoDB config.CACHE_TABLE). 항목: pk="WEATHER#<날짜>", sk="KMA", hourly, fetched_at, base_time, ttl
+WEATHER_CACHE_FRESH = dt.timedelta(minutes=60)  # 이 시간 안에 받은 값이 있으면 기상청을 부르지 않는다
+WEATHER_CACHE_TTL = dt.timedelta(days=2)  # 항목의 ttl(유닉스 초) = fetched_at + 이 값. 지나면 DynamoDB 가 지운다
+CACHE_TIMEOUT_SEC = 2  # 캐시는 없어도 되는 것이라 짧게 기다리고 재시도하지 않는다 (느린 DynamoDB 가 답변을 늦추지 않게)
 
 
 class LookupFailure(Exception):
@@ -220,11 +229,8 @@ def kma_to_hourly(data: dict, day: dt.date) -> list[dict]:
         raise LookupFailure("upstream_error", "Weather API returned an unexpected format.") from None
 
 
-def _kma_weather(day: dt.date) -> list[dict]:
-    """USE_MOCK=0: 기상청 단기예보를 호출한다. 예보 범위 밖 날짜는 호출하지 않고 빈 목록."""
-    now = _now()
-    if not 0 <= (day - now.date()).days <= KMA_MAX_DAYS_AHEAD:
-        return []
+def _kma_weather(day: dt.date, now: dt.datetime) -> tuple[list[dict], dt.datetime]:
+    """기상청 단기예보를 호출한다. (그 날짜의 hourly, 조회한 발표 시각)을 돌려준다."""
     if not config.DATA_GO_KR_KEY:
         raise LookupFailure("missing_key", "DATA_GO_KR_KEY_DECODING is not set.")
     base = latest_kma_base(now)
@@ -237,7 +243,77 @@ def _kma_weather(day: dt.date) -> list[dict]:
         "base_time": base.strftime("%H%M"),
         **BUSAN_GRID,
     })
-    return kma_to_hourly(data, day)
+    return kma_to_hourly(data, day), base
+
+
+@functools.cache
+def _cache_table():
+    """캐시 테이블(boto3 Table). 처음 쓸 때 한 번 만든다 (speech/polly.py 와 같은 이유: 불러올 때 자격 증명을 찾지 않게)."""
+    return boto3.resource(
+        "dynamodb",
+        region_name=config.BEDROCK_REGION,
+        config=BotocoreConfig(
+            connect_timeout=CACHE_TIMEOUT_SEC, read_timeout=CACHE_TIMEOUT_SEC, retries={"max_attempts": 0}
+        ),
+    ).Table(config.CACHE_TABLE)
+
+
+def _weather_cache_key(day: dt.date) -> dict:
+    return {"pk": f"WEATHER#{day.isoformat()}", "sk": "KMA"}
+
+
+def _weather_cache_get(day: dt.date) -> tuple[list[dict], dt.datetime] | None:
+    """캐시의 (hourly, 받은 시각). 없으면 None. DynamoDB 실패나 이상한 항목도 None 으로 본다 (예외를 올리지 않는다)."""
+    try:
+        item = _cache_table().get_item(Key=_weather_cache_key(day)).get("Item")
+        if item is None:
+            return None
+        fetched_at = dt.datetime.fromisoformat(item["fetched_at"])
+        if fetched_at.tzinfo is None:
+            raise ValueError("fetched_at 에 시간대가 없다")
+        # boto3 는 숫자를 Decimal 로 돌려준다. JSON 으로 나갈 수 있게 int 로 바꾼다
+        hourly = [{"time": str(h["time"]), "pop": int(h["pop"]), "pty": int(h["pty"])} for h in item["hourly"]]
+        return hourly, fetched_at
+    except Exception as e:  # 캐시는 없어도 된다. 어떤 실패든 날씨 조회를 막지 않는다
+        logger.warning("날씨 캐시를 읽지 못했습니다 (%s). 캐시 없이 진행합니다.", type(e).__name__)
+        return None
+
+
+def _weather_cache_put(day: dt.date, hourly: list[dict], base: dt.datetime, fetched_at: dt.datetime) -> None:
+    try:
+        _cache_table().put_item(Item={
+            **_weather_cache_key(day),
+            "hourly": hourly,
+            "fetched_at": fetched_at.isoformat(),
+            "base_time": base.isoformat(),
+            "ttl": int((fetched_at + WEATHER_CACHE_TTL).timestamp()),
+        })
+    except Exception as e:
+        logger.warning("날씨 캐시에 저장하지 못했습니다 (%s). 캐시 없이 진행합니다.", type(e).__name__)
+
+
+def _cached_kma_weather(day: dt.date) -> tuple[list[dict], dict]:
+    """USE_MOCK=0 의 날씨: (hourly, cache 정보 {"hit", "stale", "fetched_at"}).
+
+    60분 이내 캐시 → 그대로. 아니면 기상청 호출 → 성공하면 저장. 기상청이 실패하면 오래된 캐시라도 돌려주고(stale),
+    그것도 없으면 실패를 그대로 올린다. 예보 범위 밖 날짜는 기상청도 캐시도 부르지 않고 빈 목록이다.
+    """
+    now = _now()
+    if not 0 <= (day - now.date()).days <= KMA_MAX_DAYS_AHEAD:
+        return [], {"hit": False, "stale": False, "fetched_at": None}
+    cached = _weather_cache_get(day)
+    if cached and now - cached[1] <= WEATHER_CACHE_FRESH:
+        return cached[0], {"hit": True, "stale": False, "fetched_at": cached[1].isoformat()}
+    try:
+        hourly, base = _kma_weather(day, now)
+    except LookupFailure as e:
+        if cached is None:
+            raise
+        logger.warning("기상청 호출 실패(%s). %s 에 받아 둔 캐시를 돌려줍니다.", e.code, cached[1].isoformat())
+        return cached[0], {"hit": True, "stale": True, "fetched_at": cached[1].isoformat()}
+    if hourly:  # 빈 응답(NO_DATA 등)으로 받아 둔 예보를 덮어쓰지 않는다
+        _weather_cache_put(day, hourly, base, now)
+    return hourly, {"hit": False, "stale": False, "fetched_at": now.isoformat()}
 
 
 # ---------- 도구 ----------
@@ -315,11 +391,16 @@ def get_weather(date: str) -> dict:
     Returns:
         {"date": "YYYY-MM-DD", "hourly": [{"time": ISO 시각(+09:00), "pop": 강수확률 0~100, "pty": 강수 형태}]}.
         pty 는 기상청 코드다: 0 없음, 1 비, 2 비/눈, 3 눈, 4 소나기. 예보가 없는 날짜는 hourly 가 빈 목록.
+        A live forecast also has "cache": {"hit": bool, "stale": bool, "fetched_at": ISO time or null}.
+        If cache.stale is true the weather service could not be reached and this is an older forecast
+        fetched at cache.fetched_at: say it may be out of date.
         실패하면 {"error": {"code", "message"}} (invalid_date, upstream_error 등).
     """
     day = _parse_date(date)
-    hourly = _sample_weather(day) if config.USE_MOCK else _kma_weather(day)
-    return {"date": day.isoformat(), "hourly": hourly}
+    if config.USE_MOCK:
+        return {"date": day.isoformat(), "hourly": _sample_weather(day)}
+    hourly, cache = _cached_kma_weather(day)
+    return {"date": day.isoformat(), "hourly": hourly, "cache": cache}
 
 
 @tool

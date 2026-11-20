@@ -4,8 +4,10 @@ import datetime as dt
 import json
 import re
 import urllib.error
+from decimal import Decimal
 
 import pytest
+from botocore.exceptions import ClientError
 from pydantic import TypeAdapter
 
 from app import config
@@ -195,7 +197,7 @@ def test_get_weather_기상청_응답을_시간별로_변환(real_mode, monkeypa
         {"time": "2026-11-21T14:00:00+09:00", "pop": 60, "pty": 0},
         {"time": "2026-11-21T15:00:00+09:00", "pop": 80, "pty": 1},
         {"time": "2026-11-21T16:00:00+09:00", "pop": 70, "pty": 0},
-    ]}
+    ], "cache": {"hit": False, "stale": False, "fetched_at": NOW.isoformat()}}  # 캐시 테이블을 못 써도 그대로 동작한다
     TypeAdapter(list[HourlyWeather]).validate_python(result["hourly"])
     assert seen["timeout"] == 5 and seen["url"].startswith(lookup.KMA_URL + "?")
     for part in ("nx=98", "ny=76", "base_date=20261120", "base_time=1100", "dataType=JSON"):
@@ -204,8 +206,12 @@ def test_get_weather_기상청_응답을_시간별로_변환(real_mode, monkeypa
 
 def test_get_weather_예보_범위_밖_날짜는_호출하지_않고_빈_목록(real_mode, monkeypatch):
     monkeypatch.setattr(lookup.urllib.request, "urlopen", lambda *a, **k: pytest.fail("호출하지 않는다"))
-    assert lookup.get_weather(date="2026-11-30") == {"date": "2026-11-30", "hourly": []}  # 약 3일 이후
-    assert lookup.get_weather(date="2026-11-19") == {"date": "2026-11-19", "hourly": []}  # 지난 날짜
+    table = FakeCacheTable()
+    monkeypatch.setattr(lookup, "_cache_table", lambda: table)
+    no_cache = {"hit": False, "stale": False, "fetched_at": None}
+    assert lookup.get_weather(date="2026-11-30") == {"date": "2026-11-30", "hourly": [], "cache": no_cache}  # 약 3일 이후
+    assert lookup.get_weather(date="2026-11-19") == {"date": "2026-11-19", "hourly": [], "cache": no_cache}  # 지난 날짜
+    assert table.calls == []  # 범위 밖 날짜는 캐시도 보지 않는다
 
 
 def test_get_weather_범위_안이어도_응답에_없으면_빈_목록(real_mode, monkeypatch):
@@ -262,6 +268,169 @@ def test_get_weather_키가_없으면_호출하지_않고_오류_dict(real_mode,
     monkeypatch.setattr(config, "DATA_GO_KR_KEY", "")
     monkeypatch.setattr(lookup.urllib.request, "urlopen", lambda *a, **k: pytest.fail("호출하지 않는다"))
     assert error_code(lookup.get_weather(date="2026-11-21")) == "missing_key"
+
+
+# ---------- get_weather 캐시 (USE_MOCK=0, DynamoDB) ----------
+
+class FakeCacheTable:
+    """boto3 Table 흉내. get_item 은 실제처럼 숫자를 Decimal 로 돌려준다."""
+
+    def __init__(self, fail: bool = False):
+        self.items: dict[tuple[str, str], dict] = {}
+        self.fail, self.calls = fail, []
+
+    def _call(self, name: str) -> None:
+        self.calls.append(name)
+        if self.fail:
+            raise ClientError({"Error": {"Code": "AccessDeniedException", "Message": "denied SECRET"}}, name)
+
+    def get_item(self, Key):
+        self._call("get_item")
+        item = self.items.get((Key["pk"], Key["sk"]))
+        return {"Item": item} if item else {}
+
+    def put_item(self, Item):
+        self._call("put_item")
+        self.items[(Item["pk"], Item["sk"])] = Item
+
+    def seed(self, date: str, fetched_at: dt.datetime, pop: int = 90) -> None:
+        self.items[(f"WEATHER#{date}", "KMA")] = {
+            "pk": f"WEATHER#{date}", "sk": "KMA", "fetched_at": fetched_at.isoformat(),
+            "base_time": "2026-11-20T08:00:00+09:00", "ttl": Decimal(1),
+            "hourly": [{"time": f"{date}T15:00:00+09:00", "pop": Decimal(pop), "pty": Decimal(1)}],
+        }
+
+
+CACHED_HOURLY = [{"time": "2026-11-21T15:00:00+09:00", "pop": 90, "pty": 1}]
+FRESH_HOURLY = [{"time": "2026-11-21T15:00:00+09:00", "pop": 10, "pty": 0}]
+
+
+@pytest.fixture
+def cache_table(real_mode, monkeypatch):
+    table = FakeCacheTable()
+    monkeypatch.setattr(lookup, "_cache_table", lambda: table)
+    return table
+
+
+def _kma_ok(monkeypatch) -> list:
+    calls = []
+
+    def urlopen(url, timeout):
+        calls.append(url)
+        return _Resp(kma([("20261121", "1500", "POP", "10"), ("20261121", "1500", "PTY", "0")]))
+
+    monkeypatch.setattr(lookup.urllib.request, "urlopen", urlopen)
+    return calls
+
+
+def _kma_down(monkeypatch) -> None:
+    def urlopen(url, timeout):
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(lookup.urllib.request, "urlopen", urlopen)
+
+
+@pytest.mark.parametrize("age_min", [0, 59, 60])
+def test_get_weather_캐시가_60분_이내면_기상청을_부르지_않는다(cache_table, monkeypatch, age_min):
+    fetched_at = NOW - dt.timedelta(minutes=age_min)
+    cache_table.seed("2026-11-21", fetched_at)
+    monkeypatch.setattr(lookup.urllib.request, "urlopen", lambda *a, **k: pytest.fail("호출하지 않는다"))
+    result = lookup.get_weather(date="2026-11-21")
+    assert result == {"date": "2026-11-21", "hourly": CACHED_HOURLY,
+                      "cache": {"hit": True, "stale": False, "fetched_at": fetched_at.isoformat()}}
+    assert json.loads(json.dumps(result)) == result  # Decimal 이 남지 않는다
+    assert cache_table.calls == ["get_item"]  # 다시 저장하지 않는다
+    TypeAdapter(list[HourlyWeather]).validate_python(result["hourly"])  # Guardian 은 hourly 만 읽는다
+
+
+def test_get_weather_캐시가_없거나_오래됐으면_기상청을_부르고_저장한다(cache_table, monkeypatch):
+    calls = _kma_ok(monkeypatch)
+    fresh = {"hit": False, "stale": False, "fetched_at": NOW.isoformat()}
+    assert lookup.get_weather(date="2026-11-21") == {"date": "2026-11-21", "hourly": FRESH_HOURLY, "cache": fresh}
+    assert cache_table.items[("WEATHER#2026-11-21", "KMA")] == {
+        "pk": "WEATHER#2026-11-21", "sk": "KMA", "hourly": FRESH_HOURLY, "fetched_at": NOW.isoformat(),
+        "base_time": "2026-11-20T11:00:00+09:00",  # 조회한 기상청 발표 시각
+        "ttl": int((NOW + dt.timedelta(days=2)).timestamp()),
+    }
+    # 방금 저장한 값은 다음 호출에서 캐시로 나온다
+    assert lookup.get_weather(date="2026-11-21")["cache"] == {"hit": True, "stale": False, "fetched_at": NOW.isoformat()}
+    assert len(calls) == 1
+    # 61분 지난 캐시는 쓰지 않고 다시 받아 덮어쓴다
+    cache_table.seed("2026-11-21", NOW - dt.timedelta(minutes=61))
+    assert lookup.get_weather(date="2026-11-21") == {"date": "2026-11-21", "hourly": FRESH_HOURLY, "cache": fresh}
+    assert len(calls) == 2 and cache_table.items[("WEATHER#2026-11-21", "KMA")]["hourly"] == FRESH_HOURLY
+    # 다른 날짜는 다른 항목이다. 빈 예보는 저장하지 않는다
+    assert lookup.get_weather(date="2026-11-22")["cache"]["hit"] is False and len(calls) == 3
+    assert ("WEATHER#2026-11-22", "KMA") not in cache_table.items
+
+
+def test_get_weather_기상청이_실패하면_오래된_캐시를_돌려준다(cache_table, monkeypatch, caplog):
+    old = NOW - dt.timedelta(hours=30)
+    cache_table.seed("2026-11-21", old)
+    _kma_down(monkeypatch)
+    stale = {"date": "2026-11-21", "hourly": CACHED_HOURLY,
+             "cache": {"hit": True, "stale": True, "fetched_at": old.isoformat()}}
+    with caplog.at_level("WARNING"):
+        assert lookup.get_weather(date="2026-11-21") == stale
+    assert "기상청 호출 실패" in caplog.text and "SECRET" not in caplog.text
+    assert cache_table.calls == ["get_item"]  # 오래된 값을 다시 저장하지 않는다
+    monkeypatch.setattr(config, "DATA_GO_KR_KEY", "")  # 키가 없는 것도 기상청 실패로 본다
+    assert lookup.get_weather(date="2026-11-21") == stale
+    # 빈 응답(NO_DATA)은 실패가 아니다. 빈 목록을 돌려주되 받아 둔 예보를 지우지 않는다
+    monkeypatch.setattr(config, "DATA_GO_KR_KEY", "SECRET")
+    monkeypatch.setattr(lookup.urllib.request, "urlopen", lambda *a, **k: _Resp(kma([], code="03")))
+    assert lookup.get_weather(date="2026-11-21")["hourly"] == []
+    assert cache_table.items[("WEATHER#2026-11-21", "KMA")]["fetched_at"] == old.isoformat()
+
+
+def test_get_weather_캐시도_없고_기상청도_실패하면_오류_dict(cache_table, monkeypatch):
+    _kma_down(monkeypatch)
+    assert error_code(lookup.get_weather(date="2026-11-21")) == "upstream_error"
+    cache_table.fail = True  # DynamoDB 까지 실패해도 같은 오류다
+    assert error_code(lookup.get_weather(date="2026-11-21")) == "upstream_error"
+    cache_table.fail = False
+    cache_table.items[("WEATHER#2026-11-21", "KMA")] = {"pk": "WEATHER#2026-11-21", "sk": "KMA", "hourly": "?"}
+    assert error_code(lookup.get_weather(date="2026-11-21")) == "upstream_error"  # 읽을 수 없는 항목은 없는 것으로 본다
+
+
+def test_get_weather_DynamoDB가_실패해도_기상청만으로_동작한다(cache_table, monkeypatch, caplog):
+    cache_table.fail = True
+    calls = _kma_ok(monkeypatch)
+    with caplog.at_level("WARNING"):
+        result = lookup.get_weather(date="2026-11-21")
+    assert result == {"date": "2026-11-21", "hourly": FRESH_HOURLY,
+                      "cache": {"hit": False, "stale": False, "fetched_at": NOW.isoformat()}}
+    assert cache_table.calls == ["get_item", "put_item"] and len(calls) == 1
+    assert "날씨 캐시를 읽지 못했습니다" in caplog.text and "날씨 캐시에 저장하지 못했습니다" in caplog.text
+    assert "SECRET" not in caplog.text  # 오류 메시지는 남기지 않고 종류만 남긴다
+
+
+def test_get_weather_USE_MOCK이면_캐시를_쓰지_않는다(mock_mode, monkeypatch):
+    table = FakeCacheTable()
+    monkeypatch.setattr(lookup, "_cache_table", lambda: table)
+    assert set(lookup.get_weather(date="2026-11-21")) == {"date", "hourly"} and table.calls == []
+
+
+def test_캐시_테이블은_CACHE_TABLE_이름으로_한_번만_만든다(monkeypatch):
+    monkeypatch.undo()  # conftest 가 막아 둔 _cache_table 을 원래 함수로 되돌린다
+    made = []
+
+    class Resource:
+        def Table(self, name):
+            return name
+
+    def resource(service, region_name, config):
+        made.append((service, region_name, config.retries, config.connect_timeout, config.read_timeout))
+        return Resource()
+
+    lookup._cache_table.cache_clear()
+    monkeypatch.setattr(lookup.boto3, "resource", resource)
+    try:
+        assert config.CACHE_TABLE == "busan-guide-cache"  # 환경 변수 CACHE_TABLE 의 기본값
+        assert lookup._cache_table() == lookup._cache_table() == "busan-guide-cache"
+        assert made == [("dynamodb", config.BEDROCK_REGION, {"max_attempts": 0}, 2, 2)]  # 첫 호출 때 한 번
+    finally:
+        lookup._cache_table.cache_clear()  # 가짜 리소스가 다른 테스트에 남지 않게 한다
 
 
 # ---------- get_hours ----------

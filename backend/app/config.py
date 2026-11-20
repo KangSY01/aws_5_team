@@ -23,6 +23,7 @@ DATA_GO_KR_KEY_ENCODING = os.environ.get("DATA_GO_KR_KEY_ENCODING", "")  # 선�
 
 # DynamoDB 단일 테이블 이름 (메모리 저장소면 필요 없음). 일정·세션이 같은 테이블에 pk/sk 로 저장된다
 DYNAMODB_TABLE = os.environ.get("DYNAMODB_TABLE", "")
+CACHE_TABLE = os.environ.get("CACHE_TABLE", "busan-guide-cache")  # 외부 API 응답 캐시 테이블 (get_weather). infra/base
 
 # 저장소 종류: "memory" | "dynamodb" | "" (비우면 USE_MOCK 을 따른다: 1 이면 memory, 아니면 dynamodb)
 # AWS 배포는 "dynamodb" 로 고정한다. 그래야 USE_MOCK=1(샘플 데이터)로 통제 테스트를 해도 일정이 DynamoDB 에 남는다
