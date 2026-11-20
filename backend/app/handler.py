@@ -1,7 +1,8 @@
 """Lambda 진입점 (Function URL / API Gateway HTTP API, payload v2.0).
 
-뼈대 단계: 모든 경로가 app/data/ 의 샘플로 docs/api-contract.md 형식의 고정 응답을 돌려준다.
-각 담당자는 아래 TODO 위치의 고정 응답을 실제 구현 호출로 바꾼다.
+뼈대 단계: 아래 TODO 가 남은 경로는 app/data/ 의 샘플로 docs/api-contract.md 형식의 고정 응답을 돌려준다.
+각 담당자는 TODO 위치의 고정 응답을 실제 구현 호출로 바꾼다.
+/plan/check, /plan/{plan_id}/delay 는 Guardian(app/guardian/service.py) 결과를 돌려준다.
 
 CORS 헤더는 여기서 붙이지 않는다. 배포에서는 Function URL 설정이,
 로컬에서는 scripts/local_server.py 가 담당한다.
@@ -14,11 +15,14 @@ from pathlib import Path
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
+from app.guardian import service as guardian
+from app.guardian.context import WeatherPresetNotFound
 from app.models.api import (
     ChatRequest,
     ChatResponse,
     CheckRequest,
     CheckResponse,
+    DelayRequest,
     ErrorBody,
     ErrorResponse,
     PlanResponse,
@@ -77,6 +81,23 @@ def _require_plan(plan_id: str) -> None:
         raise ApiError(404, "plan_not_found", f"{plan_id} 을 찾을 수 없습니다.")
 
 
+def _get_plan(plan_id: str) -> Plan:
+    """Guardian 경로가 점검할 일정. GET /plan 과 같은 곳에서 읽는다.
+
+    TODO(인프라 담당): GET·PUT /plan 을 app/storage 로 바꿀 때 이 함수도 함께 바꾼다.
+    """
+    _require_plan(plan_id)
+    return SAMPLE_PLAN
+
+
+def _guardian(run):
+    """Guardian 호출. 없는 demo.weather_preset 은 422 validation_error."""
+    try:
+        return run()
+    except WeatherPresetNotFound as e:
+        raise ApiError(422, "validation_error", str(e))
+
+
 def _plan_response(plan: Plan) -> PlanResponse:
     ids = {s.place_id for s in plan.stops}
     return PlanResponse(plan=plan, places=[p for p in PLACES if p.place_id in ids])
@@ -94,9 +115,15 @@ def _route(event: dict) -> BaseModel:
 
         case "POST", ["plan", "check"]:
             request = _parse(event, CheckRequest)
-            _require_plan(request.plan_id)
-            # TODO(Guardian 담당): guardian.check_plan / propose_repairs 결과로 교체
-            return CHECK_RESPONSE
+            plan = _get_plan(request.plan_id)
+            return _guardian(lambda: guardian.run_check(plan, request.demo))
+
+        case "POST", ["plan", plan_id, "delay"]:
+            request = _parse(event, DelayRequest)
+            if request.plan_id != plan_id:
+                raise ApiError(422, "validation_error", "본문의 plan_id 가 경로와 다릅니다.")
+            plan = _get_plan(plan_id)
+            return _guardian(lambda: guardian.run_delay(plan, request.delay_min, request.demo))
 
         case "GET", ["plan", plan_id]:
             _require_plan(plan_id)
