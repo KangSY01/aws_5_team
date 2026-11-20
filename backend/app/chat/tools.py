@@ -10,13 +10,21 @@ import datetime as dt
 import json
 import logging
 import threading
+import time
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
 from strands import tool
-from strands.hooks import AfterToolCallEvent, BeforeToolCallEvent, HookProvider, HookRegistry
+from strands.hooks import (
+    AfterModelCallEvent,
+    AfterToolCallEvent,
+    BeforeModelCallEvent,
+    BeforeToolCallEvent,
+    HookProvider,
+    HookRegistry,
+)
 
 from app.chat.messages import BUILD_ERROR_KEYS
 from app.chat.plan_rules import load_places, place_name, validate_plan
@@ -121,6 +129,11 @@ class ToolRecorder(HookProvider):
         self._rejected_ids: set[str] = set()
         self._listeners: list[Callable[[str, Any], None]] = []
         self._lock = threading.Lock()
+        # 시간 측정 (로그용). 14초 한도를 넘을 때 모델 응답·도구 실행·모델 재시도 중 무엇이 원인인지 구분한다
+        self.model_seconds: list[float] = []  # 모델 호출 한 번마다 걸린 시간 (재시도도 한 번으로 센다)
+        self.model_errors: Counter[str] = Counter()  # 실패한 모델 호출의 예외 종류 (ModelThrottledException 등)
+        self.tool_seconds = 0.0  # 도구 실행 시간 합계 (Strands 가 잰 값)
+        self._model_started: float | None = None
 
     def on_output(self, listener: Callable[[str, Any], None]) -> None:
         """성공한 도구 결과마다 listener(도구 이름, 반환값)를 부른다."""
@@ -129,6 +142,18 @@ class ToolRecorder(HookProvider):
     def register_hooks(self, registry: HookRegistry, **kwargs: Any) -> None:
         registry.add_callback(BeforeToolCallEvent, self._before)
         registry.add_callback(AfterToolCallEvent, self._after)
+        registry.add_callback(BeforeModelCallEvent, self._before_model)
+        registry.add_callback(AfterModelCallEvent, self._after_model)
+
+    def _before_model(self, event: BeforeModelCallEvent) -> None:
+        self._model_started = time.perf_counter()
+
+    def _after_model(self, event: AfterModelCallEvent) -> None:
+        if self._model_started is not None:
+            self.model_seconds.append(time.perf_counter() - self._model_started)
+            self._model_started = None
+        if event.exception is not None:  # 예외 종류만 센다. 메시지에 요청 내용이 들어갈 수 있다
+            self.model_errors[type(event.exception).__name__] += 1
 
     def _before(self, event: BeforeToolCallEvent) -> None:
         with self._lock:
@@ -146,6 +171,8 @@ class ToolRecorder(HookProvider):
 
     def _after(self, event: AfterToolCallEvent) -> None:
         name = event.tool_use["name"]
+        if isinstance(event.duration, (int, float)):
+            self.tool_seconds += event.duration
         try:
             if event.tool_use["toolUseId"] in self._rejected_ids:
                 return
