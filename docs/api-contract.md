@@ -140,6 +140,15 @@ data: {"session_id": "sess-1", "plan_id": "plan-1", "answer": "...", "language":
 - 성공 응답은 `{"places": [...]}`이며, 각 항목은 `id`, `name`, `category`, `address`, `phone`, `url`을 포함한다. 운영시간, 사진, 평점은 이 조회의 응답에 포함되지 않는다.
 - 입력 오류는 `422`, 카카오 검색 실패는 `502`, 서버에서 `KAKAO_REST_API_KEY`가 설정되지 않은 경우는 `503`이다.
 
+## GET /route?from=위도,경도&to=위도,경도
+
+지도에 그릴 두 지점 사이 실제 이동 경로. 저장·캐시하지 않고 요청마다 실시간으로 조회한다.
+
+- 직선 1.5km 이하: OSM 도보 경로 (`source: "osm"`). 그보다 멀면 카카오 대중교통 첫 번째 경로의 버스·지하철 좌표와 정류장까지 도보 경로 (`source: "kakao"`)
+- 조회 실패: 직선 (`source: "straight"`, 분은 좌표 추정)
+- 부산 밖 좌표나 형식 오류는 `422`
+- 응답: `{"mode": "walk"|"transit", "minutes": 22, "source": "osm", "segments": [{"mode": "WALKING"|"BUS"|"SUBWAY"|"ESTIMATE", "lines": ["2호선"], "minutes": 30, "path": [[35.15, 129.15], ...]}]}`
+
 ## GET /events?date=YYYY-MM-DD
 
 지도 행사 레이어에 표시할 그날 운영 중인 행사를 돌려준다. `date`가 행사 전체 기간에 포함되면 장기 행사도 매일 포함한다. Guardian의 `get_events`가 혼잡 가중을 위해 7일보다 긴 행사를 개막일에만 돌려주는 규칙과 별개다.

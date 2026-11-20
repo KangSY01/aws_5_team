@@ -53,3 +53,15 @@ def no_kakao(monkeypatch) -> None:
     그쪽 mock 이 이긴다. test_kakao_route.py 는 kakao_route.fetch_routes 를 직접 부르므로 영향이 없다.
     """
     monkeypatch.setattr(return_options, "fetch_routes", lambda *args, **kwargs: None)
+
+
+@pytest.fixture(autouse=True)
+def no_live_routes(monkeypatch) -> None:
+    """실시간 경로(OSM 도보·카카오 대중교통, app/tools/route_path.py)를 테스트에서 부르지 않는다.
+
+    일정 시각은 추정값으로 계산되고 GET /route 는 직선으로 대체된다. 성공 경로는 test_route_path.py 가 직접 끼워 넣는다.
+    """
+    from app.tools import route_path
+
+    monkeypatch.setattr(route_path, "osm_walk", lambda *args, **kwargs: None)
+    monkeypatch.setattr(route_path, "fetch_transit", lambda *args, **kwargs: None)

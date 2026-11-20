@@ -56,6 +56,12 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - 키가 없으면 `503 activities_unavailable`, 호출 실패는 `502`입니다. `USE_MOCK=1`이어도 키가 있으면 호출합니다.
 - 이 결과는 places.json의 장소가 아닙니다. place_id로 쓰거나 일정 도구에 넘기지 마십시오.
 
+## 실제 이동 경로 (GET /route, 일정 시각)
+- 도보: OSM 도보 경로 `routing.openstreetmap.de/routed-foot` (© OpenStreetMap contributors). 대중교통: 카카오 대중교통 경로의 노선 좌표(`kakao_route.fetch_routes(include_path=True)`).
+- `GET /route`(지도 경로 표시)와 `build_plan`(일정 시각, 인접 구간만)에서 실시간 호출한다. 결과를 저장·캐시하지 않는다.
+- 일정 시각은 max(실시간, 좌표 추정)을 쓴다. Guardian·순서 정하기·후보 탐색은 좌표 추정 그대로다 (같은 입력에 같은 결과).
+- `USE_MOCK=1`, 키 없음, 조회 실패는 좌표 추정·직선으로 대체한다. 테스트는 `tests/conftest.py`의 `no_live_routes`가 막는다.
+
 ## 행사 (한국관광공사 행사정보)
 - API: 한국어·영어·일본어·중국어 간체·번체 TourAPI `searchFestival2` (`lDongRegnCd=26`, `eventStartDate`, `eventEndDate`). 서비스는 `KorService2`, `EngService2`, `JpnService2`, `ChsService2`, `ChtService2`입니다.
 - `uv run --env-file .env python -m scripts.fetch_events --reuse-raw`가 2026-11 기준 목록을 언어별 1회씩 받아 `backend/app/data/events.json`에 저장합니다. 같은 요청의 raw는 재사용하고, `--offline`은 호출 없이 다시 만듭니다.
@@ -136,7 +142,7 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - `backend/app/data/places.json`의 좌표, 다국어 이름, 가까운 역은 아직 검증하지 않은 값입니다. 공공데이터로 교체하기 전에는 사실처럼 단정하지 마십시오.
 
 ## 금지 사항
-- 카카오 API 결과를 저장·캐시하지 마십시오(파일·DynamoDB·메모리 캐시 모두, 오프라인 캐시 모드 포함). 실시간 호출만 허용되며, 대중교통 경로는 `get_return_options`, 로컬 키워드 검색은 `GET /activities`에서만 호출합니다.
+- 카카오 API 결과를 저장·캐시하지 마십시오(파일·DynamoDB·메모리 캐시 모두, 오프라인 캐시 모드 포함). 실시간 호출만 허용되며, 대중교통 경로는 `get_return_options`·`GET /route`·`build_plan`(인접 구간 시각), 로컬 키워드 검색은 `GET /activities`에서만 호출합니다.
 - 네이버 블로그·검색 결과를 수집하거나 AI로 가공하지 마십시오.
 - 공공데이터 원문을 화면에 표시할 때 출처를 함께 표기하십시오. 백엔드는 출처를 `sources`에 담습니다.
 
