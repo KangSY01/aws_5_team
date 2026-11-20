@@ -27,7 +27,8 @@ import EmergencyHelp from "./EmergencyHelp.jsx";
 import "./emergency-help.css";
 import PlanList from "./PlanList.jsx";
 import TransitLeg from "./TransitLeg.jsx";
-import TripProgress from "./TripProgress.jsx";
+import TripReview from "./TripReview.jsx";
+import { getTripReviewCopy } from "../constants/tripReviewCopy.js";
 import ChatPlaceCards from "./ChatPlaceCards.jsx";
 import GuardianAlternatives from "./GuardianAlternatives.jsx";
 import TravelActionDialog from "./TravelActionDialog.jsx";
@@ -295,6 +296,17 @@ export default function TravelPreview({ night = false, demoMode = false, travele
     }
   });
   const [tripTime, setTripTime] = useState(Date.now);
+  // 여행 일시정지: 멈춘 시각(ms). 진행 커서·다음 장소·점검 재조회가 이 시각에 멈춘다
+  const pausedTripKey = activeTripKey + ".paused";
+  const [pausedAt, setPausedAt] = useState(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(pausedTripKey) ?? "null");
+      return saved && course && saved.plan_id === course.plan.plan_id && Number.isFinite(saved.at) ? saved.at : null;
+    } catch {
+      return null;
+    }
+  });
+  const [showReview, setShowReview] = useState(false);
   const [albumRevision, setAlbumRevision] = useState(0);
   const [archiveError, setArchiveError] = useState(false);
   const [preferences, setPreferences] = useState(() => loadPreferences(preferencesKey));
@@ -358,13 +370,14 @@ export default function TravelPreview({ night = false, demoMode = false, travele
   const demoTime = demoMode ? Date.parse(demo.now ?? SCENES[0].now) : NaN;
   const events = useMapEvents(liveApi && stops.length > 0, demoTime, placesById);
   const mapDetailName = mapDetail?.names[language] ?? mapDetail?.names.ko;
-  const travelTime = Number.isFinite(demoTime) ? demoTime : tripTime;
+  const travelTime = Number.isFinite(pausedAt) ? pausedAt : Number.isFinite(demoTime) ? demoTime : tripTime;
   const nextStop = tripStarted ? getTripStop(stops, travelTime) : null;
   const currentPlace = nextStop && Date.parse(nextStop.start) <= travelTime
     ? resolvePlaceName(nextStop, placesById, language).name : null;
   const editIndex = stops.findIndex((stop) => stop.stop_id === editId);
   const editStop = stops[editIndex];
   const selectCopy = getSelectModeCopy(language);
+  const tripReviewCopy = getTripReviewCopy(language);
   const checkedStops = stops.filter((stop) => checkedIds.includes(stop.stop_id));
   const mentionStops = stops.filter((stop) => mentionIds.includes(stop.stop_id));
   const chipStops = editStop ? [editStop] : mentionStops; // 채팅 입력창 위에 @장소 칩으로 표시
@@ -422,10 +435,10 @@ export default function TravelPreview({ night = false, demoMode = false, travele
   // 서버 예약 점검(EventBridge 10분 주기) 결과 조회. 일정 탭을 열 때와 여행 중 10분마다 다시 읽는다
   const [alertsTick, setAlertsTick] = useState(0);
   useEffect(() => {
-    if (!liveCourse || demoMode || !tripStarted) return;
+    if (!liveCourse || demoMode || !tripStarted || Number.isFinite(pausedAt)) return;
     const timer = setInterval(() => setAlertsTick((count) => count + 1), 10 * 60 * 1000);
     return () => clearInterval(timer);
-  }, [liveCourse, demoMode, tripStarted]);
+  }, [liveCourse, demoMode, tripStarted, pausedAt]);
   useEffect(() => {
     if (!liveCourse || demoMode || baseTab !== "itinerary") return;
     const request = new AbortController();
@@ -465,7 +478,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
   }, [liveCourse, plan, demo, guardianRefresh]);
 
   useEffect(() => {
-    if (!tripStarted || Number.isFinite(demoTime)) return;
+    if (!tripStarted || Number.isFinite(demoTime) || Number.isFinite(pausedAt)) return;
     let timer;
     function syncClock() {
       clearTimeout(timer);
@@ -689,12 +702,54 @@ export default function TravelPreview({ night = false, demoMode = false, travele
 
   function toggleTrip() {
     if (tripStarted && course?.plan.stops.length) {
-      void saveCompletedTrip(course, demoMode).then(() => {
+      setShowReview(true); // 종료 전에 루트 평가 대화상자 표시
+      return;
+    }
+    changeTrip(!tripStarted);
+  }
+
+  function setTripPaused(at) {
+    setPausedAt(at);
+    try {
+      if (Number.isFinite(at)) window.localStorage.setItem(pausedTripKey, JSON.stringify({ plan_id: plan.plan_id, at }));
+      else window.localStorage.removeItem(pausedTripKey);
+    } catch {
+      // 저장소가 없으면 현재 세션에서만 유지
+    }
+  }
+
+  function togglePause() {
+    setTripPaused(Number.isFinite(pausedAt) ? null : (Number.isFinite(demoTime) ? demoTime : Date.now()));
+  }
+
+  // 여행 종료: 평가(없으면 null)와 함께 앨범에 저장
+  function endTrip(review) {
+    setShowReview(false);
+    if (course?.plan.stops.length) {
+      void saveCompletedTrip(course, demoMode, review).then(() => {
         setArchiveError(false);
         setAlbumRevision((revision) => revision + 1);
       }).catch(() => setArchiveError(true));
     }
-    changeTrip(!tripStarted);
+    setTripPaused(null);
+    changeTrip(false);
+  }
+
+  // 평가 대화상자 요약: 지금 시각까지 끝난 일정 수, 구간 이동 시간(도보·대중교통), 혼잡 높음 장소 수
+  function tripSummary() {
+    const now = Number.isFinite(demoTime) ? demoTime : Date.now();
+    let walkMinutes = 0;
+    let transitMinutes = 0;
+    stops.forEach((stop, index) => {
+      const route = index < stops.length - 1 && stops[index + 1].place_id !== stop.place_id ? legs[stop.stop_id] : null;
+      for (const part of route?.segments ?? []) {
+        if (part.mode === "WALKING") walkMinutes += part.minutes;
+        else transitMinutes += part.minutes;
+      }
+    });
+    const crowded = new Set((guardian?.issues ?? []).filter((issue) => issue.type === "crowded" && issue.severity === "high")
+      .map((issue) => issue.stop_id)).size;
+    return { visited: stops.filter((stop) => Date.parse(stop.end) <= now).length, total: stops.length, walkMinutes, transitMinutes, crowded };
   }
 
   function selectStop(index) {
@@ -1212,7 +1267,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
           <div className="travel-brand-column">
             <div className="travel-brand-group">
               <span className="travel-brand"><img className="travel-brand__logo" src={brandLogo} alt="BusanNow" /></span>
-              {tripStarted && <span className="trip-status">{copy.traveling}</span>}
+              {tripStarted && <span className="trip-status">{Number.isFinite(pausedAt) ? tripReviewCopy.paused : copy.traveling}</span>}
             </div>
             {(tab === "home" || sidebarMap) && !regionDraft && (currentPlace || mapDetail) && (
               <div className="travel-map-cards">
@@ -1391,8 +1446,6 @@ export default function TravelPreview({ night = false, demoMode = false, travele
               busy={Boolean(pending)} error={planError} backLabel={copy.itinerary} onBack={() => setShowPreferences(false)} />
           ) : (
             <section className="travel-panel" aria-label={copy.itinerary}>
-              {tripStarted && stops.length > 0 && <TripProgress stops={stops} now={travelTime} current={nextStop}
-                currentName={nextStop && resolvePlaceName(nextStop, placesById, language).name} language={language} formatTime={formatTime} />}
               {stops.length ? <PlanList plan={plan} places={places} displayLanguage={language} events={events}
                 selected={selected} tripStopId={nextStop?.stop_id} onSelect={selectMode ? toggleChecked : selectStop} lockedLabel={copy.locked}
                 checkedIds={selectMode ? checkedIds : undefined}
@@ -1509,9 +1562,15 @@ export default function TravelPreview({ night = false, demoMode = false, travele
           </div>
           ) : (
           <div className="trip-actions" data-has-stops={stops.length > 0}>
-            <button type="button" disabled={Boolean(pending)} onClick={() => setShowPreferences(true)}>
-              {stops.length ? plannerCopy.newCourse : plannerCopy.recommend}
-            </button>
+            {tripStarted && stops.length > 0 ? (
+              <button type="button" aria-pressed={Number.isFinite(pausedAt)} disabled={Boolean(pending)} onClick={togglePause}>
+                {Number.isFinite(pausedAt) ? tripReviewCopy.resume : tripReviewCopy.pause}
+              </button>
+            ) : (
+              <button type="button" disabled={Boolean(pending)} onClick={() => setShowPreferences(true)}>
+                {stops.length ? plannerCopy.newCourse : plannerCopy.recommend}
+              </button>
+            )}
             {stops.length > 0 && (
               <button type="button" disabled={Boolean(pending)} onClick={toggleTrip}>
                 {tripStarted ? copy.endTrip : copy.startTrip}
@@ -1521,6 +1580,10 @@ export default function TravelPreview({ night = false, demoMode = false, travele
           )
         )}
       </aside>
+      {showReview && (
+        <TripReview copy={tripReviewCopy} summary={tripSummary()} onClose={() => setShowReview(false)}
+          onSkip={() => endTrip(null)} onSave={(review) => endTrip(review)} />
+      )}
       {showReset && (
         <TravelActionDialog title={copy.resetItinerary.title}
           className="itinerary-reset-dialog" onClose={() => setShowReset(false)}>

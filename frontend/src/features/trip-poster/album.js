@@ -32,7 +32,8 @@ export async function loadAlbum(demoMode) {
   return entries.filter((entry) => entry.demo === demoMode).sort((a, b) => b.savedAt - a.savedAt);
 }
 
-export function saveCompletedTrip(course, demo) {
+// review: 여행 종료 평가 { rating, tags, visited, total, walkMinutes, transitMinutes, crowded } 또는 null
+export function saveCompletedTrip(course, demo, review = null) {
   return saveAlbumEntry({
     id: "trip-" + crypto.randomUUID(),
     kind: "trip",
@@ -42,5 +43,6 @@ export function saveCompletedTrip(course, demo) {
     stops: course.plan.stops,
     places: course.places,
     walkingRoute: course.walkingRoute,
+    review,
   });
 }
