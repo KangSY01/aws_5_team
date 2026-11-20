@@ -28,6 +28,7 @@ from strands.tools.executors import SequentialToolExecutor
 from app import config, storage
 from app.chat import answer as chat_answer
 from app.chat import demo_cache
+from app.chat.token_usage import TokenUsage, log_usage, usage_from_agent
 from app.chat.messages import LIST_SEPARATORS, message
 from app.chat.plan_rules import load_places, place_name, validate_plan
 from app.chat.ranking import PlaceRanker
@@ -205,6 +206,7 @@ class _Chat:
     creator: PlanCreator | None  # create 모드에서만
     editor: PlanEditor | None  # edit 모드에서만
     ranker: PlaceRanker | None = None  # search_places 순위 훅. _converse 가 만든다. 점수는 score_breakdown 으로 나간다
+    token_usage: TokenUsage | None = None  # 이번 요청의 Bedrock 토큰 합계 (_converse 가 채운다. 로그·평가용)
 
     @property
     def language(self) -> Language:
@@ -272,13 +274,18 @@ def _converse(chat: _Chat, model: BedrockModel | None) -> tuple[str, str]:
     timer = threading.Timer(CHAT_TIMEOUT_SEC, cancel.set)
     timer.daemon = True
     timer.start()
+    stop_reason = "error"
     try:
         result = agent(chat.request.message, limits={"turns": MAX_TURNS}, cancel_signal=cancel)
+        stop_reason = result.stop_reason
     except Exception as error:  # 오류 종류만 남긴다. 메시지에 요청 내용이 들어갈 수 있다
         logger.error("모델 호출 실패: %s", type(error).__name__)
         raise ChatError("model_error", f"모델 호출 실패: {type(error).__name__}") from error
     finally:
         timer.cancel()
+        # 실패·시간 초과여도 이미 쓴 토큰을 남긴다. token_usage 는 예외를 내지 않는다
+        chat.token_usage = usage_from_agent(agent, len(chat.recorder.model_seconds))
+        log_usage(chat.mode, chat.token_usage, stop_reason)
     if result.stop_reason == "cancelled":
         logger.error("대화 처리 시간이 %d초를 넘어 중단했습니다.", CHAT_TIMEOUT_SEC)
         raise ChatError("timeout", "대화 처리 시간 초과")
