@@ -5,8 +5,8 @@
 
 - 역 혼잡은 규칙으로 추정한 값이다. 실측·실시간이 아니고, 혼잡 시간대도 근거 데이터 없이 정한 가정이다.
   집중률(congestion.json)은 쓰지 않는다. 역별 혼잡 숫자·등급을 만들지 않는다.
-- 이동 시간은 역 좌표(stations.json)와 travel_times.json 의 rule 로 계산한 추정이다. 실제 경로·시간표가 아니고,
-  경로 API 를 부르거나 그 결과를 저장하지 않는다.
+- 이동 시간은 역 좌표(stations.json)와 travel_times.json 의 rule 로 계산한 추정이다. 실제 경로가 아니고,
+  경로 API 를 부르거나 그 결과를 저장하지 않는다. 막차 경고만 부산교통공사 표준 시간표(last_trains.json)를 쓴다.
 - 현재 시각을 쓰지 않는다. 결과는 입력(date, planned_departure)과 app/data/ 의 파일로만 정해진다.
 - 출처(sources)는 도구가 돌려주지 않는다. 다른 조회 도구처럼 app/chat/answer.py 가 도구 이름으로 조립한다.
 """
@@ -32,8 +32,9 @@ UNKNOWN_HOURS = ("00:00:00", "23:59:59")  # get_events 가 진행 시간을 모�
 NOTE = (
     "Rule-based estimate, not measured or real-time crowding. The crowded window "
     f"({STATION_CROWD_BEFORE_MIN} min before to {STATION_CROWD_AFTER_MIN} min after the event end) is an assumption. "
-    "Travel times are estimated from station coordinates, not routes or timetables, "
-    "and exclude walking to and from stations."
+    "Travel times are estimated from station coordinates, not routes, and exclude walking to and from stations. "
+    "Last-train warnings use the stored Busan Metro standard timetable when the requested "
+    "station and direction are available; actual train times can differ."
 )
 
 
@@ -46,6 +47,34 @@ def travel_rule() -> dict:
     """travel_times.json 의 rule 중 역·도보 추정에 쓰는 값. 기존 이동 시간 표와 같은 값을 쓴다."""
     all_rules = _load_json("travel_times.json")["rule"]
     return {key: all_rules[key] for key in RULE_KEYS}
+
+
+def _service_day_code(day: dt.date) -> str:
+    """열차시각표 요일 코드. 공휴일 달력은 없으므로 토·일만 구분하고 평일 공휴일은 평일로 본다."""
+    return "2" if day.weekday() == 5 else "3" if day.weekday() == 6 else "1"
+
+
+def _last_train_at(day: dt.date, station: str, toward: str) -> dt.datetime | None:
+    """저장된 표에서 해당 역·방향·요일의 막차 시각. 파일·행·값이 없거나 이상하면 None."""
+    try:
+        row = _load_json("last_trains.json")["stations"][station]
+        if row["toward"] != toward:
+            return None
+        hour_text, minute_text = row["last_train"][_service_day_code(day)].split(":", 1)
+        hour, minute = int(hour_text), int(minute_text)
+        if not 0 <= hour <= 47 or not 0 <= minute < 60:
+            return None
+    except (LookupFailure, AttributeError, KeyError, TypeError, ValueError):
+        return None
+    return dt.datetime.combine(day, dt.time(), lookup.KST) + dt.timedelta(hours=hour, minutes=minute)
+
+
+def last_train_warnings(day: dt.date, station: str, toward: str, departure: dt.datetime) -> list[str]:
+    """막차 표가 없으면 unknown, 막차 뒤면 missed, 탈 수 있는 시각이면 빈 목록."""
+    last_train = _last_train_at(day, station, toward)
+    if last_train is None:
+        return ["last_train_unknown"]
+    return ["last_train_missed"] if departure > last_train else []
 
 
 def find_station(stations: dict[str, dict], name: str) -> str | None:
@@ -166,7 +195,14 @@ def return_options(date: str, place_id: str | None = None, event_name: str | Non
         earlier = end - dt.timedelta(minutes=EARLY_LEAVE_BEFORE_END_MIN)
         if earlier > start:  # 행사가 시작하기도 전에 떠나라는 제안은 하지 않는다
             options.append(shift("shift_earlier", earlier, "leaves_before_event_end"))
-        options.append(shift("shift_later", window_to, "last_train_unknown"))  # 막차 시각은 모른다. 경고만 붙인다
+        options.append(shift(
+            "shift_later",
+            window_to,
+            "last_train_unknown",  # 아래에서 저장된 시간표가 있으면 실제 비교 결과로 교체하거나 없앤다
+        ))
+        options[-1]["warnings"] = last_train_warnings(
+            day, crowded["station"], destination["station"], window_to
+        )
         walks = sorted(
             (straight_km(crowded, s), s["station"]) for s in stations.values() if s["station"] != crowded["station"]
         )
@@ -213,9 +249,12 @@ def get_return_options(date: str, place_id: str | None = None, event_name: str |
     Everything here is a rule-based estimate, not measured or real-time crowding. Only one station is treated as
     crowded: the station nearest to the event's main place. The crowded window (30 minutes before to 60 minutes after
     the event end) is an assumption made without supporting data. Travel times are rough estimates from station
-    coordinates, not real routes or timetables, and they exclude walking between places and stations. The last train
-    time is unknown. So say "expected to be crowded" and "about N minutes", never state lines or transfers, and when
-    an option has the warning last_train_unknown tell the user to check the last train.
+    coordinates, not real routes, and they exclude walking between places and stations. Last-train warnings use a
+    stored standard timetable only for the available station and direction. Actual train times can differ. A
+    shift_later option has last_train_missed when its departure is after that timetable, no last-train warning when
+    it is not after the last train, or last_train_unknown when no matching timetable is stored. Tell the user to
+    check the live timetable for either warning. Say "expected to be crowded" and "about N minutes"; never state
+    lines or transfers as facts.
     The destination defaults to Seomyeon station (the demo hotel area). If destination.is_default is true, tell the
     user the result is based on Seomyeon. If the user names another destination, pass it as destination_station or
     destination_place_id.
@@ -244,7 +283,8 @@ def get_return_options(date: str, place_id: str | None = None, event_name: str |
         "options": up to 5 suggestions sorted by extra_min, each {"type": "shift_earlier" | "shift_later" |
             "walk_to_station", "depart_at", "station": station to board at, "walk_min": walking minutes to that
             station, "extra_min": estimated extra minutes versus the baseline (can be negative),
-            "avoids_congestion", "warnings": "leaves_before_event_end" | "last_train_unknown"}}.
+            "avoids_congestion", "warnings": "leaves_before_event_end" | "last_train_unknown" |
+            "last_train_missed"}}.
         Times are ISO strings (+09:00). options is empty and baseline.congested is false when the planned departure
         is outside the crowded window or the origin's station is not the crowded station.
         On failure returns {"error": {"code", "message"}}: invalid_date, invalid_time, missing_argument,

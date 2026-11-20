@@ -9,12 +9,15 @@
 |---|---|---|---|---|
 | 관광지 정보, 다국어 이름(영·일·중 간체·번체), 좌표 | 한국관광공사 국문·영문·일문·중문 관광정보서비스 (KorService2, EngService2, JpnService2, ChsService2, ChtService2) | `places.json` 35곳, `places_sources.json` | `search_places`, `get_place_info` | 2026-11-20 수집 |
 | 운영시간·휴무일 | 한국관광공사 TourAPI `detailIntro2` | `hours.json` 35곳 | `get_hours` | 2026-11-20 수집. 원문은 `raw_text`에 보관, 단순 패턴만 시각으로 변환 |
-| 축제·행사 | 한국관광공사 TourAPI `searchFestival2` (부산, 2026년 11월), 행사 시간은 `detailIntro2` | `events.json` 14건 | `get_events` | 2026-11-20 수집 |
+| 축제·행사와 다국어 행사명 | 한국관광공사 TourAPI 5개 언어 서비스 `searchFestival2` (부산, 2026년 11월), 행사 시간은 국문 `detailIntro2` | `events.json` 14건 | `get_events`(Guardian), `GET /events`(지도) | 2026-11-20 수집. 외국어 이름은 한국어 제목+거리 일치 항목만 사용 |
 | 음식점, 대표 메뉴 | 한국관광공사 TourAPI 음식점(`areaBasedList2`, `detailIntro2`) | `restaurants.json` 43곳 | `get_restaurants` | 해운대·자갈치·감천·서면역 반경 500m. 식단·가격 정보는 없음 |
 | 관광지 집중률 | 한국관광공사 관광지 집중률 방문자 추이 예측 (TatsCnctrRateService) | `congestion.json` 23곳 | `get_crowd` | 2026-11-18 ~ 12-17 일 단위 예측 |
 | 날씨 | 기상청 단기예보 조회서비스 (VilageFcstInfoService_2.0) | 실시간 조회 + DynamoDB 캐시 | `get_weather` | 약 3일 이내만 제공 |
 | 지하철역 이름·좌표·노선 | 부산교통공사 도시철도역사정보 (파일데이터) | `stations.json` 108곳 | `get_transit_info`, `get_return_options` | 1~4호선. 동해선·경전철 없음 |
+| 지정 역·방향 막차 | [부산교통공사 부산 도시철도 열차시각표 조회 서비스](https://www.data.go.kr/data/15000522/openapi.do) | `last_trains.json` (API 승인 후 생성) | `get_return_options` | 현재 키는 미승인(`resultCode=12`). 파일이 없으면 `last_train_unknown` 유지 |
 | 지도 | © OpenStreetMap contributors | — | 프론트엔드 MapLibre | — |
+
+`GET /events?date=`는 조회 날짜가 행사 기간에 포함된 모든 행사를 지도에 돌려줍니다. Guardian의 `get_events`는 혼잡 가중용이라 7일보다 긴 행사를 개막일에만 돌려주며, 두 조회 규칙을 섞지 않습니다.
 
 ## 코드가 계산한 값 (데이터가 아닌 추정)
 
@@ -26,6 +29,7 @@
 | 요일 혼잡 규칙 | `guardian/thresholds.py` | 집중률이 없는 12곳은 토요일 medium, 일요일 low |
 | 행사일 혼잡 | `get_events` | 7일 이하 행사는 기간 전체, 그보다 긴 행사는 개막일만 행사일로 봄 |
 | 축제 후 귀가 혼잡 | `get_return_options` | 행사 대표 장소의 가까운 역을 행사 종료 30분 전 ~ 60분 뒤 혼잡으로 봄 (가정) |
+| 늦게 출발 제안의 막차 경고 | `last_trains.json`, `get_return_options` | 부산교통공사 표준 시간표의 해당 역·방향·요일 막차와 출발 시각을 비교 |
 | 큐레이션(태그, 혼잡·비 대안) | `curation.json` | 분류 기반 태그, 이동 30분 안의 비슷한 장소·실내 장소 |
 | 외국인 친화도 | `curation.json` | 관광공사 다국어 정보가 제공되는 언어 수(0~3) |
 
@@ -45,7 +49,8 @@
 uv run --env-file .env python -m scripts.fetch_places
 uv run --env-file .env python -m scripts.backfill_names --reuse-raw
 uv run --env-file .env python -m scripts.fetch_hours
-uv run --env-file .env python -m scripts.fetch_events
+uv run --env-file .env python -m scripts.fetch_events --reuse-raw
+uv run --env-file .env python -m scripts.fetch_last_trains --reuse-raw
 uv run --env-file .env python -m scripts.fetch_restaurants
 uv run python -m scripts.build_congestion
 uv run python -m scripts.build_travel_times

@@ -5,6 +5,7 @@
 
 - 모든 요청·응답은 `application/json`, UTF-8. 예외는 `POST /chat` 스트리밍 응답(`text/event-stream`)뿐이다.
 - 필드 이름과 타입은 `backend/app/models/plan.py`(데이터)와 `backend/app/models/api.py`(요청·응답)의 Pydantic 모델과 같다.
+  지도 전용 `GET /events` 모델만 `backend/app/tools/events_map.py`에 있으며, 아래에서 형식을 정의한다.
   아래에서 `Plan`, `Place`, `Stop`, `Issue`, `RepairOption`, `StopChange` 는 그 모델을 가리킨다.
 - 시각은 시간대를 포함한 ISO 8601 (`2026-11-21T10:00:00+09:00`), 날짜는 `YYYY-MM-DD`.
 - `POST /chat` 만 스트리밍한다(SSE, 아래 「스트리밍」). 나머지 경로는 응답이 한 번에 온다.
@@ -126,6 +127,46 @@ data: {"session_id": "sess-1", "plan_id": "plan-1", "answer": "...", "language":
 - 요청 검증 오류(400·404·422)는 스트림을 열기 전에 위 「오류 형식」의 JSON 으로 답한다.
 - `plan_changes` 는 `done` 에만 들어 있다. 일정 저장도 `done` 을 보내기 직전에 끝낸다.
 - 배포 방식(AgentCore Runtime 또는 Lambda Web Adapter)은 금 12:00 점검 1에서 확인한다. 이벤트 형식은 어느 쪽이든 같다.
+
+## GET /events?date=YYYY-MM-DD
+
+지도 행사 레이어에 표시할 그날 운영 중인 행사를 돌려준다. `date`가 행사 전체 기간에 포함되면 장기 행사도 매일 포함한다. Guardian의 `get_events`가 혼잡 가중을 위해 7일보다 긴 행사를 개막일에만 돌려주는 규칙과 별개다.
+
+응답
+
+```json
+{
+  "date": "2026-11-28",
+  "events": [
+    {
+      "contentid": "2048902",
+      "name": "해운대 빛축제",
+      "names": {
+        "ko": "해운대 빛축제",
+        "en": "Haeundae Light Festival",
+        "ja": "海雲台光祭り",
+        "zh-Hans": "海云台灯光节",
+        "zh-Hant": "海雲臺燈節"
+      },
+      "type": "festival",
+      "lat": 35.1592056511,
+      "lng": 129.1615365475,
+      "main_place_id": "sea-life-busan",
+      "place_ids": ["haeundae-beach", "the-bay-101", "haeridan-gil", "haeundae-market", "busan-x-the-sky", "sea-life-busan"],
+      "start": "2026-11-28T18:00:00+09:00",
+      "end": "2026-11-28T23:00:00+09:00",
+      "period_start": "2026-11-28T18:00:00+09:00",
+      "period_end": "2027-01-10T23:00:00+09:00"
+    }
+  ]
+}
+```
+
+- `names`에는 관광공사에서 찾은 `ko` / `en` / `ja` / `zh-Hans` / `zh-Hant`만 들어간다. 없는 외국어 이름은 넣지 않으며 프론트엔드가 다른 언어로 대체한다.
+- `type`은 TourAPI 분류를 바꾼 `festival` / `performance` / `exhibition` / `event` 중 하나다.
+- `start`·`end`는 조회 날짜의 운영 시각이다. `playtime`을 확인한 행사는 그 시각, 모르면 `00:00:00`~`23:59:59`다. `period_start`·`period_end`는 전체 행사 기간이다.
+- 좌표가 없으면 `lat`·`lng`는 `null`, 연결할 장소가 없으면 `main_place_id`는 `null`, `place_ids`는 빈 목록이다.
+- `date`가 없거나 `YYYY-MM-DD` 형식이 아니면 `422 validation_error`다.
 
 ## GET /plan/{plan_id}
 
@@ -321,6 +362,7 @@ Schedule Guardian 으로 일정을 점검한다. LLM 을 호출하지 않는다.
 
 | 경로 | 용도 | 담당 |
 |---|---|---|
+| `GET /events?date=` | 지도에 그날 운영 중인 행사 표시 | B |
 | `POST /plan/{plan_id}/delay` | "늦었어요" 지연 재조정 | D(Guardian), A(연결) |
 | `GET /alerts?plan_id=` | 예약 점검 결과 조회 | A(API·저장), D(점검 로직) |
 | `POST /photo/upload-url` | 사진 업로드용 S3 presigned URL | D |
