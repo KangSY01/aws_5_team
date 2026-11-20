@@ -28,7 +28,7 @@ uv run python -m scripts.local_server   # 로컬 서버 http://127.0.0.1:8000 (C
 | 역할 | 담당 | 맡는 곳 |
 |---|---|---|
 | A. 에이전트 백엔드 | 노윤지 | `backend/app/agent.py`, `backend/app/tools/plan_edit.py`, `backend/app/storage/`, `backend/app/voice/`(음성 입력 서명 URL), `backend/app/config.py`, `backend/scripts/`, `infra/`(SAM 템플릿·배포 구성) |
-| B. 데이터·도구 | 강서영 | `backend/app/data/`, `backend/app/tools/lookup.py`, `backend/app/tools/schedule.py`(일정 시각 계산), `backend/app/speech/`(음성 출력 Polly) |
+| B. 데이터·도구 | 강서영 | `backend/app/data/`, `backend/app/tools/lookup.py`, `backend/app/tools/schedule.py`(일정 시각 계산), `backend/app/tools/return_options.py`(귀가 분산), `backend/app/tools/kakao_route.py`(카카오 대중교통 경로), `backend/app/tools/transit.py`(대중교통 추정), `backend/app/tools/restaurants.py`(음식점), `backend/app/tools/events_map.py`(지도용 행사), `backend/app/speech/`(음성 출력 Polly), `backend/scripts/`의 데이터 수집·생성 스크립트(`fetch_*`, `build_*`, `backfill_names`, `extract_station_names`, `demo_lookup`, `demo_offline_check`)와 시드·CSV |
 | C. 프론트엔드 | 이지혜 | `frontend/` (D 폴더 제외) |
 | D. 아키텍처 설계 인프라 | 이온규 | `backend/app/guardian/`(예약 점검 로직 `scheduled.py` 포함), `backend/app/prompts.py`, `backend/app/photo/`(사진 인식 백엔드), `backend/eval/`, `frontend/src/features/local-card/`, `frontend/src/features/demo-panel/` |
 
@@ -59,7 +59,7 @@ uv run python -m scripts.local_server   # 로컬 서버 http://127.0.0.1:8000 (C
 ## 샘플 데이터
 
 - mock 데이터 원본은 `backend/app/data/`입니다. 프론트엔드 mock은 그 복사본으로 만듭니다.
-- `places.json`은 한국관광공사 다국어 관광정보로 수집한 값입니다(35곳).
+- `places.json`은 한국관광공사 다국어 관광정보로 수집한 값입니다(37곳, 해운대 로데오거리·부산 영화의 거리 포함).
 - 고정 응답이라 상태가 이어지지 않습니다. `plan-1` 외의 plan_id는 404이고, `PUT /plan`은 저장하지 않고 받은 일정을 그대로 돌려줍니다.
 
 ## 일정
@@ -80,8 +80,14 @@ uv run python -m scripts.local_server   # 로컬 서버 http://127.0.0.1:8000 (C
 
 ## 데이터 출처
 
-공공데이터만 사용합니다(한국관광공사 TourAPI·관광지 집중률, 기상청 단기예보, 부산교통공사 역 정보). 크롤링·리뷰 수집은 하지 않습니다.
+공공데이터를 기본으로 씁니다(한국관광공사 TourAPI·관광지 집중률, 기상청 단기예보, 부산교통공사 역 정보·열차시각표, 국가철도공단 역명). 공공데이터가 아닌 것은 실시간으로만 호출하는 카카오 API(대중교통 경로, 로컬 키워드 검색)이고, 결과를 저장·캐시하지 않습니다. 크롤링·리뷰 수집은 하지 않습니다.
 출처별 파일, 기준일, 추정값 규칙은 [docs/data-sources.md](docs/data-sources.md)에 있습니다.
+
+- **귀가 경로(데모 장면 7, `get_return_options`)**: 역 사이 시간은 카카오맵 대중교통 경로를 실시간으로 조회합니다. 조회가 실패하거나 `USE_MOCK=1`이거나 키가 없으면 역 좌표로 계산한 추정값을 씁니다. 항목마다 `time_source`(`kakao` / `estimate`)로 구분하고, 제안은 `rank_routes`로 정렬해 `ranked`에 담습니다.
+- **막차**: 부산교통공사 열차시각표 조회 서비스(_GW)로 수집한 시각을 `last_trains.json`에 둡니다(해운대·동백·중동 → 서면, 서면 → 해운대). 귀가 경로의 모든 안에 `last_train`과 막차 경고(`last_train_missed` / `last_train_unknown`)가 붙습니다.
+- **역명**: `stations.json`(1~4호선 108곳)의 2호선 역에 일본어·중국어(간체·번체) 역명이 있습니다(일본어 40곳, 간체·번체 39곳). 국가철도공단 부산 2호선 역명 데이터에 있는 값만 넣습니다.
+- **비 대안**: `curation.json`의 비 올 때 대안 후보에서 대형 상업·유료 시설 3곳(씨라이프부산아쿠아리움, 부산엑스더스카이, 신세계백화점 센텀시티점)을 뺍니다.
+
 지도: © OpenStreetMap contributors
 
 ## 제출용 섹션 (토 03:00 이후 작성)

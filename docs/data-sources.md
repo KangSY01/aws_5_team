@@ -15,7 +15,7 @@
 | 날씨 | 기상청 단기예보 조회서비스 (VilageFcstInfoService_2.0) | 실시간 조회 + DynamoDB 캐시 | `get_weather` | 약 3일 이내만 제공 |
 | 지하철역 이름·좌표·노선 | 부산교통공사 도시철도역사정보 (파일데이터) | `stations.json` 108곳 | `get_transit_info`, `get_return_options` | 1~4호선. 동해선·경전철 없음 |
 | 2호선 역의 일본어·중국어(간체·번체) 역명 | 국가철도공단_도시광역철도 부산 2호선 역명_20260630 (공공데이터포털 파일데이터, 이용허락범위 제한 없음). 원본 `krna_busan_line2_station_names_20260630.xlsx` | `stations.json` 의 `names` (ja 40곳, zh-Hans·zh-Hant 39곳), 중간 파일 `scripts/busan_line2_station_names.csv` | `get_return_options` (카카오 지하철 구간의 `from_names`·`to_names`) | 기준일 2026-06-30. 2호선만. 역명 표기가 다른 3곳(시립미술관, 경성대부경대, 국제금융센터부산은행)과 2호선 밖 역은 넣지 않음 |
-| 지정 역·방향 막차 | [부산교통공사 부산 도시철도 열차시각표 조회 서비스](https://www.data.go.kr/data/15000522/openapi.do) | `last_trains.json` (API 승인 후 생성) | `get_return_options` | 현재 키는 미승인(`resultCode=12`). 파일이 없으면 `last_train_unknown` 유지 |
+| 지정 역·방향 막차 | 부산교통공사_부산도시철도 열차시각표 조회 서비스_GW (공공데이터포털, `apis.data.go.kr/B551542/trainTime`) | `last_trains.json` 4개 역·방향 (`scripts/fetch_last_trains.py`) | `get_return_options` | 2026-11-20 수집. 해운대·동백·중동 → 서면, 서면 → 해운대의 평일·토요일·일요일/공휴일 막차. 표준 시각이라 실제와 다를 수 있음. 표에 없는 역·방향은 `last_train_unknown` |
 | 귀가 경로 역 사이 시간·노선 | 카카오 대중교통 경로 (`v2/routing/publictraffic`) | — (실시간 호출, 저장 안 함) | `get_return_options` | 실패·키 없음·`USE_MOCK=1`이면 역 좌표 추정 |
 | 놀거리 업체(보드게임카페·방탈출·동물카페·분위기 좋은 카페) | 카카오 로컬 키워드 검색 (`v2/local/search/keyword.json`) | — (실시간 호출, 저장 안 함) | `GET /activities` (채팅 놀거리 카드) | 지역 11곳 × 유형 4가지, 최대 5곳. 운영시간·사진·평점 없음 |
 | 지도 | © OpenStreetMap contributors | — | 프론트엔드 MapLibre | — |
