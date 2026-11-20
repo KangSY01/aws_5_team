@@ -1,0 +1,160 @@
+anchor,restaurant_id,name_ko,lang,reason,candidates
+haeundae-beach,kto-851955,일품한우,en,no_korean_match,3074034|Hyeongje Jeontong Dwaeji Gukbap (형제전통돼지국밥)|204m|
+haeundae-beach,kto-851955,일품한우,ja,no_korean_match,3074033|兄弟伝統豚肉クッパ（형제전통돼지국밥）|204m|
+haeundae-beach,kto-851955,일품한우,zh-Hans,no_korean_match,3074035|兄弟传统猪肉汤饭 (형제전통돼지국밥)|204m|
+haeundae-beach,kto-851955,일품한우,zh-Hant,no_korean_match,3074036|兄弟傳統豬肉湯飯(형제전통돼지국밥)|204m|
+haeundae-beach,kto-1805656,일번지자갈치산곰장어,en,no_korean_match,"3074034|Hyeongje Jeontong Dwaeji Gukbap (형제전통돼지국밥)|49m|; 3434533|Geumsubokguk Haeundae Main Branch (금수복국 해운대본점)|274m|23 Jungdong 1-ro 43beon-gil, Haeundae-gu, Busan"
+haeundae-beach,kto-1805656,일번지자갈치산곰장어,ja,no_korean_match,3074033|兄弟伝統豚肉クッパ（형제전통돼지국밥）|49m|; 3438882|クムスポックク海雲台本店（금수복국 해운대본점）|274m|プサン広域市ヘウンデ区チュンドン1ロ43ボンギル23
+haeundae-beach,kto-1805656,일번지자갈치산곰장어,zh-Hans,no_korean_match,3074035|兄弟传统猪肉汤饭 (형제전통돼지국밥)|49m|; 3443795|锦绣河豚汤（海云台总店） (금수복국 해운대본점)|274m|釜山广域市海云台区中洞1路43街23
+haeundae-beach,kto-1805656,일번지자갈치산곰장어,zh-Hant,no_korean_match,3074036|兄弟傳統豬肉湯飯(형제전통돼지국밥)|49m|; 3448708|錦繡河魨 海雲臺總店 (금수복국 해운대본점)|274m|釜山廣域市海雲臺區中洞1路43街23
+haeundae-beach,kto-2860782,오반장,en,no_korean_match,3074034|Hyeongje Jeontong Dwaeji Gukbap (형제전통돼지국밥)|216m|
+haeundae-beach,kto-2860782,오반장,ja,no_korean_match,3074033|兄弟伝統豚肉クッパ（형제전통돼지국밥）|216m|
+haeundae-beach,kto-2860782,오반장,zh-Hans,no_korean_match,3074035|兄弟传统猪肉汤饭 (형제전통돼지국밥)|216m|
+haeundae-beach,kto-2860782,오반장,zh-Hant,no_korean_match,3074036|兄弟傳統豬肉湯飯(형제전통돼지국밥)|216m|
+haeundae-beach,kto-2860851,싱싱뽈락회 해운대본점,en,no_korean_match,"4097201|Surim Hoetjip (수림횟집)|103m|15 Haeundaehaebyeon-ro 221beon-gil, Haeundae-gu, Busan"
+haeundae-beach,kto-2860851,싱싱뽈락회 해운대본점,ja,no_korean_match,4096942|洙林フェッチプ（수림횟집）|103m|プサン広域市ヘウンデ区ヘウンデヘビョンロ221ボンギル15
+haeundae-beach,kto-2860851,싱싱뽈락회 해운대본점,zh-Hans,no_korean_match,4098285|水林生鱼片餐厅(수림횟집)|103m|釜山广域市海云台区海云台海边路221号街15（佑洞）
+haeundae-beach,kto-2860851,싱싱뽈락회 해운대본점,zh-Hant,no_korean_match,4097990|水林生魚片餐廳(수림횟집)|103m|釜山廣域市海雲臺區海雲臺海邊路221號街15 (佑洞)
+haeundae-beach,kto-2786766,해목,en,no_korean_match,3074034|Hyeongje Jeontong Dwaeji Gukbap (형제전통돼지국밥)|199m|
+haeundae-beach,kto-2786766,해목,ja,no_korean_match,3074033|兄弟伝統豚肉クッパ（형제전통돼지국밥）|199m|
+haeundae-beach,kto-2786766,해목,zh-Hans,no_korean_match,3074035|兄弟传统猪肉汤饭 (형제전통돼지국밥)|199m|
+haeundae-beach,kto-2786766,해목,zh-Hant,no_korean_match,3074036|兄弟傳統豬肉湯飯(형제전통돼지국밥)|199m|
+haeundae-beach,kto-851286,상국이네,en,no_korean_match,"3434533|Geumsubokguk Haeundae Main Branch (금수복국 해운대본점)|151m|23 Jungdong 1-ro 43beon-gil, Haeundae-gu, Busan; 3074034|Hyeongje Jeontong Dwaeji Gukbap (형제전통돼지국밥)|179m|"
+haeundae-beach,kto-851286,상국이네,ja,no_korean_match,3438882|クムスポックク海雲台本店（금수복국 해운대본점）|151m|プサン広域市ヘウンデ区チュンドン1ロ43ボンギル23; 3074033|兄弟伝統豚肉クッパ（형제전통돼지국밥）|179m|
+haeundae-beach,kto-851286,상국이네,zh-Hans,no_korean_match,3443795|锦绣河豚汤（海云台总店） (금수복국 해운대본점)|151m|釜山广域市海云台区中洞1路43街23; 3074035|兄弟传统猪肉汤饭 (형제전통돼지국밥)|179m|
+haeundae-beach,kto-851286,상국이네,zh-Hant,no_korean_match,3448708|錦繡河魨 海雲臺總店 (금수복국 해운대본점)|151m|釜山廣域市海雲臺區中洞1路43街23; 3074036|兄弟傳統豬肉湯飯(형제전통돼지국밥)|179m|
+haeundae-beach,kto-134204,윤가네신토불이보쌈,en,no_korean_match,"3434533|Geumsubokguk Haeundae Main Branch (금수복국 해운대본점)|216m|23 Jungdong 1-ro 43beon-gil, Haeundae-gu, Busan; 3074034|Hyeongje Jeontong Dwaeji Gukbap (형제전통돼지국밥)|227m|"
+haeundae-beach,kto-134204,윤가네신토불이보쌈,ja,no_korean_match,3438882|クムスポックク海雲台本店（금수복국 해운대본점）|216m|プサン広域市ヘウンデ区チュンドン1ロ43ボンギル23; 3074033|兄弟伝統豚肉クッパ（형제전통돼지국밥）|227m|
+haeundae-beach,kto-134204,윤가네신토불이보쌈,zh-Hans,no_korean_match,3443795|锦绣河豚汤（海云台总店） (금수복국 해운대본점)|216m|釜山广域市海云台区中洞1路43街23; 3074035|兄弟传统猪肉汤饭 (형제전통돼지국밥)|227m|
+haeundae-beach,kto-134204,윤가네신토불이보쌈,zh-Hant,no_korean_match,3448708|錦繡河魨 海雲臺總店 (금수복국 해운대본점)|216m|釜山廣域市海雲臺區中洞1路43街23; 3074036|兄弟傳統豬肉湯飯(형제전통돼지국밥)|227m|
+haeundae-beach,kto-2875744,영남돼지,en,no_korean_match,"4097201|Surim Hoetjip (수림횟집)|55m|15 Haeundaehaebyeon-ro 221beon-gil, Haeundae-gu, Busan"
+haeundae-beach,kto-2875744,영남돼지,ja,no_korean_match,4096942|洙林フェッチプ（수림횟집）|55m|プサン広域市ヘウンデ区ヘウンデヘビョンロ221ボンギル15
+haeundae-beach,kto-2875744,영남돼지,zh-Hans,no_korean_match,4098285|水林生鱼片餐厅(수림횟집)|55m|釜山广域市海云台区海云台海边路221号街15（佑洞）
+haeundae-beach,kto-2875744,영남돼지,zh-Hant,no_korean_match,4097990|水林生魚片餐廳(수림횟집)|55m|釜山廣域市海雲臺區海雲臺海邊路221號街15 (佑洞)
+haeundae-beach,kto-2891814,류센소 본점,en,no_korean_match,"4097201|Surim Hoetjip (수림횟집)|187m|15 Haeundaehaebyeon-ro 221beon-gil, Haeundae-gu, Busan"
+haeundae-beach,kto-2891814,류센소 본점,ja,no_korean_match,4096942|洙林フェッチプ（수림횟집）|187m|プサン広域市ヘウンデ区ヘウンデヘビョンロ221ボンギル15
+haeundae-beach,kto-2891814,류센소 본점,zh-Hans,no_korean_match,4098285|水林生鱼片餐厅(수림횟집)|187m|釜山广域市海云台区海云台海边路221号街15（佑洞）
+haeundae-beach,kto-2891814,류센소 본점,zh-Hant,no_korean_match,4097990|水林生魚片餐廳(수림횟집)|187m|釜山廣域市海雲臺區海雲臺海邊路221號街15 (佑洞)
+haeundae-beach,kto-2512488,오막집,en,no_korean_match,"4097201|Surim Hoetjip (수림횟집)|89m|15 Haeundaehaebyeon-ro 221beon-gil, Haeundae-gu, Busan"
+haeundae-beach,kto-2512488,오막집,ja,no_korean_match,4096942|洙林フェッチプ（수림횟집）|89m|プサン広域市ヘウンデ区ヘウンデヘビョンロ221ボンギル15
+haeundae-beach,kto-2512488,오막집,zh-Hans,no_korean_match,4098285|水林生鱼片餐厅(수림횟집)|89m|釜山广域市海云台区海云台海边路221号街15（佑洞）
+haeundae-beach,kto-2512488,오막집,zh-Hant,no_korean_match,4097990|水林生魚片餐廳(수림횟집)|89m|釜山廣域市海雲臺區海雲臺海邊路221號街15 (佑洞)
+jagalchi-market,kto-133313,부산명물횟집,en,no_korean_match,
+jagalchi-market,kto-133313,부산명물횟집,ja,no_korean_match,
+jagalchi-market,kto-133313,부산명물횟집,zh-Hans,no_korean_match,
+jagalchi-market,kto-133313,부산명물횟집,zh-Hant,no_korean_match,
+jagalchi-market,kto-2485840,대구횟집,en,no_korean_match,
+jagalchi-market,kto-2485840,대구횟집,ja,no_korean_match,
+jagalchi-market,kto-2485840,대구횟집,zh-Hans,no_korean_match,
+jagalchi-market,kto-2485840,대구횟집,zh-Hant,no_korean_match,
+jagalchi-market,kto-1963085,제일산꼼장어,en,no_korean_match,
+jagalchi-market,kto-1963085,제일산꼼장어,ja,no_korean_match,
+jagalchi-market,kto-1963085,제일산꼼장어,zh-Hans,no_korean_match,
+jagalchi-market,kto-1963085,제일산꼼장어,zh-Hant,no_korean_match,
+jagalchi-market,kto-133796,어가초밥,en,no_korean_match,"3434534|Samsong Chobap (삼송초밥)|291m|13 Gwangbok-ro 55beon-gil, Jung-gu, Busan"
+jagalchi-market,kto-133796,어가초밥,ja,no_korean_match,3438898|サムソン(三松)寿司 (삼송초밥)|291m|プサン広域市チュン区クァンボクロ55ボンギル13
+jagalchi-market,kto-133796,어가초밥,zh-Hans,no_korean_match,3443823|三松寿司 (삼송초밥)|291m|釜山广域市中区光复路55号街13
+jagalchi-market,kto-133796,어가초밥,zh-Hant,no_korean_match,3448755|三松壽司 (삼송초밥)|291m|釜山廣域市中區光復路55號街13
+jagalchi-market,kto-1312452,남포삼계탕,en,no_korean_match,"3434534|Samsong Chobap (삼송초밥)|113m|13 Gwangbok-ro 55beon-gil, Jung-gu, Busan"
+jagalchi-market,kto-1312452,남포삼계탕,ja,no_korean_match,3438898|サムソン(三松)寿司 (삼송초밥)|113m|プサン広域市チュン区クァンボクロ55ボンギル13
+jagalchi-market,kto-1312452,남포삼계탕,zh-Hans,no_korean_match,3443823|三松寿司 (삼송초밥)|113m|釜山广域市中区光复路55号街13
+jagalchi-market,kto-1312452,남포삼계탕,zh-Hant,no_korean_match,3448755|三松壽司 (삼송초밥)|113m|釜山廣域市中區光復路55號街13
+jagalchi-market,kto-133526,원조서울삼계탕,en,no_korean_match,"1953211|Yeongbingwan (영빈관)|292m|17, Gwangbok-ro 97beon-gil, Jung-gu, Busan; 3434534|Samsong Chobap (삼송초밥)|295m|13 Gwangbok-ro 55beon-gil, Jung-gu, Busan"
+jagalchi-market,kto-133526,원조서울삼계탕,ja,no_korean_match,3438898|サムソン(三松)寿司 (삼송초밥)|295m|プサン広域市チュン区クァンボクロ55ボンギル13
+jagalchi-market,kto-133526,원조서울삼계탕,zh-Hans,no_korean_match,3443823|三松寿司 (삼송초밥)|295m|釜山广域市中区光复路55号街13
+jagalchi-market,kto-133526,원조서울삼계탕,zh-Hant,no_korean_match,3448755|三松壽司 (삼송초밥)|295m|釜山廣域市中區光復路55號街13
+jagalchi-market,kto-686419,할매가야밀면,en,no_korean_match,"3434534|Samsong Chobap (삼송초밥)|149m|13 Gwangbok-ro 55beon-gil, Jung-gu, Busan"
+jagalchi-market,kto-686419,할매가야밀면,ja,no_korean_match,3438898|サムソン(三松)寿司 (삼송초밥)|149m|プサン広域市チュン区クァンボクロ55ボンギル13
+jagalchi-market,kto-686419,할매가야밀면,zh-Hans,no_korean_match,3443823|三松寿司 (삼송초밥)|149m|釜山广域市中区光复路55号街13
+jagalchi-market,kto-686419,할매가야밀면,zh-Hant,no_korean_match,3448755|三松壽司 (삼송초밥)|149m|釜山廣域市中區光復路55號街13
+jagalchi-market,kto-2940880,수복센타,en,no_korean_match,"3434534|Samsong Chobap (삼송초밥)|171m|13 Gwangbok-ro 55beon-gil, Jung-gu, Busan"
+jagalchi-market,kto-2940880,수복센타,ja,no_korean_match,3438898|サムソン(三松)寿司 (삼송초밥)|171m|プサン広域市チュン区クァンボクロ55ボンギル13
+jagalchi-market,kto-2940880,수복센타,zh-Hans,no_korean_match,3443823|三松寿司 (삼송초밥)|171m|釜山广域市中区光复路55号街13
+jagalchi-market,kto-2940880,수복센타,zh-Hant,no_korean_match,3448755|三松壽司 (삼송초밥)|171m|釜山廣域市中區光復路55號街13
+jagalchi-market,kto-132807,원산면옥,en,no_korean_match,"3434534|Samsong Chobap (삼송초밥)|134m|13 Gwangbok-ro 55beon-gil, Jung-gu, Busan"
+jagalchi-market,kto-132807,원산면옥,ja,no_korean_match,3438898|サムソン(三松)寿司 (삼송초밥)|134m|プサン広域市チュン区クァンボクロ55ボンギル13
+jagalchi-market,kto-132807,원산면옥,zh-Hans,no_korean_match,3443823|三松寿司 (삼송초밥)|134m|釜山广域市中区光复路55号街13
+jagalchi-market,kto-132807,원산면옥,zh-Hant,no_korean_match,3448755|三松壽司 (삼송초밥)|134m|釜山廣域市中區光復路55號街13
+jagalchi-market,kto-133525,18번완당집,en,no_korean_match,"3434534|Samsong Chobap (삼송초밥)|153m|13 Gwangbok-ro 55beon-gil, Jung-gu, Busan"
+jagalchi-market,kto-133525,18번완당집,ja,no_korean_match,3438898|サムソン(三松)寿司 (삼송초밥)|153m|プサン広域市チュン区クァンボクロ55ボンギル13
+jagalchi-market,kto-133525,18번완당집,zh-Hans,no_korean_match,3443823|三松寿司 (삼송초밥)|153m|釜山广域市中区光复路55号街13
+jagalchi-market,kto-133525,18번완당집,zh-Hant,no_korean_match,3448755|三松壽司 (삼송초밥)|153m|釜山廣域市中區光復路55號街13
+jagalchi-market,kto-1232697,돌솥밥집,en,no_korean_match,"3434534|Samsong Chobap (삼송초밥)|81m|13 Gwangbok-ro 55beon-gil, Jung-gu, Busan"
+jagalchi-market,kto-1232697,돌솥밥집,ja,no_korean_match,3438898|サムソン(三松)寿司 (삼송초밥)|81m|プサン広域市チュン区クァンボクロ55ボンギル13
+jagalchi-market,kto-1232697,돌솥밥집,zh-Hans,no_korean_match,3443823|三松寿司 (삼송초밥)|81m|釜山广域市中区光复路55号街13
+jagalchi-market,kto-1232697,돌솥밥집,zh-Hant,no_korean_match,3448755|三松壽司 (삼송초밥)|81m|釜山廣域市中區光復路55號街13
+jagalchi-market,kto-134082,큰집,en,no_korean_match,"3434534|Samsong Chobap (삼송초밥)|60m|13 Gwangbok-ro 55beon-gil, Jung-gu, Busan"
+jagalchi-market,kto-134082,큰집,ja,no_korean_match,3438898|サムソン(三松)寿司 (삼송초밥)|60m|プサン広域市チュン区クァンボクロ55ボンギル13
+jagalchi-market,kto-134082,큰집,zh-Hans,no_korean_match,3443823|三松寿司 (삼송초밥)|60m|釜山广域市中区光复路55号街13
+jagalchi-market,kto-134082,큰집,zh-Hant,no_korean_match,3448755|三松壽司 (삼송초밥)|60m|釜山廣域市中區光復路55號街13
+jagalchi-market,kto-849862,개화,en,no_korean_match,"3434534|Samsong Chobap (삼송초밥)|223m|13 Gwangbok-ro 55beon-gil, Jung-gu, Busan"
+jagalchi-market,kto-849862,개화,ja,no_korean_match,3438898|サムソン(三松)寿司 (삼송초밥)|223m|プサン広域市チュン区クァンボクロ55ボンギル13
+jagalchi-market,kto-849862,개화,zh-Hans,no_korean_match,3443823|三松寿司 (삼송초밥)|223m|釜山广域市中区光复路55号街13
+jagalchi-market,kto-849862,개화,zh-Hant,no_korean_match,3448755|三松壽司 (삼송초밥)|223m|釜山廣域市中區光復路55號街13
+jagalchi-market,kto-1963007,부평족발,en,no_korean_match,"3434534|Samsong Chobap (삼송초밥)|234m|13 Gwangbok-ro 55beon-gil, Jung-gu, Busan"
+jagalchi-market,kto-1963007,부평족발,ja,no_korean_match,3438898|サムソン(三松)寿司 (삼송초밥)|234m|プサン広域市チュン区クァンボクロ55ボンギル13
+jagalchi-market,kto-1963007,부평족발,zh-Hans,no_korean_match,3443823|三松寿司 (삼송초밥)|234m|釜山广域市中区光复路55号街13
+jagalchi-market,kto-1963007,부평족발,zh-Hant,no_korean_match,3448755|三松壽司 (삼송초밥)|234m|釜山廣域市中區光復路55號街13
+jagalchi-market,kto-2609623,개미집 본점,en,no_korean_match,"3434534|Samsong Chobap (삼송초밥)|123m|13 Gwangbok-ro 55beon-gil, Jung-gu, Busan"
+jagalchi-market,kto-2609623,개미집 본점,ja,no_korean_match,3438898|サムソン(三松)寿司 (삼송초밥)|123m|プサン広域市チュン区クァンボクロ55ボンギル13
+jagalchi-market,kto-2609623,개미집 본점,zh-Hans,no_korean_match,3443823|三松寿司 (삼송초밥)|123m|釜山广域市中区光复路55号街13
+jagalchi-market,kto-2609623,개미집 본점,zh-Hant,no_korean_match,3448755|三松壽司 (삼송초밥)|123m|釜山廣域市中區光復路55號街13
+jagalchi-market,kto-1963051,부산족발,en,no_korean_match,"3434534|Samsong Chobap (삼송초밥)|293m|13 Gwangbok-ro 55beon-gil, Jung-gu, Busan"
+jagalchi-market,kto-1963051,부산족발,ja,no_korean_match,3438898|サムソン(三松)寿司 (삼송초밥)|293m|プサン広域市チュン区クァンボクロ55ボンギル13
+jagalchi-market,kto-1963051,부산족발,zh-Hans,no_korean_match,3443823|三松寿司 (삼송초밥)|293m|釜山广域市中区光复路55号街13
+jagalchi-market,kto-1963051,부산족발,zh-Hant,no_korean_match,3448755|三松壽司 (삼송초밥)|293m|釜山廣域市中區光復路55號街13
+gamcheon-village,kto-2484386,감내맛집,en,no_korean_match,
+gamcheon-village,kto-2484386,감내맛집,ja,no_korean_match,
+gamcheon-village,kto-2484386,감내맛집,zh-Hans,no_korean_match,
+gamcheon-village,kto-2484386,감내맛집,zh-Hant,no_korean_match,
+station-Seomyeon,kto-850093,급행장,en,no_korean_match,"1976925|Hoeguksu Halmaejip (회국수할매집)|42m|5 Seomyeonmunhwa-ro, Busanjin-gu, Busan; 3433011|Songjeong Samdae Gukbap (송정3대국밥)|282m|33 Seomyeon-ro 68beon-gil, Busanjin-gu, Busan"
+station-Seomyeon,kto-850093,급행장,ja,no_korean_match,3438598|ソンジョンサムデクッパ (송정3대국밥)|282m|プサン広域市プサンジン区ソミョンロ68ボンギル33
+station-Seomyeon,kto-850093,급행장,zh-Hans,no_korean_match,3441399|松亭三代汤饭 (송정3대국밥)|282m|釜山广域市釜山镇区西面路68号街33
+station-Seomyeon,kto-850093,급행장,zh-Hant,no_korean_match,3448306|松亭三代湯飯 (송정3대국밥)|282m|釜山廣域市釜山鎮區西面路68號街33
+station-Seomyeon,kto-844414,회국수할매집,ja,no_korean_match,
+station-Seomyeon,kto-844414,회국수할매집,zh-Hans,no_korean_match,
+station-Seomyeon,kto-844414,회국수할매집,zh-Hant,no_korean_match,
+station-Seomyeon,kto-850041,고향맛,en,no_korean_match,"3433011|Songjeong Samdae Gukbap (송정3대국밥)|89m|33 Seomyeon-ro 68beon-gil, Busanjin-gu, Busan; 1976925|Hoeguksu Halmaejip (회국수할매집)|234m|5 Seomyeonmunhwa-ro, Busanjin-gu, Busan"
+station-Seomyeon,kto-850041,고향맛,ja,no_korean_match,3438598|ソンジョンサムデクッパ (송정3대국밥)|89m|プサン広域市プサンジン区ソミョンロ68ボンギル33
+station-Seomyeon,kto-850041,고향맛,zh-Hans,no_korean_match,3441399|松亭三代汤饭 (송정3대국밥)|89m|釜山广域市釜山镇区西面路68号街33
+station-Seomyeon,kto-850041,고향맛,zh-Hant,no_korean_match,3448306|松亭三代湯飯 (송정3대국밥)|89m|釜山廣域市釜山鎮區西面路68號街33; 2700478|小院(뜨락)|272m|釜山廣域市釜山鎭區Jungang大路691beonga街24-12
+station-Seomyeon,kto-4106709,동백,en,no_korean_match,"1976925|Hoeguksu Halmaejip (회국수할매집)|51m|5 Seomyeonmunhwa-ro, Busanjin-gu, Busan"
+station-Seomyeon,kto-4106709,동백,ja,no_korean_match,
+station-Seomyeon,kto-4106709,동백,zh-Hans,no_korean_match,
+station-Seomyeon,kto-4106709,동백,zh-Hant,no_korean_match,
+station-Seomyeon,kto-2807806,태화육개장,en,no_korean_match,"1976925|Hoeguksu Halmaejip (회국수할매집)|125m|5 Seomyeonmunhwa-ro, Busanjin-gu, Busan"
+station-Seomyeon,kto-2807806,태화육개장,ja,no_korean_match,
+station-Seomyeon,kto-2807806,태화육개장,zh-Hans,no_korean_match,
+station-Seomyeon,kto-2807806,태화육개장,zh-Hant,no_korean_match,
+station-Seomyeon,kto-841730,사미헌,en,no_korean_match,"1976925|Hoeguksu Halmaejip (회국수할매집)|118m|5 Seomyeonmunhwa-ro, Busanjin-gu, Busan"
+station-Seomyeon,kto-841730,사미헌,ja,no_korean_match,
+station-Seomyeon,kto-841730,사미헌,zh-Hans,no_korean_match,
+station-Seomyeon,kto-841730,사미헌,zh-Hant,no_korean_match,
+station-Seomyeon,kto-2773623,야스마루 쇼쿠도,en,no_korean_match,
+station-Seomyeon,kto-2773623,야스마루 쇼쿠도,ja,no_korean_match,
+station-Seomyeon,kto-2773623,야스마루 쇼쿠도,zh-Hans,no_korean_match,
+station-Seomyeon,kto-2773623,야스마루 쇼쿠도,zh-Hant,no_korean_match,
+station-Seomyeon,kto-2626612,라세느,en,no_korean_match,"1976925|Hoeguksu Halmaejip (회국수할매집)|185m|5 Seomyeonmunhwa-ro, Busanjin-gu, Busan; 3433011|Songjeong Samdae Gukbap (송정3대국밥)|237m|33 Seomyeon-ro 68beon-gil, Busanjin-gu, Busan"
+station-Seomyeon,kto-2626612,라세느,ja,no_korean_match,3438598|ソンジョンサムデクッパ (송정3대국밥)|237m|プサン広域市プサンジン区ソミョンロ68ボンギル33
+station-Seomyeon,kto-2626612,라세느,zh-Hans,no_korean_match,3441399|松亭三代汤饭 (송정3대국밥)|237m|釜山广域市釜山镇区西面路68号街33
+station-Seomyeon,kto-2626612,라세느,zh-Hant,no_korean_match,2700478|小院(뜨락)|170m|釜山廣域市釜山鎭區Jungang大路691beonga街24-12; 3448306|松亭三代湯飯 (송정3대국밥)|237m|釜山廣域市釜山鎮區西面路68號街33
+station-Seomyeon,kto-2933698,기장손칼국수,en,no_korean_match,"3433011|Songjeong Samdae Gukbap (송정3대국밥)|23m|33 Seomyeon-ro 68beon-gil, Busanjin-gu, Busan"
+station-Seomyeon,kto-2933698,기장손칼국수,ja,no_korean_match,3438598|ソンジョンサムデクッパ (송정3대국밥)|23m|プサン広域市プサンジン区ソミョンロ68ボンギル33
+station-Seomyeon,kto-2933698,기장손칼국수,zh-Hans,no_korean_match,3441399|松亭三代汤饭 (송정3대국밥)|23m|釜山广域市釜山镇区西面路68号街33
+station-Seomyeon,kto-2933698,기장손칼국수,zh-Hant,no_korean_match,3448306|松亭三代湯飯 (송정3대국밥)|23m|釜山廣域市釜山鎮區西面路68號街33; 2700478|小院(뜨락)|205m|釜山廣域市釜山鎭區Jungang大路691beonga街24-12
+station-Seomyeon,kto-133839,롯데호텔부산 무궁화,en,no_korean_match,"1976925|Hoeguksu Halmaejip (회국수할매집)|186m|5 Seomyeonmunhwa-ro, Busanjin-gu, Busan; 3433011|Songjeong Samdae Gukbap (송정3대국밥)|239m|33 Seomyeon-ro 68beon-gil, Busanjin-gu, Busan"
+station-Seomyeon,kto-133839,롯데호텔부산 무궁화,ja,no_korean_match,3438598|ソンジョンサムデクッパ (송정3대국밥)|239m|プサン広域市プサンジン区ソミョンロ68ボンギル33
+station-Seomyeon,kto-133839,롯데호텔부산 무궁화,zh-Hans,no_korean_match,3441399|松亭三代汤饭 (송정3대국밥)|239m|釜山广域市釜山镇区西面路68号街33
+station-Seomyeon,kto-133839,롯데호텔부산 무궁화,zh-Hant,no_korean_match,2700478|小院(뜨락)|169m|釜山廣域市釜山鎭區Jungang大路691beonga街24-12; 3448306|松亭三代湯飯 (송정3대국밥)|239m|釜山廣域市釜山鎮區西面路68號街33
+station-Seomyeon,kto-850217,다원,en,no_korean_match,"1976925|Hoeguksu Halmaejip (회국수할매집)|165m|5 Seomyeonmunhwa-ro, Busanjin-gu, Busan"
+station-Seomyeon,kto-850217,다원,ja,no_korean_match,
+station-Seomyeon,kto-850217,다원,zh-Hans,no_korean_match,
+station-Seomyeon,kto-850217,다원,zh-Hant,no_korean_match,
+station-Seomyeon,kto-2607508,사미헌 신관,en,no_korean_match,"1976925|Hoeguksu Halmaejip (회국수할매집)|228m|5 Seomyeonmunhwa-ro, Busanjin-gu, Busan"
+station-Seomyeon,kto-2607508,사미헌 신관,ja,no_korean_match,
+station-Seomyeon,kto-2607508,사미헌 신관,zh-Hans,no_korean_match,
+station-Seomyeon,kto-2607508,사미헌 신관,zh-Hant,no_korean_match,
+station-Seomyeon,kto-3588185,스콜,en,no_korean_match,"1976925|Hoeguksu Halmaejip (회국수할매집)|228m|5 Seomyeonmunhwa-ro, Busanjin-gu, Busan"
+station-Seomyeon,kto-3588185,스콜,ja,no_korean_match,
+station-Seomyeon,kto-3588185,스콜,zh-Hans,no_korean_match,
+station-Seomyeon,kto-3588185,스콜,zh-Hant,no_korean_match,

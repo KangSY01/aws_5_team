@@ -37,8 +37,24 @@ NOTE = (
 )
 
 
-def _straight_km(a: dict, b: dict) -> float:
-    """두 역 좌표 사이의 직선거리(km, haversine)."""
+def station_table() -> dict[str, dict]:
+    """stations.json 의 역 표 {역 이름(station): 역}. transit.py·restaurants.py 도 쓴다."""
+    return {s["station"]: s for s in _load_json("stations.json")["stations"]}
+
+
+def travel_rule() -> dict:
+    """travel_times.json 의 rule 중 역·도보 추정에 쓰는 값. 기존 이동 시간 표와 같은 값을 쓴다."""
+    all_rules = _load_json("travel_times.json")["rule"]
+    return {key: all_rules[key] for key in RULE_KEYS}
+
+
+def find_station(stations: dict[str, dict], name: str) -> str | None:
+    """영어 역 이름을 대소문자와 앞뒤 공백을 무시하고 역 표의 이름으로 바꾼다. 없으면 None."""
+    return {key.casefold(): key for key in stations}.get(name.strip().casefold())
+
+
+def straight_km(a: dict, b: dict) -> float:
+    """두 좌표 사이의 직선거리(km, haversine). a·b 는 lat·lng 가 있는 dict (역, 장소, 음식점)."""
     p1, p2 = math.radians(a["lat"]), math.radians(b["lat"])
     h = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(b["lng"] - a["lng"]) / 2) ** 2
     return 2 * 6371 * math.asin(math.sqrt(h))
@@ -48,13 +64,13 @@ def subway_minutes(a: dict, b: dict, rule: dict) -> int:
     """역 a → 역 b 지하철 추정 시간(분, 올림). 같은 역이면 0. scripts/build_travel_times.py 의 subway 규칙과 같다."""
     if a["station"] == b["station"]:
         return 0
-    raw = _straight_km(a, b) * rule["route_factor"] / rule["subway_kmh"] * 60 + rule["subway_overhead_min"]
+    raw = straight_km(a, b) * rule["route_factor"] / rule["subway_kmh"] * 60 + rule["subway_overhead_min"]
     return math.ceil(round(raw, 6))  # round: 부동소수점 오차로 1분이 더 올라가지 않게 한다
 
 
 def walk_minutes(a: dict, b: dict, rule: dict) -> int:
     """역 a → 역 b 도보 추정 시간(분, 올림)."""
-    return math.ceil(round(_straight_km(a, b) * rule["route_factor"] / rule["walk_kmh"] * 60, 6))
+    return math.ceil(round(straight_km(a, b) * rule["route_factor"] / rule["walk_kmh"] * 60, 6))
 
 
 def _destination(stations: dict, places: dict, station: str | None, place_id: str | None) -> dict:
@@ -66,8 +82,7 @@ def _destination(stations: dict, places: dict, station: str | None, place_id: st
         if name not in stations:
             raise LookupFailure("no_station", f"Place {place_id!r} has no station in the station table.")
         return {"station": name, "place_id": place_id, "is_default": False}
-    by_folded = {name.casefold(): name for name in stations}
-    name = by_folded.get((station or DEFAULT_DESTINATION_STATION).strip().casefold())
+    name = find_station(stations, station or DEFAULT_DESTINATION_STATION)
     if name is None:
         raise LookupFailure(
             "station_not_found",
@@ -100,9 +115,7 @@ def return_options(date: str, place_id: str | None = None, event_name: str | Non
     places = {p["place_id"]: p for p in _load_places()}
     if place_id and place_id not in places:
         raise LookupFailure("place_not_found", f"place_id {place_id!r} is not a known place.")
-    stations = {s["station"]: s for s in _load_json("stations.json")["stations"]}
-    all_rules = _load_json("travel_times.json")["rule"]  # 기존 이동 시간 표와 같은 값을 쓴다
-    rule = {key: all_rules[key] for key in RULE_KEYS}
+    stations, rule = station_table(), travel_rule()
     destination = _destination(stations, places, destination_station, destination_place_id)
 
     # get_events 는 @tool 이지만 그대로 부를 수 있다(Guardian 도 그렇게 부른다). 오류 dict 는 같은 코드로 다시 알린다.
@@ -155,7 +168,7 @@ def return_options(date: str, place_id: str | None = None, event_name: str | Non
             options.append(shift("shift_earlier", earlier, "leaves_before_event_end"))
         options.append(shift("shift_later", window_to, "last_train_unknown"))  # 막차 시각은 모른다. 경고만 붙인다
         walks = sorted(
-            (_straight_km(crowded, s), s["station"]) for s in stations.values() if s["station"] != crowded["station"]
+            (straight_km(crowded, s), s["station"]) for s in stations.values() if s["station"] != crowded["station"]
         )
         for _, name in walks:  # 가까운 순
             walk_min = walk_minutes(crowded, stations[name], rule)

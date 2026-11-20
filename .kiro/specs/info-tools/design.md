@@ -359,6 +359,41 @@ class RestaurantTable(BaseModel):
 
 ## 열린 질문
 
+### 결정 (11/20, 팀 확정)
+
+아래 결정이 이 문서의 다른 절이나 `requirements.md`와 다르면 결정이 우선합니다.
+
+| # | 항목 | 결정 |
+|---|---|---|
+| 1 | 외국어 음식점 `contentTypeId` | 타입 필터 없이 받고, raw 응답으로 번호를 확인한 뒤 좁힌다 |
+| 2 | `cuisine` | 필드를 유지한다. 실제 응답의 분류 코드로 표(`CUISINE_BY_CLASS`)를 채우고, 표에 없으면 `null` |
+| 3 | `menu_raw` | 기준 장소(Anchor)마다 가장 가까운 5곳만 `detailIntro2`로 받는다. 나머지는 `null` |
+| 4 | 서면역 주변 | `get_restaurants`에 선택 인자 `station`(`stations.json`의 역 이름)을 추가한다. `place_id`와 `station` 중 하나는 필수 |
+| 5 | 거리 헬퍼 | `return_options.py`에 공개 거리 헬퍼를 추가하고 `transit.py`가 쓴다 |
+| 6 | Pydantic 모델 위치 | `tools/restaurants.py` |
+| 7 | Hypothesis | `pyproject.toml`에 없으면 추가하지 않고, 같은 속성을 일반 테스트(대표 예시 여러 개)로 확인한다 |
+| 8 | 다른 공공 출처 | v1은 TourAPI만 쓴다 |
+| 9 | steering 문서 | `data-rules.md` 「음식점」·「대중교통」 절은 B가 추가한다 |
+| 10 | Anchor와 반경 | `haeundae-beach`, `jagalchi-market`, `gamcheon-village`, 서면역(`Seomyeon`). 수집 반경 500m |
+| 11 | `walk_min` 경고 | 추가 경고 없음 (`distance: "straight_line_estimate"`로 충분) |
+
+### 구현하면서 바뀐 것 (11/20, 실제 응답 확인 후)
+
+결정과 실제 API 응답 때문에 위 본문과 달라진 부분입니다. 코드와 `data-rules.md`가 기준입니다.
+
+- **국문 수집 API**: `locationBasedList2` 대신 `areaBasedList2`(`contentTypeId=39`, `lDongRegnCd=26`)로 부산 전체(510건, 6쪽)를 받아 기준 좌표에서 500m 이내만 고릅니다. `locationBasedList2`는 해운대해수욕장 500m에서 1건만 돌려줬고, 같은 범위에 `areaBasedList2`로는 11건이 있었습니다. 호출 수도 기준 수와 무관해집니다.
+- **외국어 수집**: 타입 없이 받은 응답에서 외국어 음식점 타입이 82임을 확인했고(결정 1), 같은 이유로 `areaBasedList2`(`contentTypeId=82`, `lDongRegnCd=26`)를 언어별 1회 받습니다. 부산 전체에 언어별 18~19건뿐이라 43곳 중 4곳만 외국어 이름이 있습니다.
+- **`cuisine` 표**: `KorService2/lclsSystmCode2`(`lclsSystm1=FD`) 응답으로 코드 이름을 확인해 채웠습니다. `FD020100`은 중식, `FD020300`이 서양식입니다.
+- **`get_restaurants` 시그니처**: `get_restaurants(place_id=None, station=None, radius_m=500, limit=10)`. 둘 다 없으면 `missing_argument`, 둘 다 주면 `place_id` 우선, 역 이름이 표에 없으면 `station_not_found`. 응답에 `station` 필드가 추가됐습니다.
+- **`radius_m` 상한**: 수집 반경이 500m라 500을 넘으면 `invalid_argument`입니다(요구사항 3.2의 1000 대신 파일의 `radius_m`까지).
+- **파일 형식**: `station_anchors`(역 이름 → `restaurant_id` 목록)가 추가됐습니다. 시드는 `{"radius_m", "place_ids", "stations"}` 형식입니다.
+- **호출 함수**: 따로 만들지 않고 `fetch_events.py`·`fetch_hours.py`처럼 `fp.OFFLINE`·`fp.REUSE_RAW`를 설정하고 `fp._call_and_save`를 씁니다.
+- **`return_options.py` 공개 헬퍼**: `straight_km`(이름만 공개로 바꿈), `station_table`, `travel_rule`, `find_station`. `transit.py`와 `restaurants.py`가 씁니다.
+- **검토 목록**: `restaurants_review.csv`는 BOM 없는 UTF-8입니다(`places_review.csv`는 엑셀용 BOM 있음).
+- **장면 값**: 해운대해수욕장 → 서면역은 도보 10분 + 지하철 39분 = 49분입니다(본문 예시의 9분·48분은 어림값).
+
+### 원래 질문 (결정 전 기록)
+
 1. **외국어 서비스의 음식점 `contentTypeId`.** 국문은 39입니다. 영어·일본어·중국어 서비스의 음식점 번호(예상 82)가 실제와 같은지 확인이 필요합니다. 틀리면 타입 필터가 결과를 모두 막습니다. 초기에는 필터 없이 받고 확인 후 줄이는 안을 권합니다. 중국어 간체 서비스(`ChsService2`)는 신청 후 사용이라 응답이 없을 수 있습니다(`data-rules.md`).
 2. **`cuisine` 분류.** TourAPI 음식점 분류 코드(`lclsSystm`)와 한식·양식 등 매핑 표를 실제 응답으로 확정해야 합니다. 확인 전에는 `null`을 허용합니다. `cuisine` 필드 자체가 필요한지 팀이 정합니다.
 3. **`menu_raw`를 받을지.** `detailIntro2` 호출이 음식점 수만큼 필요합니다(Anchor 3곳 × 수십~수백 곳). 일일 한도와 시간 때문에 v1은 `null`로 두고, 필요하면 Anchor별 가까운 상위 N곳만 받는 안을 제안합니다.

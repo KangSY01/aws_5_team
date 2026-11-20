@@ -1,0 +1,5 @@
+{
+  "radius_m": 500,
+  "place_ids": ["haeundae-beach", "jagalchi-market", "gamcheon-village"],
+  "stations": ["Seomyeon"]
+}
