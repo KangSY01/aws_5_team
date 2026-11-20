@@ -26,6 +26,27 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - 단기예보는 약 3일 이내만 제공됩니다. 그 이후 날짜는 "예보 없음"으로 처리하고, 데모는 `USE_MOCK=1`의 샘플 예보로 재현합니다.
 - 도구: `get_weather(date)`
 
+## 이동 시간 (추정표)
+- 도구: `get_travel_time(from_place_id, to_place_id)`. `backend/app/data/travel_times.json`을 읽습니다(`USE_MOCK`과 무관). 표에 없는 장소 ID는 오류를 돌려줍니다.
+- 표는 `uv run python -m scripts.build_travel_times`로 `places.json` 좌표에서 만듭니다. `places.json`이 바뀌면 다시 만드십시오.
+- 추정 규칙: 경로 거리 = 직선거리 × 1.3. 경로 거리 1.2km 이하는 `walk`(시속 4.5km), 그보다 멀면 `subway`(평균 시속 25km + 대기·환승 10분). 분은 올림하고 양방향은 같은 값입니다.
+- 실제 경로 조회 값이 아닙니다. 답변에서는 "약 N분"으로 말하고 노선·환승을 단정하지 마십시오.
+- 카카오 경로 API는 지금 쓰지 않습니다. 쓰게 되더라도 결과를 저장하지 않습니다(아래 금지 사항).
+
+## 행사 (한국관광공사 행사정보)
+- API: `https://apis.data.go.kr/B551011/KorService2/searchFestival2` (`lDongRegnCd=26`, `eventStartDate`, `eventEndDate`)
+- `uv run --env-file .env python -m scripts.fetch_events`가 2026-11 기준으로 한 번 받아 `backend/app/data/events.json`에 저장합니다. `--offline`은 호출 없이 저장된 응답으로 다시 만듭니다.
+- `start`·`end`는 행사 기간의 첫날 00:00, 마지막 날 23:59입니다. API는 날짜만 주므로 하루 중 진행 시간은 모릅니다.
+- `place_ids`는 행사 좌표에서 직선거리 1km 이내인 `places.json` 장소입니다.
+- `events.json`에는 받은 행사를 모두 둡니다(행사 레이어 표시용).
+- 도구: `get_events(date)`. 행사일만 돌려줍니다. 기간이 7일 이하(첫날·마지막 날 포함)인 행사는 기간 전체(`kind: "short"`), 7일보다 긴 행사는 개막일에만(`kind: "opening_day"`) 나옵니다. 상설 행사가 매일 행사 가중을 받지 않게 하기 위한 규칙입니다.
+- 목록에 없는 행사는 있다고 말하지 마십시오.
+
+## 날씨 샘플 (`backend/app/data/weather/`)
+- 파일 형식은 `get_weather` 반환값과 같습니다(`{"date", "hourly"}`, 설명용 `note`는 선택). 파일 이름은 소문자·숫자·하이픈만 씁니다.
+- `{YYYY-MM-DD}.json`: `USE_MOCK=1`일 때 `get_weather`가 그 날짜의 예보로 씁니다. 파일이 없는 날짜는 예보 없음(`hourly: []`)입니다.
+- 그 밖의 이름(`rain-afternoon.json` 등): 데모 스위치 `demo.weather_preset`으로만 씁니다.
+
 ## 장소 정보
 - 한국관광공사 다국어 관광정보서비스(영문·일문·중문 번체, 중문 간체는 신청 후 사용)와 부산시 명소정보를 사용하십시오.
 - 운영시간·요금·휴무일은 도구 결과에 있는 값만 쓰십시오. 없으면 모른다고 답하고 지어내지 마십시오.

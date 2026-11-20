@@ -96,12 +96,12 @@
 | `get_crowd(place_id, date)` | `{"place_id", "date", "ratio": 0~100 또는 null, "source": "concentration" \| "weekday_rule" \| "event"}`. 집중률에 없는 장소는 `ratio: null`, `source: "weekday_rule"` | `crowd[place_id] = ratio` (null이면 넣지 않음) |
 | `get_hours(place_id)` | `{"place_id", "opens": "HH:MM" 또는 null, "closes": "HH:MM" 또는 null, "closed_weekdays": [0~6], "closed_dates": ["YYYY-MM-DD"]}` | `hours[place_id] = OpeningHours` |
 | `get_travel_time(from_place_id, to_place_id)` | `{"from_place_id", "to_place_id", "minutes": int, "mode": "subway" \| "bus" \| "walk" \| "taxi"}` | `travel_min[(from, to)] = minutes` |
-| `get_events(date)` | `{"date", "events": [{"name", "start", "end", "place_ids": [...]}]}` | `events: list[Event]` |
+| `get_events(date)` | `{"date", "events": [{"name", "start", "end", "place_ids": [...], "kind": "short" \| "opening_day"}]}`. 7일 이하 행사는 기간 전체, 더 긴 행사는 개막일에만 나옴 | `events: list[Event]` (`kind`는 쓰지 않음) |
 | `search_places(...)` | `Place` dict 목록 (지금 docstring 그대로) | `places` |
 
 - 실패하면 모든 도구가 `{"error": {"code": str, "message": str}}`를 돌려줍니다(API 오류 형식과 같음). 예외를 밖으로 던지지 않습니다.
 - `pty`는 기상청 강수 형태 코드입니다(0 없음, 1 비, 2 비/눈, 3 눈, 4 소나기). `closed_weekdays`는 `datetime.weekday()` 값(0=월)입니다.
-- 이동 시간은 카카오 경로 결과를 저장하지 않습니다(`data-rules.md`). `USE_MOCK=1`이면 `backend/app/data/`의 샘플 표를 씁니다.
+- 이동 시간은 `backend/app/data/travel_times.json`의 추정표를 읽습니다(`USE_MOCK`과 무관, 추정 규칙은 `data-rules.md` 「이동 시간」). `mode`는 지금 `walk`·`subway`만 나옵니다. 카카오 경로 결과는 쓰지 않고 저장하지도 않습니다.
 
 ### 일정 시각 계산 (`build_plan`)
 - `backend/app/tools/schedule.py`의 `build_plan(place_ids, date, start, profile)`을 B가 만들고, A의 `run_chat`이 일정 생성에 씁니다. `@tool`이 아닌 일반 함수입니다.

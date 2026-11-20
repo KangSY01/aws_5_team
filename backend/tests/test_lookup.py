@@ -2,16 +2,19 @@
 
 import datetime as dt
 import json
+import re
 import urllib.error
 
 import pytest
 from pydantic import TypeAdapter
 
 from app import config
-from app.guardian.context import HourlyWeather, OpeningHours
+from app.guardian import context as guardian_context
+from app.guardian.context import Event, HourlyWeather, OpeningHours
 from app.guardian.thresholds import WEEKDAY_RULE_PLACES
-from app.models.plan import Place
+from app.models.plan import Place, Plan
 from app.tools import lookup
+from scripts import build_travel_times, fetch_events
 
 KST = dt.timezone(dt.timedelta(hours=9))
 NOW = dt.datetime(2026, 11, 20, 11, 30, tzinfo=KST)  # 실제 예보 경로의 "현재"
@@ -61,9 +64,10 @@ def kma(rows, code="00"):
 
 # ---------- 도구 등록 ----------
 
-def test_네_도구는_Strands_도구이고_입력_설명이_있다():
+def test_조회_도구는_Strands_도구이고_입력_설명이_있다():
     for fn, args in [(lookup.search_places, {"query", "category", "indoor"}), (lookup.get_crowd, {"place_id", "date"}),
-                     (lookup.get_weather, {"date"}), (lookup.get_hours, {"place_id"})]:
+                     (lookup.get_weather, {"date"}), (lookup.get_hours, {"place_id"}),
+                     (lookup.get_travel_time, {"from_place_id", "to_place_id"}), (lookup.get_events, {"date"})]:
         props = fn.tool_spec["inputSchema"]["json"]["properties"]
         assert set(props) == args and all(p.get("description") for p in props.values())
         assert len(fn.tool_spec["description"]) > 50
@@ -251,6 +255,171 @@ def test_get_hours_모르는_값을_돌려준다():
     assert result == {"place_id": "busan-tower", "opens": None, "closes": None, "closed_weekdays": [], "closed_dates": []}
     OpeningHours.model_validate({k: v for k, v in result.items() if k != "place_id"})
     assert error_code(lookup.get_hours(place_id="no-such-place")) == "place_not_found"
+
+
+# ---------- get_weather 샘플 폴더 (app/data/weather/) ----------
+
+def test_weather_폴더_파일은_이름_규칙과_get_weather_형식을_따른다():
+    files = sorted((lookup.DATA_DIR / "weather").glob("*"))
+    assert {f.name for f in files} >= {"rain-afternoon.json", "2026-11-21.json"}
+    for f in files:
+        assert re.fullmatch(r"[a-z0-9][a-z0-9-]*\.json", f.name), f.name  # 소문자·숫자·하이픈만
+        data = json.loads(f.read_text(encoding="utf-8"))
+        assert {"date", "hourly"} <= set(data) <= {"date", "hourly", "note"}
+        hourly = TypeAdapter(list[HourlyWeather]).validate_python(data["hourly"])
+        assert all(h.time.date().isoformat() == data["date"] and h.time.utcoffset() == dt.timedelta(hours=9)
+                   for h in hourly)
+
+
+def test_rain_afternoon_프리셋은_13_15시만_비이고_Guardian이_읽는다():
+    hourly = guardian_context.load_weather_preset("rain-afternoon")
+    assert [h.time.hour for h in hourly] == list(range(9, 22)) and hourly[0].time.date() == dt.date(2026, 11, 28)
+    assert all((h.pop, h.pty) == ((80, 1) if 13 <= h.time.hour <= 15 else (20, 0)) for h in hourly)
+
+
+def test_get_weather_샘플은_날짜_이름_파일만_읽는다(mock_mode):
+    # 데모일 기본은 맑음(weather/2026-11-28.json). rain-afternoon 은 데모 스위치로만 쓴다
+    result = lookup.get_weather(date="2026-11-28")
+    assert set(result) == {"date", "hourly"}  # 파일의 note 는 돌려주지 않는다
+    assert [h["time"][11:13] for h in result["hourly"]] == [f"{h:02d}" for h in range(9, 24)]
+    assert all((h["pop"], h["pty"]) == (20, 0) for h in result["hourly"])
+    note = json.loads((lookup.DATA_DIR / "weather" / "2026-11-28.json").read_text(encoding="utf-8"))["note"]
+    assert "데모" in note
+    assert guardian_context.load_weather_preset("2026-11-28")[0].pop == 20  # note 가 있어도 Guardian 이 읽는다
+
+
+# ---------- get_travel_time ----------
+
+@pytest.mark.parametrize("straight_m, expected", [
+    (0, (0, "walk")),
+    (500, (9, "walk")),  # 0.65km ÷ 4.5km/h = 8.67분 → 올림
+    (923, (16, "walk")),  # 경로 1.1999km: 걷기 상한 바로 아래
+    (924, (13, "subway")),  # 경로 1.2012km: 1.2km 를 넘으면 지하철 (2.88분 + 10분 → 올림)
+    (10000, (42, "subway")),  # 13km ÷ 25km/h = 31.2분 + 10분 → 올림
+])
+def test_이동_시간_추정_규칙(straight_m, expected):
+    result = build_travel_times.estimate(straight_m)
+    assert (result["minutes"], result["mode"]) == expected
+
+
+def test_travel_times_json은_places_json_으로_다시_만든_표와_같다():
+    places = json.loads((lookup.DATA_DIR / "places.json").read_text(encoding="utf-8"))
+    table = json.loads((lookup.DATA_DIR / "travel_times.json").read_text(encoding="utf-8"))
+    assert table["pairs"] == build_travel_times.build_pairs(places)  # 다르면 scripts.build_travel_times 를 다시 실행
+    assert len(table["pairs"]) == len(places) * (len(places) - 1) // 2 and table["rule"] == build_travel_times.RULE
+
+
+def test_get_travel_time_표의_값을_양방향_같게_돌려준다(monkeypatch):
+    monkeypatch.setattr(config, "USE_MOCK", False)  # USE_MOCK 과 무관하다
+    monkeypatch.setattr(lookup.urllib.request, "urlopen", lambda *a, **k: pytest.fail("호출하지 않는다"))
+    there = lookup.get_travel_time(from_place_id="jagalchi-market", to_place_id="busan-tower")
+    assert there == {"from_place_id": "jagalchi-market", "to_place_id": "busan-tower", "minutes": 10, "mode": "walk"}
+    back = lookup.get_travel_time("busan-tower", "jagalchi-market")  # Guardian 은 위치 인자로 부른다
+    assert (back["from_place_id"], back["minutes"], back["mode"]) == ("busan-tower", 10, "walk")
+    far = lookup.get_travel_time(from_place_id="gamcheon-village", to_place_id="haeundae-beach")
+    assert far["mode"] == "subway" and isinstance(far["minutes"], int) and far["minutes"] > 30
+    same = lookup.get_travel_time(from_place_id="busan-tower", to_place_id="busan-tower")
+    assert (same["minutes"], same["mode"]) == (0, "walk")
+
+
+def test_get_travel_time_표에_없는_ID와_표가_없을_때는_오류_dict(monkeypatch, tmp_path):
+    assert error_code(lookup.get_travel_time(from_place_id="busan-tower", to_place_id="no-such-place")) == "place_not_found"
+    assert error_code(lookup.get_travel_time(from_place_id="no-such-place", to_place_id="no-such-place")) == "place_not_found"
+    monkeypatch.setattr(lookup, "DATA_DIR", tmp_path)
+    assert error_code(lookup.get_travel_time(from_place_id="busan-tower", to_place_id="jagalchi-market")) == "data_unavailable"
+
+
+def test_build_context는_실제_도구로_이동_시간과_행사를_채운다(mock_mode):
+    plan = Plan.model_validate_json((lookup.DATA_DIR / "sample_plan.json").read_text(encoding="utf-8"))
+    ctx = guardian_context.build_context(plan)
+    assert ctx.travel("jagalchi-market", "busan-tower") == 10
+    assert all(ctx.travel(a.place_id, b.place_id) is not None for a in plan.stops for b in plan.stops)
+    assert ctx.weather is not None and len(ctx.weather) == 24  # weather/2026-11-21.json
+    assert all(e.start.date() <= plan.date <= e.end.date() for e in ctx.events)
+
+
+# ---------- get_events ----------
+
+def _events_dir(tmp_path, events):
+    (tmp_path / "events.json").write_text(json.dumps({"source": {}, "events": events}, ensure_ascii=False), encoding="utf-8")
+    return tmp_path
+
+
+def test_get_events_기간에_날짜가_포함된_행사만_돌려준다(monkeypatch, tmp_path):
+    def event(name, start, end, place_ids):
+        return {"name": name, "start": f"{start}T00:00:00+09:00", "end": f"{end}T23:59:59+09:00",
+                "place_ids": place_ids, "contentid": "1", "addr1": "부산", "lat": 35.1, "lng": 129.1}
+
+    monkeypatch.setattr(lookup, "DATA_DIR", _events_dir(tmp_path, [
+        event("상설", "2026-01-01", "2026-12-31", ["gwangalli-beach"]),  # 긴 행사: 개막일만
+        event("빛축제", "2026-11-28", "2027-01-10", ["haeundae-beach"]),  # 긴 행사: 개막일만
+        event("하루", "2026-11-28", "2026-11-28", ["busan-tower"]),
+        event("7일", "2026-11-22", "2026-11-28", []),  # 첫날·마지막 날 포함 7일 → 기간 전체
+        event("8일", "2026-11-21", "2026-11-28", []),  # 8일 → 개막일만
+    ]))
+
+    def on(date):
+        return [(e["name"], e["kind"]) for e in lookup.get_events(date)["events"]]  # Guardian 처럼 위치 인자
+
+    result = lookup.get_events(date="2026-11-28")
+    assert result == {"date": "2026-11-28", "events": [
+        {"name": "빛축제", "start": "2026-11-28T00:00:00+09:00", "end": "2027-01-10T23:59:59+09:00",
+         "place_ids": ["haeundae-beach"], "kind": "opening_day"},
+        {"name": "하루", "start": "2026-11-28T00:00:00+09:00", "end": "2026-11-28T23:59:59+09:00",
+         "place_ids": ["busan-tower"], "kind": "short"},
+        {"name": "7일", "start": "2026-11-22T00:00:00+09:00", "end": "2026-11-28T23:59:59+09:00",
+         "place_ids": [], "kind": "short"},
+    ]}
+    TypeAdapter(list[Event]).validate_python(result["events"])  # Guardian 의 Event 모델로 읽힌다
+    assert on("2026-11-29") == []  # 빛축제 둘째 날은 행사일이 아니다
+    assert on("2026-11-22") == [("7일", "short")] and on("2026-11-25") == [("7일", "short")]
+    assert on("2026-11-21") == [("8일", "opening_day")]
+    assert on("2026-01-01") == [("상설", "opening_day")] and on("2026-06-15") == []
+    assert lookup.get_events(date="2027-01-01") == {"date": "2027-01-01", "events": []}
+
+
+def test_get_events_실제_데이터_데모일에는_빛축제_개막만_나온다():
+    events = lookup.get_events(date="2026-11-28")["events"]
+    assert [(e["name"], e["kind"], e["start"][:10]) for e in events] == [("해운대 빛축제", "opening_day", "2026-11-28")]
+    assert "haeundae-beach" in events[0]["place_ids"]
+    assert lookup.get_events(date="2026-11-29")["events"] == []
+    all_events = json.loads((lookup.DATA_DIR / "events.json").read_text(encoding="utf-8"))["events"]
+    assert len(all_events) == 14 and "kind" not in all_events[0]  # 파일에는 모든 행사가 그대로 있다
+
+
+def test_get_events_잘못된_날짜와_파일이_없을_때는_오류_dict(monkeypatch, tmp_path):
+    assert error_code(lookup.get_events(date="28/11")) == "invalid_date"
+    monkeypatch.setattr(lookup, "DATA_DIR", tmp_path)
+    assert error_code(lookup.get_events(date="2026-11-28")) == "data_unavailable"
+
+
+def test_events_json은_Event_형식이고_place_ids는_places_json_에_있다():
+    data = json.loads((lookup.DATA_DIR / "events.json").read_text(encoding="utf-8"))
+    known = {p["place_id"] for p in json.loads((lookup.DATA_DIR / "places.json").read_text(encoding="utf-8"))}
+    events = TypeAdapter(list[Event]).validate_python(data["events"])
+    assert all(e.start <= e.end and set(e.place_ids) <= known for e in events)
+    assert "serviceKey" not in json.dumps(data)
+
+
+def test_fetch_events_build_events():
+    places = [{"place_id": "near", "lat": 35.1587, "lng": 129.1604}, {"place_id": "far", "lat": 35.10, "lng": 129.03}]
+    items = [
+        {"contentid": 1, "title": " 빛축제 ", "addr1": "부산광역시 해운대구", "eventstartdate": "20261128",
+         "eventenddate": "20270117", "mapx": "129.1604", "mapy": "35.1650"},  # near 에서 약 700m
+        {"contentid": 2, "title": "좌표 없는 행사", "eventstartdate": "20261101", "eventenddate": "20261102", "mapx": "", "mapy": ""},
+        {"contentid": 3, "title": "날짜 이상", "eventstartdate": "미정", "eventenddate": "20261102"},
+        {"contentid": 4, "title": "끝이 시작보다 빠름", "eventstartdate": "20261110", "eventenddate": "20261101"},
+    ]
+    events = fetch_events.build_events(items, places)
+    assert [e["name"] for e in events] == ["좌표 없는 행사", "빛축제"]  # 시작일 순, 읽을 수 없는 항목은 뺀다
+    assert events[0]["place_ids"] == [] and events[0]["lat"] is None
+    assert events[1] == {"name": "빛축제", "start": "2026-11-28T00:00:00+09:00", "end": "2027-01-17T23:59:59+09:00",
+                         "place_ids": ["near"], "contentid": "1", "addr1": "부산광역시 해운대구", "lat": 35.165, "lng": 129.1604}
+    assert json.loads(fetch_events.dump_events({"api": "x"}, events)) == {"source": {"api": "x"}, "events": events}
+    assert json.loads(fetch_events.dump_events({}, [])) == {"source": {}, "events": []}
+    one = {"response": {"body": {"items": {"item": items[0]}}}}
+    assert fetch_events.festival_items(one) == [items[0]]
+    assert fetch_events.festival_items({"response": {"body": {"items": ""}}}) == []
 
 
 # ---------- 공통 ----------

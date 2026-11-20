@@ -1,4 +1,4 @@
-"""조회 도구 네 개를 한 번씩 불러 결과를 출력한다 (점검 시연용). backend/ 에서 실행한다.
+"""조회 도구 여섯 개를 한 번씩 불러 결과를 출력한다 (점검 시연용). backend/ 에서 실행한다.
 
     $env:USE_MOCK = "1"; uv run python -m scripts.demo_lookup          # 샘플 데이터, 네트워크 없음
     uv run --env-file .env python -m scripts.demo_lookup               # .env 의 USE_MOCK 값을 따른다
@@ -35,6 +35,12 @@ def main() -> int:
     show('get_weather("2026-12-25")  예보 없는 날짜', lookup.get_weather(date="2026-12-25"))
     show('get_hours("busan-tower")', lookup.get_hours(place_id="busan-tower"))
     show('get_hours("no-such-place")  실패 형식', lookup.get_hours(place_id="no-such-place"))
+    show('get_travel_time("jagalchi-market", "busan-tower")',
+         lookup.get_travel_time(from_place_id="jagalchi-market", to_place_id="busan-tower"))
+    show('get_travel_time("busan-tower", "haeundae-beach")',
+         lookup.get_travel_time(from_place_id="busan-tower", to_place_id="haeundae-beach"))
+    events = lookup.get_events(date="2026-11-28")
+    show('get_events("2026-11-28")', events.get("events", events))
     return 0
 
 
