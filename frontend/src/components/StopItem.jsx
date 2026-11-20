@@ -28,7 +28,7 @@ function LockIcon({ locked }) {
   );
 }
 
-export default function StopItem({ stop, place, language, number, active, tripTarget, onSelect, lockedLabel = LOCKED_LABEL, onEdit, editLabel, day, formatStopDate, timing, overlap, dragging, insertion, checks, lock, eventName = "" }) {
+export default function StopItem({ stop, place, language, number, active, tripTarget, onSelect, lockedLabel = LOCKED_LABEL, onEdit, editLabel, day, formatStopDate, timing, overlap, dragging, insertion, checks, lock, eventName = "", checked }) {
   // resolvePlaceName 은 Map 을 받으므로 단일 장소를 Map 으로 감싸 전달한다
   const placesById = place ? new Map([[stop.place_id, place]]) : new Map();
   const { name, isFallbackToId } = resolvePlaceName(stop, placesById, language);
@@ -47,6 +47,7 @@ export default function StopItem({ stop, place, language, number, active, tripTa
         <span className="stop-number" data-drag-handle={timing?.hint ? '' : undefined} title={timing?.hint}
           {...(timing?.hint ? timing.handle : undefined)}>{number}</span>
       )}
+      {checked !== undefined && <span className="stop-check" data-checked={checked} aria-hidden="true" />}
       {!timing && <span className="stop-item__time">{time}</span>}
       {/* 이름이 place_id 로 대체되면 lang 을 붙이지 않는다. 텍스트로만 출력한다 */}
       <span

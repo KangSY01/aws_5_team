@@ -96,7 +96,9 @@ it.each([
   render(<App />);
   if (anchored) {
     fireEvent.click(screen.getByRole("button", { name: "일정", exact: true }));
-    fireEvent.click(screen.getByRole("button", { name: "AI로 수정 · 부산박물관" }));
+    fireEvent.click(screen.getByRole("button", { name: "장소 선택" }));
+    fireEvent.click(screen.getByRole("button", { name: /^1\. 부산박물관/ }));
+    fireEvent.click(screen.getByRole("button", { name: "AI에게 물어보기" }));
   } else {
     fireEvent.click(screen.getByRole("button", { name: "채팅", exact: true }));
   }
@@ -242,20 +244,22 @@ it("keeps the itinerary until an AI suggestion is applied and rejects stale sugg
   await select("Itinerary");
   expect(screen.getByRole("button", { name: "Remove area · Nampo · Yeongdo" })).toBeVisible();
   await select("Create itinerary");
-  await screen.findByRole("button", { name: "Edit with AI · Jagalchi Market" });
+  await screen.findByRole("button", { name: /^2\. Jagalchi Market/ });
   expect(screen.getByText("AI leaves locked stops unchanged.")).toBeVisible();
   const lockedRow = within(screen.getAllByRole("listitem")[2]);
   await user.click(lockedRow.getByRole("button", { name: /^Lock stop/ }));
   expect(lockedRow.getByRole("button", { name: /^Unlock stop/, pressed: true })).toHaveTextContent("Fixed");
   expect(lockedRow.getByRole("button", { name: /^3/, pressed: false })).toBeInTheDocument();
-  expect(lockedRow.queryByRole("button", { name: /Edit with AI|Edit visit time/ })).not.toBeInTheDocument();
+  expect(lockedRow.queryByRole("button", { name: /Edit visit time/ })).not.toBeInTheDocument();
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   const course = JSON.parse(localStorage.getItem("busannow.course")).plan;
   expect(course.stops[2].locked).toBe(true);
   expect(JSON.parse(localStorage.getItem("busannow.course")).preferences.regions).toEqual(["oldtown"]);
 
-  await select("Edit with AI · Jagalchi Market");
-  expect(screen.getByText("2 · Jagalchi Market")).toBeVisible();
+  await select("Select stops");
+  await user.click(screen.getByRole("button", { name: /^2\. Jagalchi Market/ }));
+  await select("Ask AI");
+  expect(screen.getByText("@Jagalchi Market")).toBeVisible();
   await user.type(screen.getByRole("textbox"), "Try a different market");
   await select("Send");
   await screen.findByRole("button", { name: "Apply to itinerary" });
@@ -319,7 +323,9 @@ it("shows a Korean edit outcome when the API replies in English and translation 
   render(<App />);
   const user = userEvent.setup();
   await user.click(screen.getByRole("button", { name: "일정", exact: true }));
-  await user.click(screen.getAllByRole("button", { name: /AI로 수정/ })[0]);
+  await user.click(screen.getByRole("button", { name: "장소 선택" }));
+  await user.click(screen.getAllByRole("button", { name: /^1\. / })[0]);
+  await user.click(screen.getByRole("button", { name: "AI에게 물어보기" }));
   await user.type(screen.getByRole("textbox"), "공포 방탈출로 바꿔줘");
   await user.click(screen.getByRole("button", { name: "전송" }));
   expect(await screen.findByText("요청한 변경을 반영하지 못했어요. 기존 일정은 그대로예요.")).toHaveAttribute("lang", "ko");
@@ -349,7 +355,9 @@ it("confirms itinerary reset, preserves preferences, and permits a new course wi
   click("End trip");
   click("Itinerary");
 
-  fireEvent.click(screen.getByRole("button", { name: "Edit with AI · Jagalchi Market" }));
+  click("Select stops");
+  fireEvent.click(screen.getByRole("button", { name: /^2\. Jagalchi Market/ }));
+  click("Ask AI");
   fireEvent.change(screen.getByRole("textbox"), { target: { value: "Try a different market" } });
   click("Send");
   await screen.findByRole("button", { name: "Apply to itinerary" });
@@ -376,7 +384,7 @@ it("confirms itinerary reset, preserves preferences, and permits a new course wi
   click("Get an AI itinerary");
   expect(screen.getByRole("button", { name: "Remove area · Nampo · Yeongdo" })).toBeVisible();
   click("Create itinerary");
-  await screen.findAllByRole("button", { name: /^Edit with AI/ });
+  await screen.findByRole("button", { name: "Select stops" });
   click("Chat");
   expect(screen.queryByRole("button", { name: "Apply to itinerary" })).not.toBeInTheDocument();
   expect(document.querySelectorAll(".busan-map-pin").length).toBeGreaterThan(0);
