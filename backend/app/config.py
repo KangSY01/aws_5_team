@@ -21,6 +21,9 @@ BEDROCK_EMBED_MODEL_ID = os.environ.get("BEDROCK_EMBED_MODEL_ID", "")  # 선택
 DATA_GO_KR_KEY = os.environ.get("DATA_GO_KR_KEY_DECODING", "")  # Decoding 키 (requests가 URL 인코딩을 한다)
 DATA_GO_KR_KEY_ENCODING = os.environ.get("DATA_GO_KR_KEY_ENCODING", "")  # 선택
 
+# DynamoDB 단일 테이블 이름 (USE_MOCK=1이면 필요 없음). 일정·세션이 같은 테이블에 pk/sk 로 저장된다
+DYNAMODB_TABLE = os.environ.get("DYNAMODB_TABLE", "")
+
 # 선택 항목 (없어도 missing_keys()에 걸리지 않는다)
 KMA_API_KEY = os.environ.get("KMA_API_KEY", "")
 KAKAO_JS_KEY = os.environ.get("KAKAO_JS_KEY", "")
@@ -32,5 +35,5 @@ def missing_keys() -> list[str]:
 
     AWS 자격 증명은 boto3 기본 체인(프로필·Lambda 역할)에 맡기므로 여기서 보지 않는다.
     """
-    required = [] if USE_MOCK else ["DATA_GO_KR_KEY_DECODING"]
+    required = [] if USE_MOCK else ["DATA_GO_KR_KEY_DECODING", "DYNAMODB_TABLE"]
     return [name for name in required if not os.environ.get(name)]
