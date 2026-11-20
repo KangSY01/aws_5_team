@@ -117,7 +117,9 @@ def _call_model(lines: list[OcrLine], language: Language, client: Any) -> list[d
             system=[{"text": SYSTEM_PROMPT.format(language=LANGUAGE_NAMES[language], tool=TOOL_NAME)}],
             messages=[{"role": "user", "content": [{"text": _user_text(lines)}]}],
             toolConfig={"tools": [_TOOL_SPEC], "toolChoice": {"tool": {"name": TOOL_NAME}}},
-            inferenceConfig={"maxTokens": MAX_TOKENS, "temperature": 0},
+            # temperature 는 넣지 않는다. 기본 모델(global.anthropic.claude-haiku-5-5)이 "temperature is deprecated" 로
+            # ValidationException 을 낸다 (11/20 배포 확인). 형식은 도구 입력 스키마가 고정한다
+            inferenceConfig={"maxTokens": MAX_TOKENS},
         )
     except (ClientError, BotoCoreError) as error:
         logger.error("사진 번역 Bedrock 호출 실패: %s", error)

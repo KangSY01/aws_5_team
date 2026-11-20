@@ -254,7 +254,7 @@ def test_call_model_forces_tool_and_reads_items(real_mode):
     assert call["toolConfig"]["toolChoice"] == {"tool": {"name": translate.TOOL_NAME}}
     assert "Japanese" in call["system"][0]["text"]
     assert call["messages"][0]["content"][0]["text"] == "0. 밀면"
-    assert call["inferenceConfig"]["maxTokens"] == translate.MAX_TOKENS
+    assert call["inferenceConfig"] == {"maxTokens": translate.MAX_TOKENS}  # temperature 를 넣으면 기본 모델이 거부한다
     assert [(i.translated, i.spicy) for i in items] == [("ミルミョン", False)]
 
 
