@@ -1,5 +1,6 @@
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TravelerProfileForm, { travelerCopy } from "./TravelerProfile.jsx";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChatSources, RainNotice } from "../features/data-notices";
 import { getTravelCopy, languages } from "../constants/travelCopy.js";
 import { closeLandmark, mapLandmarks } from "../constants/mapLandmarks.js";
 import { getPlannerCopy, transportPreferenceIds, durationIds, areaIds } from "../constants/plannerCopy.js";
@@ -319,6 +320,10 @@ export default function TravelPreview({ night = false, demoMode = false, travele
   const places = course?.places ?? emptyPlaces;
   const placesById = useMemo(() => buildPlacesById(places), [places]);
   const stops = plan.stops;
+  const rainIssue = guardian?.plan === plan && guardian.demo === demo
+    ? guardian.issues?.find((issue) => issue.type === "rain" && guardian.repairs[issue.issue_id]?.length)
+    : null;
+  const rainStop = rainIssue && stops.find((stop) => stop.stop_id === rainIssue.stop_id);
   const demoTime = demoMode ? Date.parse(demo.now ?? SCENES[0].now) : NaN;
   const events = useMapEvents(liveApi, demoTime, placesById);
   const mapDetail = selectedMapDetail?.contentid
@@ -393,7 +398,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
       if (request.signal.aborted) return;
       const manual = manualGuardianCheck.current?.plan === plan && manualGuardianCheck.current.demo === demo;
       manualGuardianCheck.current = null;
-      setGuardian({ ...result, plan, manual });
+      setGuardian({ ...result, plan, demo, manual });
       if (manual && result.issues.length === 1) {
         const [issue] = result.issues;
         const target = plan.stops.find((stop) => stop.stop_id === issue.stop_id);
@@ -825,7 +830,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
           setMessages((previous) => [
             ...previous,
             ...(options.length ? [{ options, readOnly: true, lang: answerLanguage }] : []),
-            ...(text ? [{ text, lang: answerLanguage, role: "assistant" }] : []),
+            { text, sources: chat.sources, lang: answerLanguage, role: "assistant" },
           ]);
         } else {
           const query = activityTextKey(message).replace(/\s/g, "");
@@ -869,7 +874,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
               : plannerCopy.chatPlanUnchanged;
           }
         }
-        setMessages((previous) => [...previous, { text: answer, lang: language, role: "assistant" }]);
+        setMessages((previous) => [...previous, { text: answer, sources: chat.sources, lang: language, role: "assistant" }]);
         return;
       }
       const result = await suggestDemo({
@@ -1111,6 +1116,15 @@ export default function TravelPreview({ night = false, demoMode = false, travele
             </button>
           </div>
           <LanguageTrigger className="travel-language-trigger" label={languageLabel} />
+          {!regionDraft && <div className="travel-rain-notice">
+            <RainNotice key={demo.weatherPreset} language={language}
+              placeName={rainStop && resolvePlaceName(rainStop, placesById, language).name}
+              disabled={guardianLoading || Boolean(pending)}
+              onOpen={rainIssue ? () => {
+                setGuardianActionError(false);
+                setAlternative(issueAlternative(guardian, plan, demo, rainIssue, rainStop));
+              } : undefined} />
+          </div>}
           <div id="travel-language-menu" className="travel-language-menu" ref={languageMenu}
             popover="auto" role="group" aria-label={copy.languageLabel}>
             <LanguageOptions language={language} onSelect={(code) => {
@@ -1198,7 +1212,10 @@ export default function TravelPreview({ night = false, demoMode = false, travele
             {messages.map((message, index) => {
               if (message.options) return <ChatPlaceCards key={index} message={message} language={language}
                 copy={plannerCopy.placeCards} busy={Boolean(pending)} currentPlan={plan} onConfirm={confirmChatPlace} />;
-              if (!message.result) return <p key={index} className="chat-bubble" role={message.error ? "alert" : undefined} data-role={message.role} lang={message.lang}>{message.text}</p>;
+              if (!message.result) return <Fragment key={index}>
+                {message.text && <p className="chat-bubble" role={message.error ? "alert" : undefined} data-role={message.role} lang={message.lang}>{message.text}</p>}
+                <ChatSources sources={message.sources} language={language} />
+              </Fragment>;
               const { result, target, snapshot } = message;
               const original = snapshot.places.find((place) => place.place_id === target.place_id);
               const failure = { locked: "lockedStop", catalog_limit: "catalogLimit", no_candidate: "noCandidate" };
@@ -1287,12 +1304,6 @@ export default function TravelPreview({ night = false, demoMode = false, travele
                   )}
                 </section>
               )}
-              {alternative && alternative.plan === plan && alternative.demo === demo && (
-                <GuardianAlternatives alternative={alternative} copy={copy.guardian} placeCopy={plannerCopy.placeCards} language={language} events={events}
-                  placesById={buildPlacesById([...places, ...alternative.places])} busy={Boolean(pending)}
-                  error={guardianActionError ? plannerCopy.requestFailed : undefined}
-                  onApply={applyRepair} onClose={() => setAlternative(null)} />
-              )}
             </section>
           ))}
         </div>
@@ -1347,6 +1358,12 @@ export default function TravelPreview({ night = false, demoMode = false, travele
             <button type="button" className="itinerary-reset-confirm" onClick={resetItinerary}>{copy.resetItinerary.confirm}</button>
           </div>
         </TravelActionDialog>
+      )}
+      {alternative && alternative.plan === plan && alternative.demo === demo && (
+        <GuardianAlternatives alternative={alternative} copy={copy.guardian} placeCopy={plannerCopy.placeCards} language={language} events={events}
+          placesById={buildPlacesById([...places, ...alternative.places])} busy={Boolean(pending)}
+          error={guardianActionError ? plannerCopy.requestFailed : undefined}
+          onApply={applyRepair} onClose={() => setAlternative(null)} />
       )}
       {showDelay && (
         <TravelActionDialog title={copy.guardian.late} closeLabel={copy.guardian.delayClose} className="travel-delay-dialog"

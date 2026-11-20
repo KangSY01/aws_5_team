@@ -48,6 +48,9 @@
 }
 .travel-shell { position: relative; display: grid; min-width: 0; min-height: 0; overflow: hidden; }
 .travel-header { position: absolute; top: max(12px, env(safe-area-inset-top)); inset-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right)); z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 8px; pointer-events: none; }
+.travel-header:has(> .travel-rain-notice:not(:empty)) { flex-wrap: wrap; }
+.travel-rain-notice { flex: 0 0 100%; order: 1; min-width: 0; }
+.travel-rain-notice:empty { display: none; }
 .travel-brand, .travel-language-trigger, .travel-language-menu { pointer-events: auto; }
 .travel-brand { padding: 7px 12px; background: var(--color-bg); border-radius: 8px; font-weight: 850; font-size: 1.25rem; letter-spacing: -.06em; }
 .travel-preview :is(button, select, textarea) { font: inherit; }

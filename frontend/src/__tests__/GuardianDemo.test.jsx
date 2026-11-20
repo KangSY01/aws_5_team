@@ -54,6 +54,11 @@ it("runs the demo script, refreshes issue badges, locks a stop, applies a repair
       if (beach?.place_id === "haeundae") {
         issues.unshift({ issue_id: "beach", stop_id: "beach", type: "crowded", severity: "high", detail: "Beach crowds" });
         repairs.beach = [{ action: "replace", changes: [{ stop_id: "beach", before: beach, after: { ...beach, place_id: "gwangalli" } }] }];
+        if (checkBodies.at(-1).demo?.weather_preset === "rain-afternoon") {
+          repairs.weather = [{ action: "move_time", changes: [{ stop_id: "beach", before: beach, after: {
+            ...beach, start: "2026-11-28T15:00:00+09:00", end: "2026-11-28T16:00:00+09:00",
+          } }] }];
+        }
       }
       return Response.json({ plan_id: plan.plan_id, issues, repairs, places });
     }
@@ -131,7 +136,17 @@ it("runs the demo script, refreshes issue badges, locks a stop, applies a repair
   expect(saves.at(-1)).toEqual({ ...original, stops: [original.stops[0], { ...original.stops[1], locked: true }] });
   click(/장면 5 오후 비/);
   await waitFor(() => expect(checkBodies.at(-1).demo).toEqual({ now: "2026-11-28T13:00:00+09:00", weather_preset: "rain-afternoon" }));
+  click("Home");
+  const rainButton = await screen.findByRole("button", { name: "See options", exact: true });
+  expect(rainButton.closest(".rain-notice")).toHaveTextContent("Haeundae");
+  fireEvent.click(rainButton);
+  const rainDialog = within(screen.getByRole("dialog"));
+  expect(rainDialog.getByText("Afternoon rain")).toBeVisible();
+  expect(rainDialog.getByText("03:00 PM–04:00 PM")).toBeVisible();
+  fireEvent.click(rainDialog.getByRole("button", { name: "Close alternatives" }));
   click(/장면 6 늦었어요/);
+  expect(screen.queryByRole("button", { name: "See options", exact: true })).not.toBeInTheDocument();
+  click("Itinerary");
   expect(screen.queryByRole("button", { name: "I’m running late" })).not.toBeInTheDocument();
   click("Start trip");
   expect(screen.queryByRole("button", { name: "I’m running late" })).not.toBeInTheDocument();

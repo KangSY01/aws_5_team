@@ -19,7 +19,8 @@ afterEach(() => {
 it("opens general AI chat without an itinerary and continues the same conversation", async () => {
   vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
   const fetchMock = vi.fn()
-    .mockResolvedValueOnce(new Response(JSON.stringify({ session_id: "general", plan_id: "chat-plan", language: "en", answer: "Try Gwangalli Beach." })))
+    .mockResolvedValueOnce(Response.json({ session_id: "general", plan_id: "chat-plan", language: "en",
+      answer: "Try Gwangalli Beach.", sources: [{ tool: "get_weather", id: "forecast", title: "Busan forecast" }] }))
     .mockResolvedValueOnce(new Response(JSON.stringify({ session_id: "general", plan_id: "chat-plan", language: "en", answer: "An evening walk is an option." })))
     .mockResolvedValueOnce(Response.json({ error: { code: "internal_error", message: "Server error" } }, { status: 500 }));
   vi.stubGlobal("fetch", (url, request) => String(url).includes("/events?")
@@ -40,6 +41,7 @@ it("opens general AI chat without an itinerary and continues the same conversati
   expect(loading).toHaveClass("chat-course-status");
   expect(loading).toHaveTextContent("Finding your route…");
   expect(await screen.findByText("Try Gwangalli Beach.")).toBeVisible();
+  expect(screen.getByText(/Korea Meteorological Administration/)).toBeVisible();
   expect(screen.queryByText("Finding your route…")).not.toBeInTheDocument();
   send("What about the evening?");
   expect(await screen.findByText("An evening walk is an option.")).toBeVisible();
