@@ -7,7 +7,7 @@ const tileOverride = import.meta.env.VITE_MAP_TILE_URL;
 const osmAttribution = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 const vectorAttribution = '<a href="https://openfreemap.org/">OpenFreeMap</a> © <a href="https://openmaptiles.org/">OpenMapTiles</a>';
 
-export default function BusanMap({ plan, places, language, label, selectedId, onSelect, focusRequest }) {
+export default function BusanMap({ plan, places, language, label, selectedId, nextStopId, onSelect, focusRequest }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const fittedPlan = useRef(null);
@@ -124,10 +124,12 @@ export default function BusanMap({ plan, places, language, label, selectedId, on
   useEffect(() => {
     for (const [id, marker] of markersRef.current) {
       const active = id === selectedId;
-      marker.getElement()?.setAttribute("aria-pressed", String(active));
-      marker.setZIndexOffset(active ? 1000 : 0);
+      const element = marker.getElement();
+      element?.setAttribute("aria-pressed", String(active));
+      element?.toggleAttribute("data-next-stop", id === nextStopId);
+      marker.setZIndexOffset(active || id === nextStopId ? 1000 : 0);
     }
-  }, [selectedId, plan, places, language, onSelect]);
+  }, [selectedId, nextStopId, plan, places, language, onSelect]);
 
   useEffect(() => {
     if (!focusRequest) return;
@@ -137,8 +139,9 @@ export default function BusanMap({ plan, places, language, label, selectedId, on
 
     const size = map.getSize();
     const mapBounds = container.current.getBoundingClientRect();
-    const panelBounds = container.current.closest("main").querySelector(".travel-chat").getBoundingClientRect();
-    const panelOverlapsMap = panelBounds.width > 0 && panelBounds.left < mapBounds.right;
+    const panel = container.current.closest("main").querySelector(".travel-chat");
+    const panelBounds = panel.getBoundingClientRect();
+    const panelOverlapsMap = !panel.hidden && panelBounds.width > 0 && panelBounds.left < mapBounds.right;
     const visibleHeight = panelOverlapsMap ? panelBounds.top - mapBounds.top : size.y;
     const targetY = Math.max(35, visibleHeight / 2);
     const center = map.project(marker.getLatLng()).add([0, size.y / 2 - targetY]);

@@ -38,13 +38,23 @@ const profileCopy = {
   "zh-Hant": ["個人資料", "正在以訪客身分瀏覽", "帳號管理", "目前無法登入或管理帳號。"],
 };
 
+const tripCopy = {
+  ko: ["여행 시작", "여행 종료", "여행 중", "다음 장소", "AI에게 코스 추천받기"],
+  en: ["Start trip", "End trip", "Trip in progress", "Next stop", "Ask AI for an itinerary"],
+  ja: ["旅行を始める", "旅行を終了", "旅行中", "次の行き先", "AIにコースを提案してもらう"],
+  "zh-Hans": ["开始旅行", "结束旅行", "旅行中", "下一站", "让 AI 推荐行程"],
+  "zh-Hant": ["開始旅行", "結束旅行", "旅行中", "下一站", "請 AI 推薦行程"],
+};
+
 export function getTravelCopy(language) {
   const [intro, prompt, example, submit, title, edit, itinerary, map, schematic, locked, languageLabel, night, loading, empty, network, timeout, http, invalidResponse, retry] = copy[language];
   const [ask, send, close, expand, reduce, ready, messageLabel, sampleTitle, home, chat, navigation] = chatCopy[language];
   const [greeting, placeholder, collapse, suggestions] = starterCopy[language];
   const [collapseItinerary, closeItinerary] = itineraryActions[language];
   const [profile, guest, account, accountUnavailable] = profileCopy[language];
+  const [startTrip, endTrip, traveling, nextPlace, askForRoute] = tripCopy[language];
   return {
+    startTrip, endTrip, traveling, nextPlace, askForRoute,
     profile, guest, account, accountUnavailable,
     collapseItinerary, closeItinerary,
     greeting, placeholder, collapse, suggestions,

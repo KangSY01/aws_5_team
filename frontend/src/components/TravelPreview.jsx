@@ -8,6 +8,7 @@ import traditionalChineseFlag from "../assets/flags/tw.svg";
 import EmptyState from "./EmptyState.jsx";
 import samplePlan from "../mocks/sample_plan.json";
 import samplePlaces from "../mocks/places.json";
+import { buildPlacesById, resolvePlaceName } from "../lib/resolvePlaceName.js";
 import BusanMap from "./BusanMap.jsx";
 import PlanList from "./PlanList.jsx";
 import "./travel-preview.css";
@@ -40,6 +41,16 @@ function LanguageTrigger({ className, label }) {
 }
 
 const languageStorageKey = "busannow.language";
+const activeTripStorageKey = "busannow.activeTrip";
+const samplePlacesById = buildPlacesById(samplePlaces);
+
+function hasSavedTrip() {
+  try {
+    return window.localStorage.getItem(activeTripStorageKey) === samplePlan.plan_id;
+  } catch {
+    return false;
+  }
+}
 
 function getSavedLanguage() {
   try {
@@ -114,6 +125,7 @@ export default function TravelPreview({ night = false } = {}) {
   const [language, setLanguage] = useState(getSavedLanguage);
   const [profile, setProfile] = useState(() => window.location.hash === "#profile");
   const [open, setOpen] = useState(false);
+  const [tripStarted, setTripStarted] = useState(hasSavedTrip);
   const [panel, setPanel] = useState("chat");
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
@@ -131,6 +143,9 @@ export default function TravelPreview({ night = false } = {}) {
   const languageLabel = copy.languageLabel + ": " + languages[language];
   const plan = samplePlan;
   const stops = plan.stops;
+  // The sample itinerary does not track visits yet.
+  const nextStop = tripStarted ? stops[0] : null;
+  const nextPlace = nextStop ? resolvePlaceName(nextStop, samplePlacesById, language).name : null;
   const selected = Math.max(0, stops.findIndex((stop) => stop.stop_id === selectedId));
   const tab = profile ? "profile" : open ? panel : "home";
   const showChat = panel === "chat";
@@ -194,6 +209,24 @@ export default function TravelPreview({ night = false } = {}) {
     tabBar.current?.querySelector(`[data-tab="${panel}"]`)?.focus();
   }
 
+  function changeTrip(active) {
+    if (active && !stops.length) return;
+    setTripStarted(active);
+    try {
+      if (active) window.localStorage.setItem(activeTripStorageKey, plan.plan_id);
+      else window.localStorage.removeItem(activeTripStorageKey);
+    } catch {
+      // Travel mode remains available in the current session without storage.
+    }
+    setOpen(false);
+    setExpanded(false);
+    if (active) {
+      setSelectedId(stops[0].stop_id);
+      setMapFocus({ id: stops[0].stop_id });
+    }
+    tabBar.current?.querySelector('[data-tab="home"]')?.focus();
+  }
+
   function selectStop(index) {
     const id = stops[index].stop_id;
     setSelectedId(id);
@@ -224,9 +257,12 @@ export default function TravelPreview({ night = false } = {}) {
     <main ref={root} className="travel-preview" data-night={night} data-page={profile ? "profile" : "map"} data-sheet={open ? "open" : "closed"} data-expanded={expanded} lang={language}>
       <div className="travel-shell" inert={profile} aria-hidden={profile}>
         <BusanMap plan={plan} places={samplePlaces} language={language} label={copy.map}
-          selectedId={selectedId} onSelect={setSelectedId} focusRequest={mapFocus} />
+          selectedId={selectedId} nextStopId={nextStop?.stop_id} onSelect={setSelectedId} focusRequest={mapFocus} />
         <header className="travel-header">
-          <span className="travel-brand">Busan<span>Now</span></span>
+          <div className="travel-brand-group">
+            <span className="travel-brand">Busan<span>Now</span></span>
+            {tripStarted && <span className="trip-status">{copy.traveling}</span>}
+          </div>
           <LanguageTrigger className="travel-language-trigger" label={languageLabel} />
           <div id="travel-language-menu" className="travel-language-menu" ref={languageMenu}
             popover="auto" role="group" aria-label={copy.languageLabel}>
@@ -237,6 +273,12 @@ export default function TravelPreview({ night = false } = {}) {
           </div>
         </header>
       </div>
+      {tab === "home" && nextPlace && (
+        <div className="trip-next">
+          <span>{copy.nextPlace}</span>
+          <strong>{nextPlace}</strong>
+        </div>
+      )}
       {profile && <ProfilePage copy={copy} language={language} onLanguageChange={changeLanguage} />}
       <aside id="travel-chat" className="travel-chat" hidden={!open} inert={!open} aria-hidden={!open} aria-labelledby="travel-panel-title"
         onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
@@ -292,6 +334,17 @@ export default function TravelPreview({ night = false } = {}) {
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg>
           </button>
         </form>
+        {!showChat && (
+          <div className="trip-actions">
+            {stops.length > 0 ? (
+              <button type="button" onClick={() => changeTrip(!tripStarted)}>
+                {tripStarted ? copy.endTrip : copy.startTrip}
+              </button>
+            ) : (
+              <button type="button" onClick={() => setPanel("chat")}>{copy.askForRoute}</button>
+            )}
+          </div>
+        )}
       </aside>
       <nav ref={tabBar} className="travel-tabs" data-active-tab={tab} aria-label={copy.navigation}>
         <span className="travel-tab-indicator" aria-hidden="true" />
