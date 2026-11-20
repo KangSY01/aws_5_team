@@ -27,21 +27,21 @@ def compute_metrics(before: list[Stop], after: list[Stop], ctx: CheckContext) ->
     """원래 일정(before)과 해결안 적용 후 일정(after)의 보전 지표.
 
     - changed: 장소가 교체·제거된 Stop 수. 시각·순서만 바뀐 Stop 은 세지 않는다
-    - kept: 원래 Stop 중 같은 장소가 새 일정에 남은 수
+    - kept: 원래 Stop 중 같은 stop_id 로 같은 장소가 남은 수 (= 원래 Stop 수 − changed).
+      같은 장소가 일정에 두 번 있어도(예: 해운대 방문과 해운대 빛축제) Stop 마다 센다
     - extra_travel_min: 새 일정 총 이동 시간 − 원래 총 이동 시간 (음수 가능).
       어느 한쪽 이동 시간을 모르면 0 으로 두고 경고 로그를 남긴다.
       교체 후보를 고를 때는 total_travel_min 이 None 인 후보를 먼저 걸러야 한다.
     - locked_kept: 원래 고정 Stop 이 모두 같은 stop_id 로 place_id·start·end 그대로 남았으면 True
     """
     after_by_id = {s.stop_id: s for s in after}
-    after_places = {s.place_id for s in after}
 
     changed = 0
     for stop in before:
         new = after_by_id.get(stop.stop_id)
         if new is None or new.place_id != stop.place_id:
             changed += 1
-    kept = sum(1 for s in before if s.place_id in after_places)
+    kept = len(before) - changed
 
     old_total = total_travel_min(before, ctx)
     new_total = total_travel_min(after, ctx)

@@ -183,8 +183,8 @@ def test_reorder_swaps_with_previous_neighbor():
 
 
 def test_reorder_dropped_when_extra_travel_over_limit():
-    # 자갈치→해운대 45분이면 이동 +35분 > 30분 → 뺀다
-    travel = dict(BASE_TRAVEL_MIN) | {("jagalchi-market", "haeundae-beach"): 45}
+    # 자갈치→해운대 55분이면 이동 +45분 > 상한 40분 → 뺀다
+    travel = dict(BASE_TRAVEL_MIN) | {("jagalchi-market", "haeundae-beach"): 55}
     ctx = make_context(weather=hourly_weather(rain_hours=range(15, 17)), travel_min=travel)
     assert try_reorder(PLAN, issue_of(PLAN, ctx, "s4-rain"), ctx) == []
 
@@ -264,14 +264,25 @@ def test_replace_crowded_with_same_category_only():
 
 
 def test_replace_excludes_over_limit_and_unknown_travel():
-    # 광안리 +35분(30분 초과), 신세계 이동 시간 모름 → 후보 없음
+    # 광안리 +45분(상한 40분 초과), 신세계 이동 시간 모름 → 후보 없음
     ctx = make_context(
         weather=hourly_weather(rain_hours=range(15, 18)),
         crowd={"jagalchi-market": 60.0, "busan-tower": 50.0, "haeundae-beach": 96.0},
-        travel_min=travel_with(gwangalli_beach=75),
+        travel_min=travel_with(gwangalli_beach=85),
     )
     assert try_replace(PLAN, issue_of(PLAN, ctx, "s4-crowded"), ctx) == []
     assert try_replace(PLAN, issue_of(PLAN, ctx, "s4-rain"), ctx) == []
+
+
+def test_replace_limit_is_40_minutes():
+    # 데모 장면 2: 해운대 → 송정은 +37분. 상한 40분 안이라 후보가 된다 (+41분이면 빠진다)
+    # 해운대를 17:00 으로 옮겨 간격(150분)을 넉넉히 둔다. 이동이 간격보다 길면 빠듯한 이동(high)이 새로 생겨 빠지기 때문
+    plan = with_stop(PLAN, "s4", start=at(17), end=at(18, 30))
+    crowd = {"jagalchi-market": 60.0, "busan-tower": 50.0, "haeundae-beach": 96.0}
+    ok = make_context(crowd=crowd, travel_min=travel_with(gwangalli_beach=77))  # 15+10+77=102, +37
+    over = make_context(crowd=crowd, travel_min=travel_with(gwangalli_beach=81))  # +41
+    assert [o.metrics.extra_travel_min for o in try_replace(plan, issue_of(plan, ok, "s4-crowded"), ok)] == [37]
+    assert try_replace(plan, issue_of(plan, over, "s4-crowded"), over) == []
 
 
 def test_replace_skips_locked_target_and_no_candidate():

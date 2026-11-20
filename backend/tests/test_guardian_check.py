@@ -5,7 +5,7 @@ import datetime as dt
 from app.guardian import rules
 from app.guardian.check import check_plan
 from app.guardian.context import OpeningHours
-from guardian_fixtures import at, hourly_weather, load_sample_plan, make_context
+from guardian_fixtures import BASE_TRAVEL_MIN, at, hourly_weather, load_sample_plan, make_context
 
 PLAN = load_sample_plan()  # 11/21(토) 감천 · 자갈치(고정) · 부산타워 · 해운대
 
@@ -97,3 +97,16 @@ def test_failing_rule_is_skipped(monkeypatch):
 def test_dict_context_accepted():
     ctx = make_context(weather=hourly_weather(rain_hours=range(15, 18)))
     assert ids(check_plan(PLAN, ctx.model_dump())) == ids(check_plan(PLAN, ctx))
+
+
+def test_finished_stops_are_not_checked():
+    # 기준 시각 12:30 이면 11:30 에 끝난 감천(토요일 요일 규칙)은 점검하지 않는다 (여행 중 모드)
+    issues = {i.issue_id for i in check_plan(PLAN, make_context(now=at(12, 30)))}
+    assert "s1-crowded" not in issues
+    assert "s1-crowded" in {i.issue_id for i in check_plan(PLAN, make_context(now=at(9)))}
+
+
+def test_tight_transfer_checked_when_previous_stop_finished():
+    # 앞 Stop(감천)이 끝났어도 다음 Stop(자갈치)까지 이동이 빠듯하면 알린다
+    ctx = make_context(now=at(11, 40), travel_min=dict(BASE_TRAVEL_MIN) | {("gamcheon-village", "jagalchi-market"): 40})
+    assert "s2-tight_transfer" in {i.issue_id for i in check_plan(PLAN, ctx)}

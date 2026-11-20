@@ -24,6 +24,8 @@ def check_plan(plan: Plan, context: CheckContext | dict) -> list[Issue]:
       - 고정 일정(locked)의 Issue 는 심각도를 low 로 낮춘다. 해결안은 propose_repairs 가 만들지 않는다.
       - 정렬: 심각도 높은 순 → Stop 시작 이른 순 → 유형 순(closed, rain, crowded, tight_transfer).
       - 데이터가 없거나 규칙 하나가 실패하면 그 규칙만 건너뛰고 나머지 점검은 계속한다.
+      - 기준 시각(ctx.now)에 이미 끝난 Stop(end <= now)은 점검하지 않는다 (여행 중 모드). 빠듯한 이동은
+        다음 Stop 이 아직 끝나지 않았으면 앞 Stop 이 끝났어도 점검한다.
     """
     ctx = context if isinstance(context, CheckContext) else CheckContext.model_validate(context)
     stops = sorted(plan.stops, key=lambda s: s.start)
@@ -31,9 +33,13 @@ def check_plan(plan: Plan, context: CheckContext | dict) -> list[Issue]:
 
     issues: list[Issue] = []
     for stop in stops:
+        if stop.end <= ctx.now:
+            continue
         for rule in (rules.check_closed, rules.check_rain, rules.check_crowded):
             _collect(issues, rule, stop, ctx)
     for prev, stop in zip(stops, stops[1:]):
+        if stop.end <= ctx.now:
+            continue
         _collect(issues, rules.check_tight_transfer, prev, stop, ctx)
 
     locked = {s.stop_id for s in stops if s.locked}
