@@ -11,6 +11,7 @@ import { localeFlags } from "../constants/localeFlags.js";
 import EmptyState from "./EmptyState.jsx";
 import { mapEventName } from "../api/eventsClient.js";
 import { useMapEvents } from "../hooks/useMapEvents.js";
+import { useChatVoice } from "../hooks/useChatVoice.js";
 import { activitySearch, fetchActivities } from "../api/activitiesClient.js";
 import { formatTime } from "../lib/formatTime.js";
 import catalogPlaces from "../mocks/places.json";
@@ -314,6 +315,9 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const collapseLabel = showChat ? copy.collapse : copy.collapseItinerary;
   const closeLabel = showChat ? copy.close : copy.closeItinerary;
   const labels = { home: copy.home, itinerary: copy.itinerary, chat: copy.chat, translation: translationCopy.title, profile: copy.profile };
+
+  const voiceAvailable = liveApi && language !== "ko";
+  const voice = useChatVoice(voiceAvailable && sheetOpen && showChat && !showTranslation, language, setDraft);
 
   useEffect(() => {
     if (!demoMode || course) return;
@@ -718,7 +722,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   async function submit(event) {
     event.preventDefault();
     const message = draft.trim();
-    if (!message || editStop?.locked || requestInProgress.current) return;
+    if (!message || voice.phase || editStop?.locked || requestInProgress.current) return;
     if (liveApi && !editStop && draft === demoItineraryPrompt) {
       await recommendCourse(event, true);
       return;
@@ -1253,12 +1257,25 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
           </div>
         )}
         <form className="chat-compose" hidden={showTranslation || !showChat} onSubmit={submit}>
-          <textarea ref={composer} aria-label={copy.messageLabel} placeholder={copy.placeholder} rows={1}
-            value={draft} maxLength={1000} onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) submit(event);
-            }} />
-          <button type="submit" aria-label={copy.send} disabled={!draft.trim() || editStop?.locked || Boolean(pending)}>
+          <div className="chat-input-group">
+            {voice.phase && <p className="chat-voice-status" role="status">
+              {voice.partial || (voice.phase === "listening" ? translationCopy.listening : translationCopy.working)}
+            </p>}
+            {voice.error && <p className="chat-voice-status" role="alert">{translationCopy[voice.error]}</p>}
+            <textarea ref={composer} aria-label={copy.messageLabel} placeholder={copy.placeholder} rows={1}
+              value={draft} maxLength={1000} readOnly={Boolean(voice.phase)} onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) submit(event);
+              }} />
+          </div>
+          {voiceAvailable && (
+            <button type="button" className="chat-voice-button" aria-label={voice.phase ? translationCopy.stop : translationCopy.mic}
+              aria-pressed={Boolean(voice.phase)} disabled={Boolean(pending) || voice.phase === "finishing" || editStop?.locked}
+              onClick={() => voice.toggle(draft)}>
+              {voice.phase ? <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1" /></svg> : <MicIcon />}
+            </button>
+          )}
+          <button type="submit" aria-label={copy.send} disabled={!draft.trim() || Boolean(voice.phase) || editStop?.locked || Boolean(pending)}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg>
           </button>
         </form>

@@ -1891,3 +1891,12 @@
   background: var(--trip-green);
   color: var(--color-on-action);
 }
+
+.chat-input-group { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.chat-voice-status { margin: 0 4px; font-size: .8rem; color: var(--color-muted); }
+.chat-voice-status[role="alert"] { color: var(--coast-coral); }
+.chat-compose:has(.chat-voice-button) { align-items: end; }
+.chat-compose .chat-voice-button { color: var(--color-text); }
+.chat-compose .chat-voice-button::before { background: var(--color-surface); }
+.chat-compose .chat-voice-button[aria-pressed="true"]::before { background: var(--color-selected); }
+.chat-compose .chat-voice-button:disabled { opacity: .55; }

@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@maplibre/maplibre-gl-leaflet": "0.1.4",
+    "@smithy/eventstream-codec": "^4.5.2",
+    "@smithy/util-utf8": "^4.5.2",
     "leaflet": "1.9.4",
     "maplibre-gl": "6.19.0",
     "react": "^19.3.1",
