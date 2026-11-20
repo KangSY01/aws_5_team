@@ -1,7 +1,7 @@
 """대화 에이전트 시스템 프롬프트 (D 담당).
 
-app/agent.py 는 build_system_prompt 를 요청마다 불러 Strands Agent 의 system_prompt 로 넣는다.
-인자는 임시 프롬프트(app/chat/prompt.py)와 같다. 그래서 agent.py 는 import 한 줄만 바꾸면 된다.
+app/agent.py 는 build_system_prompt 를 요청마다 불러 Strands Agent 의 system_prompt 로 넣는다 (#41 부터).
+인자(mode, profile, today, plan, max_tool_calls)를 바꾸면 agent.py 의 호출도 함께 바꾼다 (tests/test_prompts.py 가 확인).
 
 - 모델이 읽는 문장이라 영어로 쓴다 (tech.md). 주석은 한국어.
 - 장소는 [place:PLACE_ID] 표식으로만 쓰게 한다. app/chat/answer.py 가 근거를 확인하고 프로필 언어 이름으로 바꾼다.

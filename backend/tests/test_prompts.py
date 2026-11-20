@@ -7,7 +7,6 @@ import re
 import pytest
 
 from app import prompts
-from app.chat import prompt as interim
 from app.chat.answer import TOKEN
 from app.chat.tools import MAX_TOOL_CALLS
 from app.models.plan import Profile
@@ -23,9 +22,11 @@ def build(mode="edit", language="ja", plan=PLAN):
     )
 
 
-def test_same_signature_as_interim_prompt():
-    # agent.py 는 import 만 바꾸면 된다
-    assert inspect.signature(prompts.build_system_prompt) == inspect.signature(interim.build_system_prompt)
+def test_signature_matches_agent_call():
+    # app/agent.py 의 _converse 가 이 다섯 인자를 키워드로 넘긴다. 바꾸면 agent.py 도 함께 바꿔야 한다
+    params = inspect.signature(prompts.build_system_prompt).parameters
+    assert list(params) == ["mode", "profile", "today", "plan", "max_tool_calls"]
+    assert all(p.kind is inspect.Parameter.KEYWORD_ONLY for p in params.values())
 
 
 @pytest.mark.parametrize(
