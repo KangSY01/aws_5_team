@@ -26,7 +26,7 @@ backend/
 infra/              A  SAM 템플릿·배포 구성
 docs/
   api-contract.md   공용 ⚠️  API 계약
-frontend/           C  React + Vite + MapLibre (features/local-card/, features/demo-panel/은 D)
+frontend/           C  React + Vite + MapLibre (features/local-card/, features/demo-panel/, features/data-notices/는 D)
 .kiro/steering/team.md  공용 ⚠️  팀 규칙 원본
 ```
 
@@ -37,7 +37,7 @@ frontend/           C  React + Vite + MapLibre (features/local-card/, features/d
 | A. 에이전트 백엔드 | 노윤지 | `backend/app/agent.py`, `backend/app/tools/plan_edit.py`, `backend/app/storage/`, `backend/app/voice/`(음성 입력 서명 URL), `backend/app/config.py`, `backend/scripts/`, `infra/`(SAM 템플릿·배포 구성) |
 | B. 데이터·도구 | 강서영 | `backend/app/data/`, `backend/app/tools/lookup.py`, `backend/app/tools/schedule.py`(일정 시각 계산), `backend/app/speech/`(음성 출력 Polly) |
 | C. 프론트엔드 | 이지혜 | `frontend/` (D 폴더 제외) |
-| D. 아키텍처 설계 인프라 | 이온규 | `backend/app/guardian/`(예약 점검 로직 `scheduled.py` 포함), `backend/app/prompts.py`, `backend/app/photo/`(사진 인식 백엔드), `backend/eval/`, `frontend/src/features/local-card/`, `frontend/src/features/demo-panel/` |
+| D. 아키텍처 설계 인프라 | 이온규 | `backend/app/guardian/`(예약 점검 로직 `scheduled.py` 포함), `backend/app/prompts.py`, `backend/app/photo/`(사진 인식 백엔드), `backend/eval/`, `frontend/src/features/local-card/`, `frontend/src/features/demo-panel/`, `frontend/src/features/data-notices/`(출처 표시·비 예보 배너) |
 
 - 테스트는 각자 `backend/tests/test_<영역>.py` 파일에 씁니다.
 - 예약 점검 로직은 `guardian/scheduled.py`(D), Lambda 연결과 EventBridge 스케줄은 `infra/`(A)입니다.

@@ -31,7 +31,7 @@ uv run python -m scripts.local_server   # 로컬 서버 http://127.0.0.1:8000 (C
 | A. 에이전트 백엔드 | 노윤지 | `backend/app/agent.py`, `backend/app/tools/plan_edit.py`, `backend/app/storage/`, `backend/app/voice/`(음성 입력 서명 URL), `backend/app/config.py`, `backend/scripts/`(B의 데이터 스크립트 제외), `infra/`(SAM 템플릿·배포 구성) |
 | B. 데이터·도구 | 강서영 | `backend/app/data/`, `backend/app/tools/lookup.py`, `backend/app/tools/schedule.py`(일정 시각 계산), `backend/app/tools/return_options.py`(귀가 분산), `backend/app/tools/kakao_route.py`(카카오 대중교통 경로), `backend/app/tools/transit.py`(대중교통 추정), `backend/app/tools/restaurants.py`(음식점), `backend/app/tools/events_map.py`(지도용 행사), `backend/app/speech/`(음성 출력 Polly), `backend/scripts/`의 데이터 수집·생성 스크립트(`fetch_*`, `build_*`, `backfill_names`, `extract_station_names`, `demo_lookup`, `demo_offline_check`)와 시드·CSV |
 | C. 프론트엔드 | 이지혜 | `frontend/` (D 폴더 제외) |
-| D. 아키텍처 설계 인프라 | 이온규 | `backend/app/guardian/`(예약 점검 로직 `scheduled.py` 포함), `backend/app/prompts.py`, `backend/app/photo/`(사진 인식 백엔드), `backend/eval/`, `frontend/src/features/local-card/`, `frontend/src/features/demo-panel/` |
+| D. 아키텍처 설계 인프라 | 이온규 | `backend/app/guardian/`(예약 점검 로직 `scheduled.py` 포함), `backend/app/prompts.py`, `backend/app/photo/`(사진 인식 백엔드), `backend/eval/`, `frontend/src/features/local-card/`, `frontend/src/features/demo-panel/`, `frontend/src/features/data-notices/`(출처 표시·비 예보 배너) |
 
 담당 규칙 세부(테스트 파일, 예약 점검 연결, 계약에 없는 경로)는 [CONTRIBUTING.md](CONTRIBUTING.md)의 「담당 영역」을 따릅니다.
 
