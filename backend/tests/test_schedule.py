@@ -6,9 +6,14 @@ import re
 
 import pytest
 
+from app import config
+from app.guardian import context as guardian_context
+from app.guardian.check import check_plan
+from app.guardian.thresholds import TRANSFER_BUFFER_MIN
 from app.models.plan import Profile
 from app.storage.service import new_plan_id
 from app.tools import schedule
+from app.tools.lookup import get_travel_time
 from app.tools.schedule import PlanBuildError, build_plan
 
 KST = dt.timezone(dt.timedelta(hours=9))
@@ -104,8 +109,48 @@ def test_travel_error_uses_30_min(monkeypatch, caplog):
         plan = build_plan(["busan-tower", "jagalchi-market"], DAY, None, PROFILE)
     first, second = plan.stops
     assert first.end == dt.datetime(2026, 11, 28, 10, 45, tzinfo=KST)  # observatory 45분
-    assert second.start == dt.datetime(2026, 11, 28, 11, 20, tzinfo=KST)  # 10:45 + 30분 = 11:15 → 11:20
+    # 10:45 + 이동 30분 + 여유 10분(TRANSFER_BUFFER_MIN) = 11:25 → 11:30
+    assert second.start == dt.datetime(2026, 11, 28, 11, 30, tzinfo=KST)
     assert "30분" in caplog.text
+
+
+OTHER_ROUTES = [
+    ["haeundae-beach", "the-bay-101", "dongbaekseom", "busan-x-the-sky", "sea-life-busan"],
+    ["busan-tower", "gukje-market", "jagalchi-market", "yongdusan-park", "busan-chinatown", "choryang-ibagu-gil"],
+    ["beomeosa-temple", "taejongdae", "gwangalli-beach"],  # 먼 곳끼리
+]
+
+
+@pytest.mark.parametrize("place_ids", [SAMPLE, *OTHER_ROUTES])
+@pytest.mark.parametrize("start", ["10:00", "10:05", "09:53", "13:30"])
+def test_이동_여유는_항상_Guardian_기준_이상이다(place_ids, start):
+    stops = build_plan(place_ids, DAY, start, PROFILE).stops
+    assert len(stops) == len(place_ids)
+    for prev, nxt in zip(stops, stops[1:]):
+        travel = get_travel_time(prev.place_id, nxt.place_id)["minutes"]
+        slack = (nxt.start - prev.end).total_seconds() / 60 - travel
+        # 여유는 기준 이상이고, 10분 단위 올림 때문에 늘어나는 만큼(ROUND_MIN 미만)만 더 길다
+        assert TRANSFER_BUFFER_MIN <= slack < TRANSFER_BUFFER_MIN + schedule.ROUND_MIN, (prev.place_id, nxt.place_id, slack)
+
+
+def test_샘플_일정의_시각():
+    stops = build_plan(SAMPLE, "2026-11-28", "10:00", PROFILE).stops
+    assert [(s.place_id, s.start.strftime("%H:%M"), s.end.strftime("%H:%M")) for s in stops] == [
+        ("gamcheon-village", "10:00", "11:30"),
+        ("jagalchi-market", "12:00", "13:00"),  # 11:30 + 이동 16분 + 여유 10분 = 11:56 → 12:00
+        ("busan-tower", "13:20", "14:05"),  # 13:00 + 10분 + 10분 = 13:20
+        ("haeundae-beach", "15:10", "16:10"),  # 14:05 + 52분 + 10분 = 15:07 → 15:10
+    ]
+
+
+@pytest.mark.parametrize("place_ids", [SAMPLE, *OTHER_ROUTES])
+def test_만든_일정에_Guardian_tight_transfer가_없다(place_ids, monkeypatch):
+    monkeypatch.setattr(config, "USE_MOCK", True)  # 날씨는 샘플 파일. 이동 시간은 실제 표를 읽는다
+    plan = build_plan(place_ids, DAY, "10:00", PROFILE)
+    context = guardian_context.build_context(plan)
+    assert all(context.travel(a.place_id, b.place_id) is not None for a, b in zip(plan.stops, plan.stops[1:]))
+    issues = check_plan(plan, context)
+    assert [i for i in issues if i.type == "tight_transfer"] == []
 
 
 def test_late_end_warns_but_keeps_all_stops(caplog):
