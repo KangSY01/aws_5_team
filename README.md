@@ -2,7 +2,8 @@
 
 영어·일본어·중국어 관광객에게 맞춤 일정을 지도 위에 짜 주고, 혼잡·비·휴무·빠듯한 이동을 먼저 찾아 문제 구간만 고쳐 주는 에이전트입니다.
 
-이 저장소는 팀 공용 **뼈대**입니다. 모든 API 경로가 샘플 데이터로 고정 응답을 돌려주며, 기능 로직은 각 담당자가 채웁니다.
+백엔드는 Lambda 핸들러(`backend/app/handler.py`)가 에이전트(Bedrock), Schedule Guardian, 조회 도구, 저장소를 실제로 호출합니다. 프론트엔드는 `frontend/`(React, Vite, MapLibre)입니다.
+`USE_MOCK=1`이면 외부 API 대신 `backend/app/data/` 샘플을 쓰고, 일정은 메모리 저장소에 저장합니다.
 
 - 대회: AWS AI 마에스트로 해커톤 (부산시 지역 현안)
 - 제출 마감: 토 08:00 (목표 토 07:00)
@@ -15,7 +16,7 @@
 cd backend
 uv sync
 uv run pytest -q                        # 테스트
-uv run python -m scripts.local_invoke   # handler를 직접 호출해 네 경로 응답 출력
+uv run python -m scripts.local_invoke   # handler를 직접 호출해 샘플 요청 응답 출력
 uv run python -m scripts.local_server   # 로컬 서버 http://127.0.0.1:8000 (CORS 허용)
 ```
 
@@ -27,16 +28,14 @@ uv run python -m scripts.local_server   # 로컬 서버 http://127.0.0.1:8000 (C
 
 | 역할 | 담당 | 맡는 곳 |
 |---|---|---|
-| A. 에이전트 백엔드 | 노윤지 | `backend/app/agent.py`, `backend/app/tools/plan_edit.py`, `backend/app/storage/`, `backend/app/voice/`(음성 입력 서명 URL), `backend/app/config.py`, `backend/scripts/`, `infra/`(SAM 템플릿·배포 구성) |
+| A. 에이전트 백엔드 | 노윤지 | `backend/app/agent.py`, `backend/app/tools/plan_edit.py`, `backend/app/storage/`, `backend/app/voice/`(음성 입력 서명 URL), `backend/app/config.py`, `backend/scripts/`(B의 데이터 스크립트 제외), `infra/`(SAM 템플릿·배포 구성) |
 | B. 데이터·도구 | 강서영 | `backend/app/data/`, `backend/app/tools/lookup.py`, `backend/app/tools/schedule.py`(일정 시각 계산), `backend/app/tools/return_options.py`(귀가 분산), `backend/app/tools/kakao_route.py`(카카오 대중교통 경로), `backend/app/tools/transit.py`(대중교통 추정), `backend/app/tools/restaurants.py`(음식점), `backend/app/tools/events_map.py`(지도용 행사), `backend/app/speech/`(음성 출력 Polly), `backend/scripts/`의 데이터 수집·생성 스크립트(`fetch_*`, `build_*`, `backfill_names`, `extract_station_names`, `demo_lookup`, `demo_offline_check`)와 시드·CSV |
 | C. 프론트엔드 | 이지혜 | `frontend/` (D 폴더 제외) |
-| D. 아키텍처 설계 인프라 | 이온규 | `backend/app/guardian/`(예약 점검 로직 `scheduled.py` 포함), `backend/app/prompts.py`, `backend/app/photo/`(사진 인식 백엔드), `backend/eval/`, `frontend/src/features/local-card/`, `frontend/src/features/demo-panel/` |
+| D. 아키텍처 설계 인프라 | 이온규 | `backend/app/guardian/`(예약 점검 로직 `scheduled.py` 포함), `backend/app/prompts.py`, `backend/app/photo/`(사진 인식 백엔드), `backend/eval/`, `frontend/src/features/local-card/`, `frontend/src/features/demo-panel/`, `frontend/src/features/data-notices/`(출처 표시·비 예보 배너) |
 
 담당 규칙 세부(테스트 파일, 예약 점검 연결, 계약에 없는 경로)는 [CONTRIBUTING.md](CONTRIBUTING.md)의 「담당 영역」을 따릅니다.
 
-- 지금은 스텁입니다. `agent.py`, `guardian/`, `tools/`의 함수는 시그니처와 docstring, `TODO(담당)`만 있고 호출하면 `NotImplementedError`가 납니다.
-- 구현한 뒤에는 `backend/app/handler.py`의 `TODO` 위치에서 고정 응답을 실제 호출로 바꿉니다. 이 파일은 공용 파일이라 아래 규칙을 따릅니다.
-- 프론트엔드는 아직 없습니다. 담당자가 Kiro로 생성할 예정입니다.
+- `backend/app/handler.py`는 공용 파일입니다. 각 담당 모듈(`agent`, `guardian`, `tools`, `storage`, `photo`, `speech`)을 경로별로 호출하며, 수정은 아래 「공용 파일」 규칙을 따릅니다.
 
 ## 작업 규칙
 
@@ -52,7 +51,7 @@ uv run python -m scripts.local_server   # 로컬 서버 http://127.0.0.1:8000 (C
 - **Kiro Spec**: 기능은 Kiro Spec으로 만듭니다. Kiro 사용도가 평가에 포함됩니다.
   - 팀 규칙 원본은 `.kiro/steering/team.md`이고 Kiro가 항상 읽습니다.
   - `.kiro/steering/`의 나머지 문서는 제품 개요, 기술 규칙, 구조, 데이터 규칙, API 계약 참조, 프론트엔드 규칙입니다. `team.md`와 다르면 `team.md`를 따릅니다.
-  - 기능 스펙은 `.kiro/specs/`(`schedule-guardian`, `chat-agent`)에 있습니다. `tasks.md`의 작업을 순서대로 실행합니다.
+  - 기능 스펙은 `.kiro/specs/`(`schedule-guardian`, `chat-agent`, `info-tools`, `return-dispersal`, `name-backfill`, `frontend-plan-list-skeleton`)에 있습니다. `tasks.md`의 작업을 순서대로 실행합니다.
   - MCP 서버(AWS 문서, Strands 문서)는 `.kiro/settings/mcp.json`에 설정돼 있습니다.
   - 크레딧 절약: 평소 작업은 Auto 또는 Sonnet, 막히는 문제만 Opus를 씁니다.
 
@@ -60,7 +59,8 @@ uv run python -m scripts.local_server   # 로컬 서버 http://127.0.0.1:8000 (C
 
 - mock 데이터 원본은 `backend/app/data/`입니다. 프론트엔드 mock은 그 복사본으로 만듭니다.
 - `places.json`은 한국관광공사 다국어 관광정보로 수집한 값입니다(37곳, 해운대 로데오거리·부산 영화의 거리 포함).
-- 고정 응답이라 상태가 이어지지 않습니다. `plan-1` 외의 plan_id는 404이고, `PUT /plan`은 저장하지 않고 받은 일정을 그대로 돌려줍니다.
+- 저장소는 `STORAGE_BACKEND`(`memory` / `dynamodb`)로 정하고, 비어 있으면 `USE_MOCK=1`일 때 메모리, 아니면 DynamoDB입니다. `PUT /plan`은 선택한 저장소에 저장합니다.
+- 메모리 저장소는 시작할 때 `sample_plan.json`의 `plan-1`을 저장합니다. 배포 환경(DynamoDB)에는 `plan-1`이 없으므로, `/chat`이 반환한 `plan_id`를 씁니다.
 
 ## 일정
 
