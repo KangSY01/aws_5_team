@@ -222,6 +222,7 @@ def _prepare(request: ChatRequest) -> _Chat:
     if plan is not None and plan.stops:
         chat = _Chat(request, session, plan, today, "edit", recorder, creator=None, editor=PlanEditor(plan))
     else:
+        recorder.finish_tool = "create_plan"  # 검색으로 한도를 다 써도 찾아 둔 후보로 일정을 만들 수 있게 한 번 더 허용
         creator = PlanCreator(request.profile, today, plan.plan_id if plan else storage.new_plan_id())
         chat = _Chat(request, session, plan, today, "create", recorder, creator=creator, editor=None)
     recorder.on_output(lambda name, data: _on_output(chat, name, data))
