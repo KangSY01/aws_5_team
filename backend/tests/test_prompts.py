@@ -79,8 +79,15 @@ def test_values_filled_by_code():
         "If the user gives no date, the plan is for TODAY",  # 요구사항 2.4
         "Restaurants are not places",  # restaurant_id 는 표식만, 일정에는 넣지 않음 (평가 14번)
         "Call move_stop for all of those stops together in one response",  # 출력 길이 (평가 11·20번 max_tokens)
-        'indoor true when\n  the reason is rain',  # 교체 후보 좁히기 (평가 3번 처리 시간)
+        "indoor true\n  when the reason is rain",  # 교체 후보 좁히기 (평가 3번 처리 시간)
+        "leave query empty and pass category",  # 빈 검색어 (평가 29번)
     ],
 )
 def test_grounding_rules_present(rule):
     assert rule in build(mode="create", plan=None) or rule in build()
+
+
+def test_no_quoted_empty_query():
+    # query "" 라고 쓰면 모델이 따옴표 두 글자를 검색어로 넘겨 결과가 0곳이 된다 (평가 29번)
+    assert 'query ""' not in build(mode="create", plan=None)
+    assert 'query ""' not in build()
