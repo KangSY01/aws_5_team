@@ -84,6 +84,7 @@ def route_between(a: tuple[float, float], b: tuple[float, float]) -> dict:
     """a → b 지도 경로. {"mode": "walk"|"transit", "minutes", "source", "segments": [...]}.
 
     segments 의 각 항목: {"mode": "WALKING"|"BUS"|"SUBWAY"|..., "lines", "minutes", "path"}.
+    대중교통 구간에는 승하차 정류장 이름 "from_name", "to_name" 을 더한다.
     """
     if _km(a, b) <= WALK_MAX_KM:
         segment = _walk_segment(a, b)
@@ -100,7 +101,8 @@ def route_between(a: tuple[float, float], b: tuple[float, float]) -> dict:
     with ThreadPoolExecutor(max_workers=2) as pool:  # 정류장까지 걷는 두 구간을 함께 조회
         before, after = pool.map(lambda pair: _walk_segment(*pair), [(a, first), (last, b)])
     segments = [before, *({"mode": leg["mode"], "lines": leg.get("lines", []), "minutes": leg["minutes"],
-                           "path": leg["path"]} for leg in transit), after]
+                           "path": leg["path"], "from_name": leg.get("from_name"), "to_name": leg.get("to_name")}
+                          for leg in transit), after]
     return {"mode": "transit", "minutes": routes[0]["total_minutes"], "source": "kakao", "segments": segments}
 
 
@@ -125,6 +127,8 @@ class RouteSegment(BaseModel):
     lines: list[str] = []
     minutes: int
     path: list[list[float]]  # [[위도, 경도], ...]
+    from_name: str | None = None  # 대중교통 구간의 승차 정류장·역 이름 (도보 구간은 None)
+    to_name: str | None = None  # 대중교통 구간의 하차 정류장·역 이름
 
 
 class RouteResponse(BaseModel):

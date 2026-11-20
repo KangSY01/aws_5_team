@@ -25,7 +25,7 @@ function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
 
-export default function BusanMap({ plan, places, events, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, focusRequest, regionPicker, crowdLevels = null, returnPaths }) {
+export default function BusanMap({ plan, places, events, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, onRoutes, focusRequest, regionPicker, crowdLevels = null, returnPaths }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const [locationControl, setLocationControl] = useState(null);
@@ -60,6 +60,13 @@ export default function BusanMap({ plan, places, events, onLandmarkSelect, langu
     if (!coordinates || !next?.coordinates) return [];
     if (stopDate(stop.start) !== stopDate(next.stop.start)) return [];
     return [[coordinates, next.coordinates]];
+  }), [mappedStops]);
+  // visitSegments 와 같은 순서의 출발 일정 stop_id (일정 목록의 구간 안내용)
+  const visitStopIds = useMemo(() => mappedStops.flatMap(({ coordinates, stop }, index) => {
+    const next = mappedStops[index + 1];
+    if (!coordinates || !next?.coordinates) return [];
+    if (stopDate(stop.start) !== stopDate(next.stop.start)) return [];
+    return [stop.stop_id];
   }), [mappedStops]);
 
   useEffect(() => {
@@ -155,6 +162,12 @@ export default function BusanMap({ plan, places, events, onLandmarkSelect, langu
       .then((result) => { if (!request.signal.aborted) setRoutes(result); });
     return () => request.abort();
   }, [visitSegments]);
+
+  const onRoutesRef = useRef(onRoutes);
+  onRoutesRef.current = onRoutes;
+  useEffect(() => {
+    onRoutesRef.current?.(Object.fromEntries(visitStopIds.flatMap((id, index) => routes[index] ? [[id, routes[index]]] : [])));
+  }, [routes, visitStopIds]);
 
   useEffect(() => {
     if (!visitSegments.length) return;

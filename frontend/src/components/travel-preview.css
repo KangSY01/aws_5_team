@@ -2027,3 +2027,21 @@
 .travel-preview .select-actions button:nth-of-type(1)::before { display: none; }
 .travel-preview .mention-chips li { padding-block: 0; line-height: 1.2; }
 .travel-preview .mention-chips button { width: 26px; height: 26px; padding: 0; }
+
+/* 일정 칸 사이 이동 안내 (도보·버스·지하철 구간, 노선, 승하차 정류장) */
+.transit-leg {
+  margin: 4px 0 0 calc(var(--stop-number-size, 24px) + 12px);
+  padding: 6px 10px;
+  border-inline-start: 2px dashed var(--color-border);
+  color: var(--color-muted);
+  font-size: .78rem;
+  line-height: 1.4;
+}
+.transit-leg[data-mode="transit"] { border-inline-start-style: solid; border-inline-start-color: var(--color-text); }
+.transit-leg p { margin: 0; }
+.transit-leg__summary { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.transit-leg__part { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.transit-leg__part strong { color: var(--color-text); font-weight: 700; }
+.transit-leg__part[data-mode="BUS"], .transit-leg__part[data-mode="SUBWAY"] { color: var(--color-text); }
+.transit-leg__total { margin-inline-start: auto; font-weight: 650; color: var(--color-text); }
+.transit-leg__ride { margin-top: 2px; }
