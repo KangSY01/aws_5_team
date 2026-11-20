@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from app import config
 from app.handler import PLACES, SAMPLE_PLAN, handler
 from app.models.api import ChatResponse, CheckResponse, ErrorResponse, PlanResponse
 from scripts.local_invoke import make_event
@@ -19,11 +20,12 @@ def call(method, path, body=None):
 
 
 def test_sample_data():
-    assert 8 <= len(PLACES) <= 10
+    assert len(PLACES) >= 8  # 공공데이터로 30곳 이상으로 늘렸다 (상한 없음)
     assert any(stop.locked for stop in SAMPLE_PLAN.stops)
 
 
-def test_chat():
+def test_chat(monkeypatch):
+    monkeypatch.setattr(config, "FAKE_LLM", True)  # 형식만 본다. 실제 대화 경로는 test_api_chat.py
     status, body = call("POST", "/chat", CHAT_BODY)
     assert status == 200
     ChatResponse.model_validate_json(body)

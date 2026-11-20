@@ -4,7 +4,9 @@
 
 요청·응답 형식은 `docs/api-contract.md`와 `backend/app/models/`를 따릅니다. 이 문서에는 내부 구조만 적습니다.
 
-- 스트리밍은 쓰지 않습니다. 프론트엔드는 응답을 기다리는 동안 진행 표시를 보여 줍니다.
+- `/chat` 응답은 SSE로 스트리밍합니다. 이벤트(`delta`, `done`, `error`)는 `docs/api-contract.md` 「스트리밍」을 따릅니다. 배포 방식(AgentCore Runtime 또는 Lambda Web Adapter)은 금 12:00 점검 1에서 확인하고, 아래 구성도는 그때 고칩니다.
+- `Accept: text/event-stream`이 없는 요청에는 지금처럼 `ChatResponse`를 한 번에 돌려줍니다.
+- 시스템 프롬프트(`prompts.py`)는 D가 작성합니다. 이 스펙은 그 프롬프트를 Agent에 넣는 부분만 다룹니다.
 - `handler.py`의 `TODO(에이전트 담당)` 자리를 `run_chat(request)` 호출로 바꾸는 작업은 공용 파일 수정이라 별도 PR로 올립니다.
 
 ## Architecture
@@ -26,7 +28,7 @@
 ```
 
 ### 모델 (`build_model`)
-- `BedrockModel(model_id=config.MODEL_ID, region_name=config.BEDROCK_REGION, max_tokens=..., streaming=False)`
+- `BedrockModel(model_id=config.MODEL_ID, region_name=config.BEDROCK_REGION, max_tokens=...)`. 답변 문장을 `delta` 이벤트로 흘려보내려면 모델 스트리밍을 켭니다. 정확한 인자와 이벤트 처리 방법은 MCP `strands` 서버로 확인합니다.
 - 정확한 인자 이름은 MCP `strands` 서버로 공식 문서를 확인한 뒤 씁니다.
 - `config.FAKE_LLM`이면 모델을 만들지 않고, `run_chat`이 `backend/app/data/chat_response.json` 형식의 고정 응답을 돌려줍니다.
 - 리전은 `ap-northeast-2`만 허용합니다. `config.BEDROCK_REGION`이 다른 값이면 한국어 오류 로그를 남기고 예외를 발생시킵니다.
@@ -42,7 +44,7 @@
 ### 시각 계산
 - 새 일정의 `start`·`end`는 LLM이 아니라 코드가 계산합니다. 기본 체류 시간 + 이동 시간 조회 도구 결과를 씁니다.
 - 기준 시각은 `config.DEMO_NOW`가 있으면 그 값, 없으면 현재 시각(Asia/Seoul)입니다.
-- 일정 생성에 필요한 `build_plan` 같은 함수가 아직 없습니다. `app/tools/`에 추가할지 도구 담당과 정합니다.
+- 일정 생성은 `backend/app/tools/schedule.py`의 `build_plan()`(B)을 씁니다. 아래 「일정 시각 계산」을 보십시오.
 - 방문 순서와 시각 계산은 순수 파이썬 함수이며 LLM을 호출하지 않습니다. LLM은 장소 선택만 합니다.
 - 계산 결과는 다음을 지킵니다.
   - 서로 다른 Stop의 시간 구간이 겹치지 않습니다.
@@ -62,7 +64,7 @@
 | 파일 | 내용 |
 |---|---|
 | `backend/app/agent.py` | `build_model()`, `run_chat()` |
-| `backend/app/prompts.py` | 시스템 프롬프트 (영어) |
+| `backend/app/prompts.py` | 시스템 프롬프트 (영어, D 작성) |
 | `backend/app/tools/lookup.py` | `search_places`, `get_weather`, `get_crowd` (+ 영업 정보, 이동 시간 추가 예정) |
 | `backend/app/tools/plan_edit.py` | `replace_stop`, `add_stop`, `remove_stop`, `move_stop` |
 | `backend/app/storage/` | 일정 읽기·쓰기 (데이터 담당) |
@@ -85,7 +87,29 @@
   - `locked: true`인 모든 Stop의 `place_id`, `start`, `end`가 요청 시작 시점과 같은지.
   - 모델 출력이 `ChatResponse` 검증을 통과하는지. 통과하지 못하면 그 출력을 반환하지 않고 오류 형식으로 답하며, 이 요청으로 일정을 저장하지 않습니다.
 
+### 조회 도구 반환 형식 (11/20 결정)
+`backend/app/tools/lookup.py`(B)의 도구는 아래 dict를 돌려줍니다. Guardian `build_context`(D)도 같은 함수를 불러 `CheckContext`(`backend/app/guardian/context.py`)를 조립하므로, 필드 이름은 `CheckContext`의 모델과 같습니다.
+
+| 도구 | 반환 형식 | `CheckContext` 대응 |
+|---|---|---|
+| `get_weather(date)` | `{"date": "YYYY-MM-DD", "hourly": [{"time": ISO 시각, "pop": 0~100, "pty": 0~4}]}`. 예보가 없는 날짜(약 3일 이후)는 `hourly: []` | `weather: list[HourlyWeather]` |
+| `get_crowd(place_id, date)` | `{"place_id", "date", "ratio": 0~100 또는 null, "source": "concentration" \| "weekday_rule" \| "event"}`. 집중률에 없는 장소는 `ratio: null`, `source: "weekday_rule"` | `crowd[place_id] = ratio` (null이면 넣지 않음) |
+| `get_hours(place_id)` | `{"place_id", "opens": "HH:MM" 또는 null, "closes": "HH:MM" 또는 null, "closed_weekdays": [0~6], "closed_dates": ["YYYY-MM-DD"], "raw_text": 한국어 원문 또는 null}`. `hours.json`(한국관광공사 소개정보)을 읽음 | `hours[place_id] = OpeningHours` (`raw_text`는 쓰지 않음) |
+| `get_place_info(place_id)` | `Place` 필드 + `"curation": {"tags", "foreigner_friendly": 0~3, "crowd_alternatives": [place_id], "rain_alternatives": [place_id], "source": "rule" \| "manual"}` + `"hours"`(`get_hours`에서 `place_id`를 뺀 값) | 없음 (Agent 전용) |
+| `get_travel_time(from_place_id, to_place_id)` | `{"from_place_id", "to_place_id", "minutes": int, "mode": "subway" \| "bus" \| "walk" \| "taxi"}` | `travel_min[(from, to)] = minutes` |
+| `get_events(date)` | `{"date", "events": [{"name", "start", "end", "period_start", "period_end", "place_ids": [...], "main_place_id": 장소 ID \| null, "kind": "short" \| "opening_day"}]}`. 7일 이하 행사는 기간 전체, 더 긴 행사는 개막일에만 나옴. `start`·`end`는 요청한 날짜의 행사 시간대(모르면 그날 00:00~23:59), `period_*`는 원래 기간. `main_place_id`는 `place_ids` 중 행사 좌표와 가장 가까운 장소(비면 `null`) | `events: list[Event]` (`kind`·`period_*`·`main_place_id`는 쓰지 않음) |
+| `search_places(...)` | `Place` dict 목록 (지금 docstring 그대로) | `places` |
+
+- 실패하면 모든 도구가 `{"error": {"code": str, "message": str}}`를 돌려줍니다(API 오류 형식과 같음). 예외를 밖으로 던지지 않습니다.
+- `pty`는 기상청 강수 형태 코드입니다(0 없음, 1 비, 2 비/눈, 3 눈, 4 소나기). `closed_weekdays`는 `datetime.weekday()` 값(0=월)입니다.
+- 이동 시간은 `backend/app/data/travel_times.json`의 추정표를 읽습니다(`USE_MOCK`과 무관, 추정 규칙은 `data-rules.md` 「이동 시간」). `mode`는 지금 `walk`·`subway`만 나옵니다. 카카오 경로 결과는 쓰지 않고 저장하지도 않습니다.
+
+### 일정 시각 계산 (`build_plan`)
+- `backend/app/tools/schedule.py`의 `build_plan(place_ids, date, start, profile)`을 B가 만들고, A의 `run_chat`이 일정 생성에 씁니다. `@tool`이 아닌 일반 함수입니다.
+- 방문 순서와 `start`·`end`는 이 함수가 기본 체류 시간과 `get_travel_time` 결과로 계산합니다. 결과는 위 「시각 계산」 규칙을 지킵니다.
+
 ### 시스템 프롬프트 (`prompts.py`)
+D가 작성합니다. 아래는 초안이며, 확정본은 `backend/app/prompts.py`를 따릅니다.
 ```txt
 You are a friendly local guide helping foreign visitors explore Busan, Korea.
 Answer in {language}. Use the place name for that language from tool results.

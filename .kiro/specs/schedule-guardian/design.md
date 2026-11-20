@@ -29,25 +29,26 @@ backend/app/guardian/
 | `travel_min` | `(from_place_id, to_place_id)` → 이동 시간(분) |
 | `events` | 방문일 행사 목록 |
 
-`get_weather`, `get_crowd`의 반환 형식이 아직 TODO입니다. 도구 담당과 정한 뒤 이 표를 확정합니다.
+도구 반환 형식은 11/20에 정했습니다(`.kiro/specs/chat-agent/design.md` 「조회 도구 반환 형식」). `build_context`는 그 결과를 이 표의 필드로 옮깁니다. `get_crowd`의 `ratio`가 `null`이면(`source: "weekday_rule"`) `crowd`에 넣지 않고 요일 규칙으로 판단합니다.
+`demo.now`가 있으면 `now`에, `demo.weather_preset`이 있으면 `backend/app/data/weather/{이름}.json`을 `weather`에 넣습니다.
 
 ## 기준값 (`thresholds.py`)
 리허설 전에 데모 데이터로 맞추고 고정합니다.
 
 | 이름 | 초기값 | 뜻 |
 |---|---|---|
-| `CROWD_MEDIUM_RATE` | 85 | 집중률이 이 값 이상이면 `medium` |
-| `CROWD_HIGH_RATE` | 95 | 집중률이 이 값 이상이고 주말이면 `high` |
-| `WEEKDAY_RULE_PLACES` | `gamcheon-village`, `haedong-yonggungsa` | 집중률에 없는 장소. 토 `medium`, 일 `low` |
+| `CROWD_MEDIUM_RATE` | 95 | 집중률이 이 값 이상이면 `medium`. 받아 둔 30일 안에서 토요일이 대부분 장소의 최고 시기라 85→95 (11/28 토: 85 이상 17곳, 95 이상 7곳) |
+| `CROWD_HIGH_RATE` | 98 | 집중률이 이 값 이상이고 주말이면 `high`. 95→98 (11/28 토: 98 이상 2곳). 해운대(96.8)는 `medium`, 빛축제 개막일 가중으로 `high` |
+| `WEEKDAY_RULE_PLACES` | `gamcheon-village`, `busan-tower`, `haedong-yonggungsa`, `shinsegae-centum-city`, `haeridan-gil`, `blueline-park`, `busan-x-the-sky`, `busan-cinema-center`, `lotte-outlet-dongbusan`, `huinnyeoul-village`, `busan-modern-history-museum`, `choryang-ibagu-gil` (12곳) | 집중률에 없는 장소. 토 `medium`, 일 `low` |
 | `RAIN_POP_MEDIUM` | 60 | 체류 시간대 최대 강수확률(%)이 이 값 이상이면 `medium` |
 | `RAIN_PTY_HIGH_RATIO` | 0.5 | 체류 시간의 50% 이상에 강수가 있으면 `high` |
 | `TRANSFER_BUFFER_MIN` | 10 | 이동 여유(분). 미만이면 `medium`, 0 미만이면 `high` |
 | `MIN_DWELL_MIN` | 45 | 체류 시간 축소 하한(분) |
 | `SHIFT_STEPS_MIN` | 30, 60, 90 | `move_time` 시도 폭(분) |
-| `REPLACE_MAX_EXTRA_MIN` | 30 | `replace` 이동 시간 증가 상한(분) |
+| `REPLACE_MAX_EXTRA_MIN` | 40 | `replace`·`reorder` 이동 시간 증가 상한(분). 데모 장면 2(해운대→송정 +37분)에 맞춰 30→40 |
 | `MAX_REPAIRS` | 3 | Issue당 해결안 수 |
 
-`WEEKDAY_RULE_PLACES`의 ID는 `places.json`에 있는 값만 씁니다. 흰여울문화마을 등이 추가되면 함께 넣습니다.
+`WEEKDAY_RULE_PLACES`의 ID는 `places.json`에 있는 값만 씁니다. `data-rules.md` 「혼잡도」의 "집중률에 없는 장소"가 `places.json`에 추가되면 함께 넣습니다.
 
 ## 점검 규칙 (`rules.py`)
 | 함수 | 판정 |
@@ -59,8 +60,9 @@ backend/app/guardian/
 
 - `issue_id`: `{stop_id}-{type}` (예: `s4-rain`). 같은 일정·같은 문제면 항상 같은 값입니다.
 - 고정 일정의 Issue는 `severity`를 `low`로 낮춥니다.
-- `detail` 예: `"토요일 요일 규칙, 집중률 데이터 없음"`, `"15:00-18:00 강수확률 80%, 실외 장소"`
+- `detail` 예: `"토요일 요일 규칙, 집중률 데이터 없음"`, `"15:30-17:00 최대 강수확률 80%, 강수 시간 100%, 실외 장소"`
 - 정렬: `severity` 높은 순, 같으면 Stop `start` 이른 순.
+- 점검 범위: 기준 시각(`context.now`)에 이미 끝난 Stop(`end <= now`)은 점검하지 않습니다(여행 중 모드, 데모 장면 5). 빠듯한 이동은 다음 Stop이 아직 끝나지 않았으면 점검합니다.
 
 ## 해결안 탐색 (`repair.py`)
 ```
@@ -85,7 +87,7 @@ propose_repairs(plan, issue, ctx) -> list[RepairOption]
 
 ### 3단계 `replace`
 - 후보: 같은 `category`인 장소. `rain`이면 `indoor: true`인 장소를 먼저 봅니다.
-- 조건: 이동 시간 증가 30분 이하, 바꾼 뒤 같은 유형 `high` Issue 없음. 시각은 그대로 둡니다.
+- 조건: 이동 시간 증가 `REPLACE_MAX_EXTRA_MIN`(40분) 이하, 바꾼 뒤 같은 유형 `high` Issue 없음. 시각은 그대로 둡니다.
 
 ### 4단계 `remove`
 - 대상 Stop을 뺍니다. 다른 단계 해결안이 없을 때만 돌려줍니다.
@@ -98,11 +100,30 @@ propose_repairs(plan, issue, ctx) -> list[RepairOption]
 | 필드 | 계산 |
 |---|---|
 | `changed` | 장소가 교체·제거된 Stop 수. 시각·순서만 바뀐 Stop은 세지 않습니다 |
-| `kept` | 원래 `place_id` 중 새 일정에 남은 수 |
+| `kept` | 원래 Stop 중 같은 `stop_id`로 같은 장소가 남은 수 (= 원래 Stop 수 − `changed`). 같은 장소가 두 번 있어도 Stop마다 셉니다 |
 | `extra_travel_min` | 새 일정 총 이동 시간 − 원래 총 이동 시간 (음수 가능) |
 | `locked_kept` | 모든 고정 Stop의 `place_id`·`start`·`end`가 같으면 `true` |
 
 화면 문구 예: `changed=0`이고 시각만 바뀌면 "변경 0곳 · 시간만 조정"으로 표시합니다.
+
+## 지연 재조정 (요구사항 7)
+- 입력: 일정, 지연 시간(분), `context`. 대상은 기준 시각(`context.now`)에 아직 끝나지 않은(`end > now`) 비고정 Stop입니다. 이미 끝난 Stop과 고정 Stop은 그대로 둡니다.
+- 탐색 단계 순서는 `propose_repairs`와 같습니다(시간 이동 → 순서 변경 → 교체 → 제외). 어느 안이든 바꾼 뒤 시각은 `move_time`과 같은 미루기 규칙(`delay_shift`)으로 다시 배치합니다.
+  - `move_time`: 첫 대상 Stop을 지연만큼 미루고, 뒤 Stop은 이동 시간 + 여유가 모자랄 때만 필요한 만큼 미룹니다. 고정 일정 앞에서 모자라면 고정 일정에 가까운 Stop부터 `MIN_DWELL_MIN`까지 체류 시간을 줄입니다.
+  - `reorder`·`replace`: `move_time`이 안 될 때만 찾습니다. 이웃한 대상 Stop 순서 바꾸기, 같은 `category` 장소로 바꾸기. 이동 시간을 모르거나 증가가 `REPLACE_MAX_EXTRA_MIN`을 넘으면 뺍니다.
+  - `remove`: 대상 Stop 하나를 뺍니다. **`move_time`이 되더라도 함께 제시합니다** (노션 데모 대본 장면 6: 체류를 줄이는 안(변경 0곳) 다음에 1곳 빼는 안(변경 1곳)). `propose_repairs`의 "제외는 다른 해결안이 없을 때만"(요구사항 4.9)과 다른 점입니다. 이동 시간을 모르는 구간이 생기면 뺍니다.
+- 공통 조건: 고정 일정 유지, 재배치 후 원래 없던 `high` Issue(운영시간 밖 등)가 없을 것, 방문일 안.
+- 정렬: `changed` → `extra_travel_min` → 단계 순서, 상위 `MAX_REPAIRS`개.
+- 출력: `RepairOption` 목록과 보전 지표. API는 `POST /plan/{plan_id}/delay`(`DelayRequest` → `DelayResponse`, `docs/api-contract.md`)입니다.
+- 함수: `guardian/delay.py`의 `propose_delay_repairs(plan, delay_min, ctx) -> list[RepairOption]`. `handler.py` 연결은 A와 따로 PR로 올립니다.
+
+## 예약 점검 (요구사항 8)
+```
+EventBridge Scheduler (예보 갱신 시각)
+  → 점검 Lambda: 저장된 일정 읽기 → build_context → check_plan (LLM 없음)
+  → 결과를 DynamoDB에 저장 → /alerts API가 읽어 배지로 표시
+```
+- 점검 로직은 `guardian/scheduled.py`(D)에 둡니다. Lambda 연결과 EventBridge 스케줄은 `infra/`(A)에서 하고, DynamoDB 저장 형식은 세션 저장 담당(A)과 정합니다.
 
 ## 오류 처리
 - `context`에 필요한 값이 없으면 그 규칙만 건너뜁니다. 점검 전체를 실패시키지 않습니다.

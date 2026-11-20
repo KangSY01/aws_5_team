@@ -1,0 +1,4 @@
+# HTTPS API Lambda zip 에 넣을 의존성 (arm64 wheel 로 설치한다. scripts/build_api_zip.py)
+# /chat 이 Strands Agent 로 Bedrock 을 부른다. boto3 는 strands-agents 가 가져온다. 최소 버전은 backend/pyproject.toml 과 맞춘다.
+strands-agents>=1.65.0
+pydantic>=2.14.3

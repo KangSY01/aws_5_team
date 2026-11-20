@@ -1,0 +1,205 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: 부산 안내 HTTPS API - Lambda 하나(app.handler.handler)가 모든 경로를 처리하고 Function URL 로 공개한다. /chat 은 Strands run_chat 이 Bedrock 을 부른다
+
+# AgentCore 스택(infra/template.yaml), 공용 스택(infra/base), 예약 점검 스택(infra/alerts)과 별개로 배포한다. 서로 수정하지 않는다.
+# DynamoDB 테이블은 공용 스택의 것을 그대로 쓴다. 이 스택은 테이블을 만들지도 바꾸지도 않는다.
+# /chat 은 ChatResponse JSON 을 한 번에 돌려준다 (BUFFERED). SSE 스트리밍은 아직 없다.
+
+Parameters:
+  CodeBucket:
+    Type: String
+    Description: scripts/build_api_zip.py 결과를 올린 S3 버킷 (스택과 같은 리전)
+  CodeKey:
+    Type: String
+    Description: 버킷 안의 zip 키. 코드가 바뀌면 키도 바뀌어야 Lambda 가 업데이트된다 (deploy_api.ps1 이 해시를 붙인다)
+  DynamoDbTable:
+    Type: String
+    Default: busan-guide-sessions
+    Description: 일정·세션·점검 결과를 저장하는 DynamoDB 단일 테이블 이름. 공용 스택(busan-guide-base)이 만든다
+  BedrockModelId:
+    Type: String
+    Default: global.anthropic.claude-haiku-5-5
+    Description: Bedrock 모델 ID 또는 추론 프로필 ID. 환경 변수 BEDROCK_MODEL_ID 로 들어간다. 대회 계정에서 호출되는 값을 넣는다
+  FakeLlm:
+    Type: String
+    Default: "0"
+    AllowedValues: ["0", "1"]
+    Description: 1이면 Bedrock 을 부르지 않고 /chat 이 고정 응답을 돌려준다 (배포 경로만 먼저 확인할 때)
+  UseMock:
+    Type: String
+    Default: "0"
+    AllowedValues: ["0", "1"]
+    Description: 1이면 날씨·음성을 외부 API 대신 app/data 샘플로 쓴다 (통제 테스트). 저장소는 이 값과 무관하게 항상 DynamoDB 다
+  UploadsBucket:
+    Type: String
+    AllowedPattern: "[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]"
+    Description: 사진 업로드 S3 버킷 이름. 공용 스택(busan-guide-base)의 UploadsBucketName 출력값 (deploy_api.ps1 이 조회해서 넘긴다). 이 스택은 버킷을 만들지 않는다
+  DataGoKrKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: 공공데이터포털 Decoding 키 (기상청 단기예보). 비어 있으면 날씨 도구가 missing_key 오류를 돌려주고 대화는 계속된다. Lambda 환경 변수로만 들어간다
+  DemoNow:
+    Type: String
+    Default: ""
+    Description: 비어 있지 않으면 현재 시각 대신 쓰는 ISO 시각 (시간 이동 데모). 요청의 demo.now 가 있으면 그쪽이 먼저다
+  DemoCacheEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: true 면 데모 장면 1 대본 문장(일본어)에만 대본 일정을 돌려준다 (app/chat/demo_cache.py). 다른 요청은 그대로 Bedrock 을 쓴다. 시연 때만 켠다
+  AllowedOrigins:
+    Type: CommaDelimitedList
+    Description: CORS 로 허용할 프론트엔드 오리진 목록 (예 https://d123.cloudfront.net,http://localhost:5173). 끝에 / 를 붙이지 않는다
+  ReservedConcurrency:
+    Type: Number
+    Default: 0
+    MinValue: 0
+    Description: 0보다 크면 이 Lambda 의 동시 실행 수를 이 값으로 묶는다 (공개 URL 남용 시 Bedrock 비용 상한). 계정의 예약되지 않은 동시성이 10 이상 남아야 한다
+  FunctionTimeout:
+    Type: Number
+    Default: 30
+    MinValue: 20
+    MaxValue: 120
+    Description: Lambda 제한 시간(초). /chat 은 대화 한도 14초(agent.CHAT_TIMEOUT_SEC) + 콜드 스타트 + 저장 시간이 필요하다
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+    AllowedValues: [1, 3, 7, 14, 30, 60, 90]
+    Description: CloudWatch 로그 보관 일수
+
+Conditions:
+  HasReservedConcurrency: !Not [!Equals [!Ref ReservedConcurrency, 0]]
+
+Resources:
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-handler
+      RetentionInDays: !Ref LogRetentionDays
+
+  ApiRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Execution role of the Busan guide HTTPS API Lambda
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: BusanGuideApi
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: Logs
+                Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !GetAtt ApiLogGroup.Arn
+              # 저장소 코드(app/storage/dynamodb.py)가 쓰는 동작만: 읽기(GetItem), 생성·교체·점검 결과(PutItem), 부분 수정(UpdateItem).
+              # 일정 목록 Scan 은 예약 점검 Lambda 만 쓴다
+              - Sid: SessionsTable
+                Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem]
+                Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DynamoDbTable}
+              # 날씨 캐시 (B 의 get_weather, /chat·/plan/check 가 쓴다). 읽기(GetItem)·저장(PutItem)만. 테이블은 공용 스택이 만들고,
+              # 이름은 config.CACHE_TABLE 기본값과 같아서 환경 변수로 따로 넘기지 않는다
+              - Sid: WeatherCache
+                Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:PutItem]
+                Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/busan-guide-cache
+              # 모델 직접 호출(지역 모델 ID) 또는 추론 프로필 호출. Strands 는 ConverseStream 을 쓰므로 스트리밍 권한도 필요하다
+              - Sid: BedrockModelOrProfile
+                Effect: Allow
+                Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]
+                Resource:
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${BedrockModelId}
+                  - !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}
+              # 추론 프로필이 실제로 보내는 지역·전역 모델 (전역 모델 ARN 은 리전·계정이 비어 있다). 이 프로필을 거친 호출만 허용한다
+              - Sid: BedrockModelsBehindProfile
+                Effect: Allow
+                Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]
+                Resource:
+                  - !Sub arn:${AWS::Partition}:bedrock:*::foundation-model/*
+                  - !Sub arn:${AWS::Partition}:bedrock:::foundation-model/*
+                Condition:
+                  StringEquals:
+                    bedrock:InferenceProfileArn: !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${BedrockModelId}
+              # 사진 인식 (D 의 app/photo). presigned PUT URL 은 서명한 역할의 권한으로 올라가므로 PutObject 가 필요하고,
+              # Textract 는 호출한 역할의 권한으로 S3 사진을 읽으므로 GetObject 가 필요하다. 서버가 발급하는 키(photos/)만 허용한다
+              - Sid: PhotoUploads
+                Effect: Allow
+                Action: [s3:PutObject, s3:GetObject]
+                Resource: !Sub arn:${AWS::Partition}:s3:::${UploadsBucket}/photos/*
+              # Textract 동기 API 는 리소스 단위 권한을 지원하지 않는다
+              - Sid: PhotoTextract
+                Effect: Allow
+                Action: textract:DetectDocumentText
+                Resource: "*"
+              # POST /voice/url (음성 입력). 브라우저는 이 역할의 임시 자격 증명으로 서명된 URL 로 Transcribe 에 연결하므로,
+              # 연결할 때 이 역할의 권한으로 검사된다. Transcribe 스트리밍은 리소스 단위 권한을 지원하지 않는다
+              - Sid: TranscribeStreaming
+                Effect: Allow
+                Action: transcribe:StartStreamTranscriptionWebSocket
+                Resource: "*"
+              # POST /speak (B 의 음성 출력). Polly 는 리소스 단위 권한을 지원하지 않는다
+              - Sid: PollySpeak
+                Effect: Allow
+                Action: polly:SynthesizeSpeech
+                Resource: "*"
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-handler
+      Description: Busan guide HTTPS API (all routes in app.handler.handler). /chat runs the Strands agent.
+      CodeUri:
+        Bucket: !Ref CodeBucket
+        Key: !Ref CodeKey
+      Handler: app.handler.handler
+      Runtime: python3.13
+      Architectures: [arm64]
+      MemorySize: 1024
+      Timeout: !Ref FunctionTimeout
+      ReservedConcurrentExecutions: !If [HasReservedConcurrency, !Ref ReservedConcurrency, !Ref AWS::NoValue]
+      Role: !GetAtt ApiRole.Arn
+      LoggingConfig:
+        LogGroup: !Ref ApiLogGroup
+        LogFormat: JSON
+        ApplicationLogLevel: INFO  # agent.py 의 도구 호출 요약(INFO)까지 남긴다. 사용자 메시지는 로그에 쓰지 않는다
+        SystemLogLevel: WARN
+      Environment:
+        Variables:
+          # AWS_REGION 은 Lambda 가 넣는 예약 변수다 (이 스택의 리전 = Bedrock 호출 엔드포인트, ap-northeast-2)
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          FAKE_LLM: !Ref FakeLlm
+          USE_MOCK: !Ref UseMock
+          STORAGE_BACKEND: dynamodb
+          DYNAMODB_TABLE: !Ref DynamoDbTable
+          UPLOADS_BUCKET: !Ref UploadsBucket
+          DATA_GO_KR_KEY_DECODING: !Ref DataGoKrKey
+          DEMO_NOW: !Ref DemoNow
+          DEMO_CACHE_ENABLED: !Ref DemoCacheEnabled
+      FunctionUrlConfig:
+        # 계약(docs/api-contract.md)에 인증이 없다. 브라우저가 직접 부르므로 NONE 이고, CORS 는 프론트 오리진만 허용한다
+        AuthType: NONE
+        InvokeMode: BUFFERED
+        Cors:
+          AllowOrigins: !Ref AllowedOrigins
+          AllowMethods: [GET, POST, PUT]
+          AllowHeaders: [content-type, accept]
+          MaxAge: 300
+
+Outputs:
+  ApiUrl:
+    Description: 프론트엔드 VITE_API_BASE_URL 에 넣을 HTTPS 주소 (끝의 / 는 빼고 쓴다)
+    Value: !GetAtt ApiFunctionUrl.FunctionUrl
+  ApiFunctionName:
+    Description: Lambda 이름
+    Value: !Ref ApiFunction
+  ApiLogGroupName:
+    Description: API 로그 (CloudWatch Logs)
+    Value: !Ref ApiLogGroup

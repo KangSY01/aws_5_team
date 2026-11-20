@@ -1,8 +1,17 @@
 """엔드포인트별 요청·응답 모델. docs/api-contract.md 와 일치해야 한다."""
 
-from pydantic import AwareDatetime, BaseModel
+from typing import Literal
+
+from pydantic import AwareDatetime, BaseModel, Field
 
 from app.models.plan import Issue, Language, Place, Plan, Profile, RepairOption, StopChange
+
+
+class DemoOverride(BaseModel):
+    """데모 스위치. 이 요청에서만 기준 시각과 날씨를 바꾼다."""
+
+    now: AwareDatetime | None = None  # 점검 기준 시각. 없으면 DEMO_NOW 또는 현재 시각
+    weather_preset: str | None = None  # backend/app/data/weather/{이름}.json 샘플 예보 이름
 
 
 class Source(BaseModel):
@@ -16,6 +25,13 @@ class ChatRequest(BaseModel):
     plan_id: str | None = None  # 일정이 아직 없으면 null
     message: str
     profile: Profile
+    demo: DemoOverride | None = None
+
+
+class ChatDelta(BaseModel):
+    """/chat 스트리밍의 delta 이벤트. 답변 문장 조각."""
+
+    text: str
 
 
 class ChatResponse(BaseModel):
@@ -34,6 +50,7 @@ class PlanResponse(BaseModel):
 
 class CheckRequest(BaseModel):
     plan_id: str
+    demo: DemoOverride | None = None
 
 
 class CheckResponse(BaseModel):
@@ -42,6 +59,93 @@ class CheckResponse(BaseModel):
     issues: list[Issue]
     repairs: dict[str, list[RepairOption]]  # issue_id -> 해결안 (변경이 작은 순서)
     places: list[Place]  # repairs 에 새로 등장하는 장소
+
+
+class DelayRequest(BaseModel):
+    """POST /plan/{plan_id}/delay. 본문의 plan_id 는 경로의 값과 같아야 한다."""
+
+    plan_id: str
+    delay_min: int = Field(gt=0, le=240)  # 늦어진 시간(분)
+    demo: DemoOverride | None = None
+
+
+class DelayResponse(BaseModel):
+    plan_id: str
+    now: AwareDatetime  # 재조정 기준 시각. 이 시각 이후의 비고정 Stop만 바꾼다
+    repairs: list[RepairOption]  # 변경이 작은 순서. 비어 있으면 고칠 필요 없음
+    places: list[Place]  # repairs 에 새로 등장하는 장소
+
+
+class AlertsResponse(BaseModel):
+    """GET /alerts?plan_id=. 예약 점검(EventBridge)이 저장한 마지막 결과."""
+
+    plan_id: str
+    checked_at: AwareDatetime | None  # 예약 점검을 아직 안 했으면 null
+    issues: list[Issue]
+
+
+ImageType = Literal["image/jpeg", "image/png"]
+
+
+class PhotoUploadUrlRequest(BaseModel):
+    content_type: ImageType
+
+
+class PhotoUploadUrlResponse(BaseModel):
+    upload_url: str  # S3 presigned PUT URL
+    key: str  # 업로드한 사진의 S3 키. /photo/translate 에 넘긴다
+    expires_in: int  # URL 유효 시간(초)
+
+
+class PhotoTranslateRequest(BaseModel):
+    key: str
+    language: Language
+
+
+class BoundingBox(BaseModel):
+    """Textract BoundingBox 와 같은 기준. 사진 크기 대비 비율(0~1)."""
+
+    left: float = Field(ge=0, le=1)
+    top: float = Field(ge=0, le=1)
+    width: float = Field(ge=0, le=1)
+    height: float = Field(ge=0, le=1)
+
+
+class PhotoItem(BaseModel):
+    text_ko: str  # 사진에서 읽은 한국어 원문
+    translated: str  # language 로 번역한 문장
+    bbox: BoundingBox
+    spicy: bool | None = None  # 매운 음식이면 true. 판단할 수 없으면 null
+
+
+class PhotoTranslateResponse(BaseModel):
+    key: str
+    language: Language
+    items: list[PhotoItem]
+
+
+SpeakLanguage = Literal["ko", "en", "ja", "zh-Hans", "zh-Hant"]
+
+
+class SpeakRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=500)
+    language: SpeakLanguage  # 현지인 카드는 ko
+
+
+class SpeakResponse(BaseModel):
+    content_type: Literal["audio/mpeg"]
+    audio_base64: str  # Polly 결과 mp3 를 base64 로 인코딩한 값
+
+
+class VoiceUrlRequest(BaseModel):
+    language: Language  # 사용자가 말하는 언어
+
+
+class VoiceUrlResponse(BaseModel):
+    url: str  # Transcribe 스트리밍 WebSocket presigned URL
+    expires_in: int  # URL 유효 시간(초)
+    sample_rate: int  # 오디오 샘플링 레이트(Hz)
+    media_encoding: Literal["pcm"]
 
 
 class ErrorBody(BaseModel):

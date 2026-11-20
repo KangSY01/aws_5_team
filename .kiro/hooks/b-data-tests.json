@@ -1,0 +1,17 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "b-data-tests",
+      "trigger": "PostFileSave",
+      "action": {
+        "type": "command",
+        "command": "uv run --directory backend pytest -q"
+      },
+      "description": "B 데이터·도구 파일 저장 시 백엔드 테스트 실행",
+      "matcher": "backend[\\\\/](app[\\\\/](data|tools)|scripts)[\\\\/]",
+      "timeout": 120,
+      "enabled": true
+    }
+  ]
+}

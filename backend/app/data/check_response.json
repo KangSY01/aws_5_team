@@ -3,24 +3,24 @@
   "checked_at": "2026-11-21T09:00:00+09:00",
   "issues": [
     {
-      "issue_id": "i1",
-      "type": "crowded",
-      "stop_id": "s1",
-      "severity": "medium",
-      "detail": "토요일 혼잡 예상(요일 규칙)"
-    },
-    {
-      "issue_id": "i2",
+      "issue_id": "s4-rain",
       "type": "rain",
       "stop_id": "s4",
       "severity": "high",
-      "detail": "15:00-18:00 강수확률 80%, 실외 장소"
+      "detail": "15:30-17:00 최대 강수확률 80%, 강수 시간 100%, 실외 장소"
+    },
+    {
+      "issue_id": "s1-crowded",
+      "type": "crowded",
+      "stop_id": "s1",
+      "severity": "medium",
+      "detail": "토요일 요일 규칙, 집중률 데이터 없음"
     }
   ],
   "repairs": {
-    "i1": [
+    "s1-crowded": [
       {
-        "action": "move_time",
+        "action": "remove",
         "changes": [
           {
             "stop_id": "s1",
@@ -31,19 +31,13 @@
               "end": "2026-11-21T11:30:00+09:00",
               "locked": false
             },
-            "after": {
-              "stop_id": "s1",
-              "place_id": "gamcheon-village",
-              "start": "2026-11-21T09:00:00+09:00",
-              "end": "2026-11-21T10:30:00+09:00",
-              "locked": false
-            }
+            "after": null
           }
         ],
-        "metrics": { "changed": 1, "kept": 3, "extra_travel_min": 0, "locked_kept": true }
+        "metrics": { "changed": 1, "kept": 3, "extra_travel_min": -15, "locked_kept": true }
       }
     ],
-    "i2": [
+    "s4-rain": [
       {
         "action": "replace",
         "changes": [

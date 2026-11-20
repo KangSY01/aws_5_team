@@ -9,13 +9,19 @@
 - PR은 작게, 자주 머지합니다. 브랜치는 수 시간 안에 머지합니다.
 
 ## 담당 영역
-| 역할 | 맡는 곳 |
-|---|---|
-| 에이전트·도구 | `backend/app/agent.py`, `backend/app/prompts.py`, `backend/app/tools/` |
-| Guardian | `backend/app/guardian/` |
-| 데이터·저장 | `backend/app/data/`, `backend/app/storage/` |
-| 프론트 | `frontend/` |
-| 인프라·배포 | Lambda, S3 + CloudFront, DynamoDB 배포 구성 |
+역할 분담 원본은 노션 「역할 분담과 타임테이블」입니다.
+
+| 역할 | 담당 | 맡는 곳 |
+|---|---|---|
+| A. 에이전트 백엔드 | 노윤지 | `backend/app/agent.py`, `backend/app/tools/plan_edit.py`, `backend/app/storage/`, `backend/app/voice/`(음성 입력 서명 URL), `backend/app/config.py`, `backend/scripts/`, `infra/`(SAM 템플릿·배포 구성) |
+| B. 데이터·도구 | 강서영 | `backend/app/data/`, `backend/app/tools/lookup.py`, `backend/app/tools/schedule.py`(일정 시각 계산), `backend/app/speech/`(음성 출력 Polly) |
+| C. 프론트엔드 | 이지혜 | `frontend/` (D 폴더 제외) |
+| D. 아키텍처 설계 인프라 | 이온규 | `backend/app/guardian/`(예약 점검 로직 `scheduled.py` 포함), `backend/app/prompts.py`, `backend/app/photo/`(사진 인식 백엔드), `backend/eval/`, `frontend/src/features/local-card/`, `frontend/src/features/demo-panel/` |
+
+- D가 `frontend/` 안에 맡은 폴더는 C와 미리 합의한 하위 폴더에서만 작업합니다.
+- 테스트는 각자 `backend/tests/test_<영역>.py` 파일에 씁니다. 다른 사람의 테스트 파일은 고치지 않습니다.
+- 예약 점검은 로직을 `guardian/scheduled.py`(D)에 두고, Lambda 연결과 EventBridge 스케줄은 `infra/`(A)에서 합니다.
+- 새 경로(`/plan/{plan_id}/delay`, `/alerts`, `/photo/*`, `/speak`, `/voice/url`)는 `docs/api-contract.md` 「v0.2 추가 경로」에 있습니다. 구현한 담당자가 `handler.py` 연결 PR을 따로 올립니다.
 
 공용 파일 (뼈대 담당자 리뷰 필수):
 - `backend/app/models/`

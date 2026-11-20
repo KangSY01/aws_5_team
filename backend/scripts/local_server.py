@@ -8,6 +8,7 @@
 
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qsl, urlsplit
 
 from app.handler import handler
 from scripts.local_invoke import make_event
@@ -33,7 +34,8 @@ class Handler(BaseHTTPRequestHandler):
     def _invoke(self) -> None:
         length = int(self.headers.get("Content-Length") or 0)
         body = self.rfile.read(length).decode("utf-8", errors="replace") if length else None
-        result = handler(make_event(self.command, self.path.split("?")[0], body))
+        target = urlsplit(self.path)
+        result = handler(make_event(self.command, target.path, body, dict(parse_qsl(target.query))))
         self._send(result["statusCode"], result["headers"], result["body"].encode("utf-8"))
 
     do_GET = do_POST = do_PUT = _invoke
