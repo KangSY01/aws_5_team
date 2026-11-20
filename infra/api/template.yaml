@@ -44,7 +44,7 @@ Parameters:
     Type: String
     NoEcho: true
     Default: ""
-    Description: Kakao Local search REST API key
+    Description: 카카오 REST API 키. 귀가 경로와 놀거리 장소 검색에 사용하며 Lambda 환경 변수로만 전달한다.
   DemoNow:
     Type: String
     Default: ""

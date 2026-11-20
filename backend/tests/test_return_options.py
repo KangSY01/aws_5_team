@@ -1,6 +1,7 @@
 """귀가 분산 도구(app/tools/return_options.py)와 역 표(scripts/build_stations.py) 테스트. 네트워크를 쓰지 않는다."""
 
 import csv
+import datetime as dt
 import json
 import re
 import shutil
@@ -11,7 +12,8 @@ from pathlib import Path
 import pytest
 
 from app import config
-from app.tools import lookup
+from app.ranking import rank_routes
+from app.tools import kakao_route, lookup
 from app.tools import return_options as ro
 from app.tools.return_options import get_return_options
 from scripts import build_stations
@@ -40,6 +42,8 @@ def data_dir(monkeypatch, tmp_path):
     """실제 데이터를 복사한 폴더를 도구가 읽게 한다. 반환한 함수로 파일을 바꿔 쓴다."""
     for name in ("places.json", "stations.json", "travel_times.json", "events.json"):
         shutil.copy(REAL_DATA / name, tmp_path / name)
+    if (REAL_DATA / "last_trains.json").exists():
+        shutil.copy(REAL_DATA / "last_trains.json", tmp_path / "last_trains.json")
     monkeypatch.setattr(lookup, "DATA_DIR", tmp_path)
 
     def write(name: str, data) -> None:
@@ -64,8 +68,9 @@ def test_도구는_Strands_도구이고_설명은_영어로_가정을_밝힌다(
     text = " ".join(get_return_options.__doc__.split())  # 줄바꿈을 무시하고 문구를 찾는다
     assert not re.search("[가-힣]", text)  # 모델이 읽는 문장은 영어 (tech.md)
     for phrase in ("after a festival or event ends", "rule-based estimate", "not measured or real-time",
-                   "assumption made without supporting data", "station coordinates", "last train time is unknown",
-                   "defaults to Seomyeon", "destination_place_id", "is_default"):
+                   "assumption made without supporting data", "station coordinates", "stored standard timetable",
+                   "last_train_missed", "last_train_unknown", "defaults to Seomyeon", "destination_place_id",
+                   "is_default"):
         assert phrase in text, phrase
 
 
@@ -73,15 +78,18 @@ def test_도구는_Strands_도구이고_설명은_영어로_가정을_밝힌다(
 
 def test_장면7_행사_이름만_주면_대표_장소에서_서면역까지_제안한다():
     result = get_return_options(date=DAY, event_name=FESTIVAL)
-    assert result == {
+    expected = {
         "date": DAY,
         "basis": {
             "kind": "rule", "measured": False,
             "assumed_window": {"before_end_min": 30, "after_end_min": 60},
             "travel_time_rule": {"route_factor": 1.3, "subway_kmh": 25, "subway_overhead_min": 10, "walk_kmh": 4.5},
             "note": "Rule-based estimate, not measured or real-time crowding. The crowded window (30 min before to "
-                    "60 min after the event end) is an assumption. Travel times are estimated from station "
-                    "coordinates, not routes or timetables, and exclude walking to and from stations.",
+                    "60 min after the event end) is an assumption. Travel times use live Kakao public-transit routes "
+                    "when available and otherwise fall back to estimates from station coordinates; they exclude "
+                    "walking to and from places. Kakao route results are not stored or cached. Last-train warnings "
+                    "use the stored Busan Metro standard timetable when the requested station and direction are "
+                    "available; actual train times can differ.",
         },
         "event": {"name": FESTIVAL, "start": "2026-11-28T18:00:00+09:00", "end": "2026-11-28T23:00:00+09:00",
                   "main_place_id": "sea-life-busan"},
@@ -90,21 +98,64 @@ def test_장면7_행사_이름만_주면_대표_장소에서_서면역까지_제
         "congested_station": {"station": "Haeundae", "main_place_id": "sea-life-busan",
                               "from": "2026-11-28T22:30:00+09:00", "to": "2026-11-29T00:00:00+09:00"},
         "baseline": {"depart_at": "2026-11-28T23:00:00+09:00", "station": "Haeundae", "congested": True,
-                     "minutes": 39, "mode": "subway"},
+                     "minutes": 39, "mode": "subway", "time_source": "estimate"},
         "options": [
             {"type": "shift_earlier", "depart_at": "2026-11-28T22:20:00+09:00", "station": "Haeundae", "walk_min": 0,
-             "extra_min": 0, "avoids_congestion": True, "warnings": ["leaves_before_event_end"]},
+             "extra_min": 0, "avoids_congestion": True, "warnings": ["leaves_before_event_end"],
+             "time_source": "estimate"},
             {"type": "shift_later", "depart_at": "2026-11-29T00:00:00+09:00", "station": "Haeundae", "walk_min": 0,
-             "extra_min": 0, "avoids_congestion": True, "warnings": ["last_train_unknown"]},
+             "extra_min": 0, "avoids_congestion": True,
+             "warnings": ro.last_train_warnings(
+                 dt.date.fromisoformat(DAY), "Haeundae", "Seomyeon",
+                 dt.datetime.fromisoformat("2026-11-29T00:00:00+09:00"),
+             ), "time_source": "estimate"},
             # 설계 「장면 7 어림값」: 동백 도보 18 + 지하철 36 − 39 = +15, 중동 17 + 42 − 39 = +20
             {"type": "walk_to_station", "depart_at": "2026-11-28T23:00:00+09:00", "station": "Dongbaek",
-             "walk_min": 18, "extra_min": 15, "avoids_congestion": True, "warnings": []},
+             "walk_min": 18, "extra_min": 15, "avoids_congestion": True, "warnings": [], "time_source": "estimate"},
             {"type": "walk_to_station", "depart_at": "2026-11-28T23:00:00+09:00", "station": "Jung-dong",
-             "walk_min": 17, "extra_min": 20, "avoids_congestion": True, "warnings": []},
+             "walk_min": 17, "extra_min": 20, "avoids_congestion": True, "warnings": [], "time_source": "estimate"},
         ],
     }
+    # ranked 는 손으로 적은 위 기대값을 rank_routes 에 넣은 결과와 같다 (카카오가 없으면 추정값 그대로 채점한다)
+    expected["ranked"] = [route.model_dump() for route in rank_routes(expected)]
+    assert result == expected
+    assert [(r["option"]["station"], r["option"]["type"], r["labels"]) for r in result["ranked"]] == [
+        ("Dongbaek", "walk_to_station", ["best"]),
+        ("Jung-dong", "walk_to_station", []),
+        ("Haeundae", "shift_earlier", ["earliest_arrival", "least_walking"]),
+    ]
     assert json.loads(json.dumps(result)) == result  # JSON 으로 그대로 나간다
     assert "ratio" not in json.dumps(result)  # 집중률·혼잡 등급을 넣지 않는다
+
+
+def test_막차_시간표가_있으면_출발_시각과_비교하고_없으면_unknown(data_dir, tmp_path):
+    def save(last_train: str, toward: str = "Seomyeon") -> None:
+        data_dir("last_trains.json", {"stations": {
+            "Haeundae": {"scode": "203", "toward": toward, "updown": 1,
+                           "last_train": {"1": last_train, "2": last_train, "3": last_train}}
+        }})
+
+    save("24:00")
+    on_time = get_return_options(date=DAY, event_name=FESTIVAL)
+    assert next(o for o in on_time["options"] if o["type"] == "shift_later")["warnings"] == []  # 같은 시각은 이후가 아니다
+
+    save("23:59")
+    missed = get_return_options(date=DAY, event_name=FESTIVAL)
+    assert next(o for o in missed["options"] if o["type"] == "shift_later")["warnings"] == ["last_train_missed"]
+
+    save("24:10", toward="다른 방향")
+    wrong_direction = get_return_options(date=DAY, event_name=FESTIVAL)
+    assert next(o for o in wrong_direction["options"] if o["type"] == "shift_later")["warnings"] == ["last_train_unknown"]
+
+    (tmp_path / "last_trains.json").unlink()
+    unavailable = get_return_options(date=DAY, event_name=FESTIVAL)
+    assert next(o for o in unavailable["options"] if o["type"] == "shift_later")["warnings"] == ["last_train_unknown"]
+
+
+def test_막차_요일_코드는_평일_토요일_일요일을_구분한다():
+    assert ro._service_day_code(dt.date(2026, 11, 27)) == "1"
+    assert ro._service_day_code(dt.date(2026, 11, 28)) == "2"
+    assert ro._service_day_code(dt.date(2026, 11, 29)) == "3"
 
 
 def test_장면7_place_id만_주면_그_장소가_출발_장소다():
@@ -122,8 +173,9 @@ def test_혼잡_역은_대표_장소의_역_하나뿐이고_다른_역에서_출
     assert result["congested_station"]["station"] == "Haeundae"
     assert result["origin"] == {"place_id": "the-bay-101", "station": "Dongbaek"}
     assert result["baseline"] == {"depart_at": "2026-11-28T23:00:00+09:00", "station": "Dongbaek", "congested": False,
-                                  "minutes": 36, "mode": "subway"}  # 제안이 없어도 기준 이동 시간은 준다
-    assert result["options"] == []
+                                  "minutes": 36, "mode": "subway",
+                                  "time_source": "estimate"}  # 제안이 없어도 기준 이동 시간은 준다
+    assert result["options"] == [] and result["ranked"] == []
 
 
 # ---------- 도착역 ----------
@@ -212,7 +264,7 @@ def test_혼잡_시간대가_자정을_넘는다(data_dir):
     assert (result["congested_station"]["from"], result["congested_station"]["to"]) == (
         "2026-11-28T23:00:00+09:00", "2026-11-29T00:30:00+09:00")
     assert result["baseline"] == {"depart_at": "2026-11-29T00:10:00+09:00", "station": "Haeundae", "congested": True,
-                                  "minutes": 39, "mode": "subway"}
+                                  "minutes": 39, "mode": "subway", "time_source": "estimate"}
     assert [(o["type"], o["depart_at"]) for o in result["options"][:2]] == [
         ("shift_earlier", "2026-11-28T22:50:00+09:00"), ("shift_later", "2026-11-29T00:30:00+09:00")]
     assert error_code(get_return_options(date=DAY, event_name="심야", planned_departure="11pm")) == "invalid_time"
@@ -274,23 +326,45 @@ def test_응답의_장소_ID와_역_이름은_모두_데이터에_있다():
                 r["baseline"]["station"], *(o["station"] for o in r["options"])} <= stations
 
 
-def test_경로_API_값이_없고_네트워크와_현재_시각을_쓰지_않는다(monkeypatch):
+def test_카카오_경로가_없으면_전부_추정이고_네트워크와_현재_시각을_쓰지_않는다(monkeypatch):
+    # 카카오는 실시간 호출만 한다. 저장하는 역 표와 그 스크립트에는 카카오에서 온 값이 없다 (요구사항 6의 저장 금지)
     root = Path(build_stations.__file__).parent.parent
-    for path in ("app/tools/return_options.py", "scripts/build_stations.py", "app/data/stations.json"):
+    for path in ("scripts/build_stations.py", "app/data/stations.json"):
         text = (root / path).read_text(encoding="utf-8").casefold()
         assert not any(word in text for word in ("kakao", "카카오", "http://", "https://")), path
-    expected = get_return_options(date=DAY, event_name=FESTIVAL)
+
+    blocked_calls = []
 
     def blocked(*args, **kwargs):
+        blocked_calls.append(args)  # 스레드 안에서 불려 예외가 삼켜져도 마지막에 잡는다
         pytest.fail("네트워크나 현재 시각을 쓰면 안 된다")
 
-    monkeypatch.setattr(lookup.urllib.request, "urlopen", blocked)
+    monkeypatch.setattr(lookup.urllib.request, "urlopen", blocked)  # kakao_route 도 같은 urllib.request 를 쓴다
     monkeypatch.setattr(socket, "socket", blocked)
     monkeypatch.setattr(lookup, "_now", blocked)
+    monkeypatch.setattr(config, "KAKAO_REST_API_KEY", "TEST-KAKAO-KEY")  # 키가 있어도 결과는 같다
+
+    # fetch_routes 가 None 이면(conftest 의 no_kakao) 시간은 전부 좌표 추정이고 카카오 경로 상세(legs 등)가 없다
+    monkeypatch.setattr(config, "USE_MOCK", False)
+    expected = get_return_options(date=DAY, event_name=FESTIVAL)
+    assert expected["options"] and expected["ranked"]
+    rows = [expected["baseline"], *expected["options"], *(r["option"] for r in expected["ranked"])]
+    assert all(row["time_source"] == "estimate" for row in rows)
+    assert not any(key in row for row in rows for key in ro.KAKAO_DETAIL_KEYS)
+
     for use_mock, demo_now in ((True, "2026-11-21T10:00:00+09:00"), (False, None)):
         monkeypatch.setattr(config, "USE_MOCK", use_mock)
         monkeypatch.setattr(config, "DEMO_NOW", demo_now, raising=False)
         assert get_return_options(date=DAY, event_name=FESTIVAL) == expected
+
+    # USE_MOCK=1 이면 진짜 fetch_routes 를 끼워도 네트워크를 타지 않는다
+    monkeypatch.setattr(config, "USE_MOCK", True)
+    monkeypatch.setattr(ro, "fetch_routes", kakao_route.fetch_routes)
+    stations = ro.station_table()
+    haeundae, seomyeon = stations["Haeundae"], stations["Seomyeon"]
+    assert kakao_route.fetch_routes(haeundae["lat"], haeundae["lng"], seomyeon["lat"], seomyeon["lng"]) is None
+    assert get_return_options(date=DAY, event_name=FESTIVAL) == expected
+    assert blocked_calls == []
 
 
 def test_응답은_100ms_이내():

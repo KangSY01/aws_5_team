@@ -24,8 +24,11 @@
          searchKeyword2 를 1회 호출해 국문 좌표 300m 이내에서 가장 가까운 title 을 쓴다(match_kind=keyword_en, keyword_ja).
   기존 장소 보호: --baseline 파일(기본 places.json)에 이미 값이 있는 언어는 exact 일치일 때만 덮어쓴다.
          contains·keyword_* 이면 기존 값을 유지하고, 값이 다르면 review 에 kept_existing 으로 남긴다.
-         주의: 기본값(places.json 자신)으로 다시 돌리면 keyword_* 로 찾은 이름의 출처가 places_sources.json 에서 빠진다.
-         지금 파일은 수집 전 10곳짜리 파일을 기준으로 만들었다: git show 83e285c^:backend/app/data/places.json
+         장소를 추가할 때는 기본값(places.json 자신)과 --reuse-raw 로 돌린다. 기존 이름이 그대로 유지된다.
+         주의: 이때 keyword_* 와 backfill_names.py(areaBasedList2)로 찾은 이름의 출처가 places_sources.json 에서
+         빠지므로, places_sources.json 은 기존 장소 항목을 실행 전 값으로 되돌리고 새 장소 항목만 더한다.
+         수집 전 10곳짜리 파일(git show 83e285c^:backend/app/data/places.json)은 이름 보충(690f60a) 뒤로는 기준으로
+         쓰지 않는다. 그 파일로 돌리면 보충한 이름이 빠지고 이름이 없어진 장소는 제외된다.
          place_id 는 시드 값을 그대로 쓴다(바꾸지 않는다).
   새 장소는 좌표 + 외국어 이름 1개 이상이면 places.json 에 넣는다. 빠진 언어는 review 에 남는다.
   review 사유  no_korean_match      반경 1000m 안에 일치하는 항목이 없음 (0건 포함)

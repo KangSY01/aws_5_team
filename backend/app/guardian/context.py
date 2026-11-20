@@ -19,6 +19,7 @@ from typing import Any
 from pydantic import AwareDatetime, BaseModel, Field, TypeAdapter, ValidationError
 
 from app import config
+from app.guardian import thresholds as th
 from app.models.plan import Place, Plan
 
 logger = logging.getLogger(__name__)
@@ -167,10 +168,10 @@ def with_repair_travel(
 ) -> CheckContext:
     """해결안 탐색에 필요한 조회 값을 더한 context. 문제가 있는 비고정 Stop 만 넘겨 조회 수를 줄인다.
 
-    교체 후보(같은 category 또는 실내 장소)마다
+    교체 후보(같은 category, 실내 장소, 시장·거리)마다
     - 그 Stop 의 앞뒤 Stop 과의 이동 시간
     - 방문일 집중률과 운영시간. 없으면 후보가 "데이터 없음"으로 보여 붐비거나 휴무인 장소가 대안에 나온다
-    을 조회한다.
+    을 조회한다. 시장·거리는 도보권 상권 후보 판정용으로 그 Stop 장소와의 이동 시간도 조회한다.
     """
     tools = lookups if lookups is not None else _default_lookups()
     stops = sorted(plan.stops, key=lambda s: s.start)
@@ -183,9 +184,12 @@ def with_repair_travel(
             continue
         neighbors = [stops[j].place_id for j in (i - 1, i + 1) if 0 <= j < len(stops)]
         for place in ctx.places.values():
-            if place.category == current.category or place.indoor:
+            local = place.category in th.LOCAL_COMMERCE_CATEGORIES
+            if place.category == current.category or place.indoor or local:
                 candidates.add(place.place_id)
                 pairs.update((n, place.place_id) for n in neighbors if n != place.place_id)
+            if local and place.place_id != current.place_id:
+                pairs.add((current.place_id, place.place_id))
 
     # 일정에 있는 장소는 build_context 가 이미 조회했다
     new = sorted(candidates - {s.place_id for s in plan.stops})

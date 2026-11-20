@@ -263,6 +263,22 @@ def test_replace_crowded_with_same_category_only():
     assert options[0].metrics.extra_travel_min == -10
 
 
+def test_replace_crowded_puts_walkable_local_commerce_first():
+    # 데모 장면 2 방향: 붐비는 해운대 대신 도보권 시장(해운대시장 6분)을 먼저 보인다. category 가 달라도 후보가 된다
+    # 해리단길(street)은 해운대에서 20분이라 LOCAL_COMMERCE_MAX_MIN(15분)을 넘어 후보가 아니다
+    ctx = make_context(
+        crowd={"jagalchi-market": 60.0, "busan-tower": 50.0, "haeundae-beach": 99.0, "haeundae-market": 90.0},
+        travel_min=travel_with(gwangalli_beach=30, haeundae_market=42, haeridan_gil=44)
+        | {("haeundae-beach", "haeundae-market"): 6, ("haeundae-beach", "haeridan-gil"): 20},
+    )
+    issue = issue_of(PLAN, ctx, "s4-crowded")
+
+    options = try_replace(PLAN, issue, ctx)
+
+    assert [after_of(o, "s4").place_id for o in options] == ["haeundae-market", "gwangalli-beach"]
+    assert options[0].metrics.extra_travel_min == 2  # 이동이 더 늘어도 도보권 상권이 먼저
+
+
 def test_replace_excludes_over_limit_and_unknown_travel():
     # 광안리 +45분(상한 40분 초과), 신세계 이동 시간 모름 → 후보 없음
     ctx = make_context(

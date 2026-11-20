@@ -172,8 +172,12 @@ def test_guardian_badges_alternatives_apply_and_undo_on_the_demo_plan(demo_on):
     check = CheckResponse.model_validate(check)
     issues = {i.issue_id: i for i in check.issues}
     assert issues["s3-crowded"].severity == "high"  # 해운대 🔴 (집중률 + 행사일 가중)
-    replaced = {c.after.place_id for o in check.repairs["s3-crowded"] if o.action == "replace" for c in o.changes if c.after}
-    assert {"gwangalli-beach", "songjeong-beach"} <= replaced  # 광안리·송정 대안
+    replaced = [c.after.place_id for o in check.repairs["s3-crowded"] if o.action == "replace" for c in o.changes if c.after]
+    # 해운대 혼잡 대안: 도보권 상권(시장·거리)이 먼저 오고, 그 뒤에 같은 분류(해변) 대안이 온다
+    assert "haeundae-market" in replaced and "gwangalli-beach" in replaced
+    places = load_places()
+    commerce = [places[place_id].category in ("market", "street") for place_id in replaced]
+    assert commerce[0] and commerce == sorted(commerce, reverse=True)
 
     # 발표자가 화면에서 빛축제를 잠근다 (PUT) → 빛축제 배지는 고정 일정으로 낮아진다
     locked = json.loads(json.dumps(original))

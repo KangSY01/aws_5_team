@@ -44,7 +44,7 @@ uv run pytest -q tests/test_eval_queries.py tests/test_eval_run.py
 ## 실행·채점 (`run_eval.py`)
 ```powershell
 cd backend
-$env:USE_MOCK="1"; uv run python -m eval.run_eval                       # 실제 Bedrock + 샘플 데이터 (21개, 질의 사이 3초)
+$env:USE_MOCK="1"; uv run python -m eval.run_eval                       # 실제 Bedrock + 샘플 데이터 (33개, 질의 사이 3초)
 $env:USE_MOCK="1"; uv run python -m eval.run_eval --ids 3 12 21 --delay 5   # 일부만
 $env:USE_MOCK="1"; $env:FAKE_LLM="1"; uv run python -m eval.run_eval    # 채점 경로만 확인 (고정 응답이라 수치는 의미 없음)
 ```
@@ -63,3 +63,27 @@ $env:USE_MOCK="1"; $env:FAKE_LLM="1"; uv run python -m eval.run_eval    # 채점
 | 근거 없는 숫자 | 답변 속 숫자 중 질문·도구 입출력·일정에 없는 것을 뽑아 둔다. **자동 실패로 치지 않고 사람이 본다** |
 
 `expect.checks`의 문장(거절 말투, 이유 설명 등)은 결과 파일에 그대로 옮겨 사람이 확인합니다.
+
+## 랭킹 지표 (멘토 피드백 반영 전후 비교)
+랭킹 엔진(`app/ranking/`)을 일정 생성에 붙이기 전과 후에 각각 돌려 결과 파일끼리 비교합니다. `summary.ranking`에 들어갑니다.
+
+| 항목 | 계산 | 좋은 쪽 |
+|---|---|---|
+| 혼잡 장소 추천 비율 | 응답이 일정에 새로 넣은 장소(추가·교체) 중, 그 일정에 Guardian 혼잡 배지 🟡·🔴(`medium`·`high`)가 붙는 비율 | 낮을수록 |
+| 분산 비율 | 같은 장소 중 원도심·서부산(경도 `ranking.weights.DISPERSAL_MAX_LNG` 129.07 서쪽, 근사) 비율 | 높을수록 |
+| 고정 일정 앞 평균 여유 | 최종 일정의 고정 일정마다 (앞 Stop 끝 ~ 고정 일정 시작 간격) − 이동 시간, 분 단위 평균 | 높을수록 |
+
+- 분모를 늘리려고 일정 생성 질의 22~33번(12개)을 따로 두었습니다. 네 언어, 관심사·동행 조합, 날짜 11/22(일)·11/25(수)·11/28(토, 빛축제 개막)·12/5(토)를 섞었습니다. 1번과 같은 기준(3~5곳, 전부 추가)으로 채점합니다.
+- 랭킹 지표만 빠르게 볼 때: `--ids 1 3 22 23 24 25 26 27 28 29 30 31 32 33`
+- 시간·순서만 바뀐 Stop과 제거된 Stop은 "새로 넣은 장소"에 넣지 않습니다.
+- 혼잡 판단은 집중률을 장소끼리 비교하지 않고 Guardian 배지와 같은 기준(장소마다 자기 기준)으로 셉니다.
+- 월 방문자 데이터가 없어 분산은 경도 기준 근사입니다. 발표에서는 "원도심·서부산 비율"로 말합니다.
+
+```powershell
+cd backend
+$env:USE_MOCK="1"; uv run python -m eval.run_eval                                   # 랭킹 연결 전 (기준)
+$env:USE_MOCK="1"; uv run python -m eval.run_eval --baseline eval/results/<전>.json  # 연결 후, 전후 표
+```
+`--baseline`을 주면 `.md`의 「랭킹 지표」 표에 기준(전)과 이번(후)이 나란히 나옵니다. 이 기능 이전 결과 파일은 랭킹 지표가 없어 기준으로 쓸 수 없습니다.
+
+랭킹 연결 전 기준은 `eval/results/20261120-193518.json`입니다 (33개 질의, 오류 3개 [11, 14, 29], 새로 넣은 장소 39곳, 혼잡 36%·분산 31%·여유 14분). 같은 코드로 다시 돌린 결과(194857, 28곳)는 혼잡 43%·분산 32%·여유 14분이었습니다. 실행마다 혼잡 비율이 7%p 안팎으로 흔들리므로, 이보다 작은 차이는 랭킹 효과로 보지 않습니다.

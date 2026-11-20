@@ -277,5 +277,162 @@
       "checks": ["고정 일정 s2는 제거하지 않음", "plan_changes 빈 목록", "고정을 먼저 풀도록 일본어로 안내"]
     },
     "note": "노션 21번(닫은 알림 재발)은 닫기 API가 없어 고정 일정 거부 케이스로 대체"
+  },
+  {
+    "id": 22,
+    "category": "plan_create",
+    "endpoint": "/chat",
+    "plan_id": null,
+    "message": "Plan a day in Busan on Saturday, November 28 for my partner and me. We like the sea and night views.",
+    "profile": { "language": "en", "interests": ["sea", "night_view"], "companions": "couple", "diet": [], "budget": "mid" },
+    "expect": {
+      "tools": ["search_places", "create_plan"],
+      "places_any": [],
+      "checks": ["일정 3~5곳 생성", "plan_changes 전부 before가 null", "답변에 날짜 명시"]
+    },
+    "note": "랭킹 비교용 (22~33): 일정 생성만. 언어·관심사·동행·날짜(11/22 일, 11/25 수, 11/28 토 빛축제 개막, 12/5 토)를 섞었다"
+  },
+  {
+    "id": 23,
+    "category": "plan_create",
+    "endpoint": "/chat",
+    "plan_id": null,
+    "message": "11月28日（土）に釜山で1日の予定を作ってください。文化と食べ歩きが好きです。",
+    "profile": { "language": "ja", "interests": ["culture", "food"], "companions": "couple", "diet": [], "budget": "mid" },
+    "expect": {
+      "tools": ["search_places", "create_plan"],
+      "places_any": [],
+      "checks": ["일정 3~5곳 생성", "plan_changes 전부 before가 null", "답변에 날짜 명시"]
+    }
+  },
+  {
+    "id": 24,
+    "category": "plan_create",
+    "endpoint": "/chat",
+    "plan_id": null,
+    "message": "请帮我们安排11月28日（星期六）在釜山的一日行程，我们带着孩子，喜欢海边。",
+    "profile": { "language": "zh-Hans", "interests": ["kids", "sea"], "companions": "family_with_kids", "diet": [], "budget": "mid" },
+    "expect": {
+      "tools": ["search_places", "create_plan"],
+      "places_any": [],
+      "checks": ["일정 3~5곳 생성", "plan_changes 전부 before가 null", "답변에 날짜 명시"]
+    }
+  },
+  {
+    "id": 25,
+    "category": "plan_create",
+    "endpoint": "/chat",
+    "plan_id": null,
+    "message": "請幫我安排11月25日（星期三）在釜山的一日行程，我喜歡歷史和文化。",
+    "profile": { "language": "zh-Hant", "interests": ["history", "culture"], "companions": "solo", "diet": [], "budget": "low" },
+    "expect": {
+      "tools": ["search_places", "create_plan"],
+      "places_any": [],
+      "checks": ["일정 3~5곳 생성", "plan_changes 전부 before가 null", "답변에 날짜 명시"]
+    }
+  },
+  {
+    "id": 26,
+    "category": "plan_create",
+    "endpoint": "/chat",
+    "plan_id": null,
+    "message": "Three of us are visiting Busan on Sunday, November 22. Make us a day plan with good food and shopping.",
+    "profile": { "language": "en", "interests": ["food", "shopping"], "companions": "friends", "diet": [], "budget": "mid" },
+    "expect": {
+      "tools": ["search_places", "create_plan"],
+      "places_any": [],
+      "checks": ["일정 3~5곳 생성", "plan_changes 전부 before가 null", "답변에 날짜 명시"]
+    }
+  },
+  {
+    "id": 27,
+    "category": "plan_create",
+    "endpoint": "/chat",
+    "plan_id": null,
+    "message": "11月25日（水）に一人で釜山を回ります。自然と海を楽しめる1日の予定をお願いします。",
+    "profile": { "language": "ja", "interests": ["nature", "sea"], "companions": "solo", "diet": [], "budget": "low" },
+    "expect": {
+      "tools": ["search_places", "create_plan"],
+      "places_any": [],
+      "checks": ["일정 3~5곳 생성", "plan_changes 전부 before가 null", "답변에 날짜 명시"]
+    }
+  },
+  {
+    "id": 28,
+    "category": "plan_create",
+    "endpoint": "/chat",
+    "plan_id": null,
+    "message": "11月22日（星期日）我们两个人在釜山，帮我们安排一天的行程，想看夜景和购物。",
+    "profile": { "language": "zh-Hans", "interests": ["night_view", "shopping"], "companions": "couple", "diet": [], "budget": "high" },
+    "expect": {
+      "tools": ["search_places", "create_plan"],
+      "places_any": [],
+      "checks": ["일정 3~5곳 생성", "plan_changes 전부 before가 null", "답변에 날짜 명시"]
+    }
+  },
+  {
+    "id": 29,
+    "category": "plan_create",
+    "endpoint": "/chat",
+    "plan_id": null,
+    "message": "11月28日（星期六）我們一家人帶孩子去釜山，請安排適合孩子的一日行程。",
+    "profile": { "language": "zh-Hant", "interests": ["kids", "nature"], "companions": "family_with_kids", "diet": [], "budget": "mid" },
+    "expect": {
+      "tools": ["search_places", "create_plan"],
+      "places_any": [],
+      "checks": ["일정 3~5곳 생성", "plan_changes 전부 before가 null", "답변에 날짜 명시"]
+    }
+  },
+  {
+    "id": 30,
+    "category": "plan_create",
+    "endpoint": "/chat",
+    "plan_id": null,
+    "message": "I'm in Busan on Wednesday, November 25. Plan a day focused on history and local culture.",
+    "profile": { "language": "en", "interests": ["history", "culture"], "companions": "solo", "diet": [], "budget": "low" },
+    "expect": {
+      "tools": ["search_places", "create_plan"],
+      "places_any": [],
+      "checks": ["일정 3~5곳 생성", "plan_changes 전부 before가 null", "답변에 날짜 명시"]
+    }
+  },
+  {
+    "id": 31,
+    "category": "plan_create",
+    "endpoint": "/chat",
+    "plan_id": null,
+    "message": "12月5日（土）に夫婦で釜山へ行きます。海と海鮮を楽しめる1日の予定を作ってください。",
+    "profile": { "language": "ja", "interests": ["sea", "food"], "companions": "couple", "diet": [], "budget": "mid" },
+    "expect": {
+      "tools": ["search_places", "create_plan"],
+      "places_any": [],
+      "checks": ["일정 3~5곳 생성", "plan_changes 전부 before가 null", "답변에 날짜 명시"]
+    }
+  },
+  {
+    "id": 32,
+    "category": "plan_create",
+    "endpoint": "/chat",
+    "plan_id": null,
+    "message": "Plan Saturday, December 5 in Busan for our family with two young kids.",
+    "profile": { "language": "en", "interests": ["kids", "sea"], "companions": "family_with_kids", "diet": [], "budget": "mid" },
+    "expect": {
+      "tools": ["search_places", "create_plan"],
+      "places_any": [],
+      "checks": ["일정 3~5곳 생성", "plan_changes 전부 before가 null", "답변에 날짜 명시"]
+    }
+  },
+  {
+    "id": 33,
+    "category": "plan_create",
+    "endpoint": "/chat",
+    "plan_id": null,
+    "message": "12月5日（星期六）我们几个朋友去釜山，帮我们安排一天的行程，想看文化景点和夜景。",
+    "profile": { "language": "zh-Hans", "interests": ["culture", "night_view"], "companions": "friends", "diet": [], "budget": "mid" },
+    "expect": {
+      "tools": ["search_places", "create_plan"],
+      "places_any": [],
+      "checks": ["일정 3~5곳 생성", "plan_changes 전부 before가 null", "답변에 날짜 명시"]
+    }
   }
 ]

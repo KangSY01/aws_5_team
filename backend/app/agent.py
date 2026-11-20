@@ -30,6 +30,7 @@ from app.chat import answer as chat_answer
 from app.chat import demo_cache
 from app.chat.messages import LIST_SEPARATORS, message
 from app.chat.plan_rules import load_places, place_name, validate_plan
+from app.chat.ranking import PlaceRanker
 from app.chat.tools import (
     LOOKUP_TOOLS,
     MAX_TOOL_CALLS,
@@ -50,7 +51,11 @@ logger = logging.getLogger(__name__)
 
 # Bedrock 호출 설정 (team.md: 타임아웃 5초, 재시도 1회, max_tokens 설정)
 ALLOWED_REGION = "ap-northeast-2"
-MAX_TOKENS = 1024  # 모델 호출 1회당 생성 상한
+MAX_TOKENS = 1024  # 모델 호출 1회당 생성 상한 (새 일정 create 모드)
+# 일정 수정(edit) 모드의 상한. 지각처럼 비고정 Stop 여러 개를 옮길 때 한 응답에 move_stop 입력(ISO 시각 2개씩)이
+# 여러 개 들어가 1024 에서 JSON 이 잘리고 MaxTokensReachedException 이 났다 (평가 질의 11·20). 한도만 늘리고
+# 실제로 쓰는 토큰은 모델 출력 길이만큼이라, 짧은 답변의 지연에는 영향이 없다
+EDIT_MAX_TOKENS = 2048
 BEDROCK_TIMEOUT_SEC = 5
 BEDROCK_RETRIES = 1  # botocore max_attempts 는 최초 호출을 뺀 재시도 횟수
 
@@ -74,8 +79,8 @@ class ChatError(Exception):
         self.code = code
 
 
-def build_model() -> BedrockModel | None:
-    """Bedrock 모델 객체를 만든다.
+def build_model(max_tokens: int = MAX_TOKENS) -> BedrockModel | None:
+    """Bedrock 모델 객체를 만든다. max_tokens 는 모델 호출 1회당 생성 상한이다.
 
     FAKE_LLM=1 이면 Bedrock 을 쓰지 않으므로 None 을 돌려준다.
     리전이 ap-northeast-2 가 아니면 한국어 오류 로그를 남기고 RuntimeError 를 발생시킨다.
@@ -99,7 +104,7 @@ def build_model() -> BedrockModel | None:
     return BedrockModel(
         model_id=config.MODEL_ID,
         region_name=config.BEDROCK_REGION,
-        max_tokens=MAX_TOKENS,
+        max_tokens=max_tokens,
         streaming=True,  # /chat 의 delta 이벤트를 위해 모델 스트리밍을 켠다
         boto_client_config=client_config,
     )
@@ -116,6 +121,28 @@ def get_model() -> BedrockModel | None:
         if _model is None:
             _model = build_model()
         return _model
+
+
+_edit_model: BedrockModel | None = None
+
+
+def get_edit_model() -> BedrockModel | None:
+    """edit 모드 모델 (출력 상한 EDIT_MAX_TOKENS). get_model 과 같이 컨테이너당 한 번 만든다."""
+    global _edit_model
+    with _model_lock:
+        if _edit_model is None:
+            _edit_model = build_model(max_tokens=EDIT_MAX_TOKENS)
+        return _edit_model
+
+
+def _model_for(chat: "_Chat", model: BedrockModel | None) -> BedrockModel | None:
+    """요청 모드에 맞는 모델. edit 모드의 Bedrock 모델만 출력 상한이 큰 모델로 바꾼다.
+
+    테스트 스텁 모델은 그대로 둔다 (Bedrock 모델이 아니다).
+    """
+    if chat.mode == "edit" and isinstance(model, BedrockModel):
+        return get_edit_model()
+    return model
 
 
 @lru_cache(maxsize=1)
@@ -176,6 +203,7 @@ class _Chat:
     recorder: ToolRecorder
     creator: PlanCreator | None  # create 모드에서만
     editor: PlanEditor | None  # edit 모드에서만
+    ranker: PlaceRanker | None = None  # search_places 순위 훅. _converse 가 만든다. 점수는 score_breakdown 으로 나간다
 
     @property
     def language(self) -> Language:
@@ -194,6 +222,7 @@ def _prepare(request: ChatRequest) -> _Chat:
     if plan is not None and plan.stops:
         chat = _Chat(request, session, plan, today, "edit", recorder, creator=None, editor=PlanEditor(plan))
     else:
+        recorder.finish_tool = "create_plan"  # 검색으로 한도를 다 써도 찾아 둔 후보로 일정을 만들 수 있게 한 번 더 허용
         creator = PlanCreator(request.profile, today, plan.plan_id if plan else storage.new_plan_id())
         chat = _Chat(request, session, plan, today, "create", recorder, creator=creator, editor=None)
     recorder.on_output(lambda name, data: _on_output(chat, name, data))
@@ -209,8 +238,19 @@ def _on_output(chat: _Chat, name: str, data: object) -> None:
 # ---- 모델 호출 ----
 
 
+def _place_ranker(chat: _Chat) -> PlaceRanker:
+    """search_places 결과를 D 의 rank_places 로 정렬하는 훅 (app/chat/ranking.py).
+
+    방문일: 수정 모드면 그 일정의 날짜, 새 일정이면 chat.today (_prepare 가 demo.now → DEMO_NOW → 현재 시각으로 정한 날).
+    demo.now 는 그대로 넘긴다 (build_context 의 기준 시각).
+    """
+    day = chat.plan.date if chat.mode == "edit" and chat.plan is not None else chat.today
+    return PlaceRanker(chat.request.profile, day, chat.request.demo.now if chat.request.demo else None)
+
+
 def _converse(chat: _Chat, model: BedrockModel | None) -> tuple[str, str]:
     """요청마다 새 Agent 로 모델을 부른다. (답변 문장, 종료 사유)를 돌려준다. 도구는 순서대로 실행한다."""
+    chat.ranker = _place_ranker(chat)
     agent = Agent(
         model=model,
         system_prompt=build_system_prompt(
@@ -221,7 +261,9 @@ def _converse(chat: _Chat, model: BedrockModel | None) -> tuple[str, str]:
             max_tool_calls=MAX_TOOL_CALLS,
         ),
         tools=[*LOOKUP_TOOLS, *(chat.creator or chat.editor).tools],
-        hooks=[chat.recorder],
+        # PlaceRanker 는 ToolRecorder 뒤에 등록한다. Strands 는 hooks 를 목록 순서로 등록하고 AfterToolCallEvent 를
+        # 등록 역순으로 부르므로, 순위가 먼저 반영되고 ToolRecorder(기록·후보·출처)가 정렬된 결과를 본다
+        hooks=[chat.recorder, chat.ranker],
         tool_executor=SequentialToolExecutor(),  # 검색 결과가 나온 뒤에 교체·생성이 실행되게 한다
         callback_handler=None,
     )
@@ -301,7 +343,9 @@ def _finish(chat: _Chat, model_text: str) -> ChatResponse:
         text, referenced = message(notice, language), set()
     elif model_text:
         try:
-            text = chat_answer.render_answer(model_text, language, grounded)
+            # 음식점 표식([place:kto-…])은 이번 요청의 get_restaurants 결과에 나온 것만 이름으로 바꾼다. 일정 장소 ID 와 따로 검증한다
+            restaurants = chat_answer.restaurant_names(chat.recorder.outputs)
+            text = chat_answer.render_answer(model_text, language, grounded, restaurants)
         except chat_answer.InvalidAnswer as error:
             logger.error("모델 답변 검증 실패: %s", error)
             raise ChatError("invalid_model_output", "모델 답변이 검증을 통과하지 못했습니다.") from error
@@ -321,6 +365,8 @@ def _finish(chat: _Chat, model_text: str) -> ChatResponse:
                 "language": language,
                 "sources": [s.model_dump() for s in chat_answer.build_sources(chat.recorder.outputs, referenced, language)],
                 "plan_changes": [c.model_dump() for c in changes],
+                # v0.3: PlaceRanker 가 이번 요청에서 매긴 점수 (다시 계산하지 않는다). 비면 ChatResponse 가 키를 뺀다
+                "score_breakdown": chat.ranker.score_breakdown() if chat.ranker else [],
             }
         )
     except ValueError as error:
@@ -383,11 +429,17 @@ def _demo_response(request: ChatRequest) -> ChatResponse:
 
 
 def _log_summary(chat: _Chat, stop_reason: str) -> None:
-    """Agent 실행이 끝날 때 도구 이름별 호출 횟수를 한 번 남긴다 (요구사항 10.3). 메시지·프로필 값은 남기지 않는다."""
+    """Agent 실행이 끝날 때 도구 이름별 호출 횟수와 시간을 한 번 남긴다 (요구사항 10.3). 메시지·프로필 값은 남기지 않는다.
+
+    시간은 14초 한도를 넘는 원인(모델 응답, 도구 실행, 모델 호출 반복·재시도)을 로그에서 구분하려고 남긴다.
+    """
     rec = chat.recorder
     logger.info(
-        "대화 처리 종료: 모드=%s 도구 호출=%s 실패=%s 한도로 막힌 호출=%d 종료 사유=%s",
+        "대화 처리 종료: 모드=%s 도구 호출=%s 실패=%s 한도로 막힌 호출=%d 종료 사유=%s "
+        "모델 호출=%d회 모델 시간=%.1f초(최대 %.1f초) 모델 오류=%s 도구 시간=%.2f초",
         chat.mode, dict(rec.counts), dict(rec.errors), rec.rejected, stop_reason,
+        len(rec.model_seconds), sum(rec.model_seconds), max(rec.model_seconds, default=0.0),
+        dict(rec.model_errors), rec.tool_seconds,
     )
 
 
@@ -418,7 +470,7 @@ def run_chat(request: ChatRequest) -> ChatResponse:
     chat = _prepare(request)
     stop_reason = "error"
     try:
-        text, stop_reason = _converse(chat, get_model())
+        text, stop_reason = _converse(chat, _model_for(chat, get_model()))
         return _finish(chat, text)
     finally:
         _log_summary(chat, stop_reason)

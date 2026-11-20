@@ -143,7 +143,7 @@ def test_alternatives_from_get_place_info_count_as_grounded(chat):
     # D 의 프롬프트 규칙: 이번 요청의 도구 결과에 나온 place_id 는 답변에 쓸 수 있다
     model = ScriptedModel([
         tool_turn(("get_place_info", {"place_id": "haeundae-beach"})),
-        text_turn("If [place:haeundae-beach] is crowded, [place:sea-life-busan] is an indoor option."),
+        text_turn("If [place:haeundae-beach] is crowded, [place:busan-museum-of-art] is an indoor option."),
     ])
 
     response = chat(model, demo=NOW_1128)
@@ -224,7 +224,9 @@ def test_search_then_create_plan_saves_a_plan_built_by_build_plan(chat, api_stor
     assert all(c.before is None for c in response.plan_changes)
     assert [c.after for c in response.plan_changes] == stored.stops
     assert "[place:" not in response.answer and "Gamcheon" in response.answer  # 표식은 이름으로 바뀐다
-    in_search_order = [pid for pid in load_places() if pid in IDS]  # sources 는 도구 결과에 나온 순서다 (요구사항 4.6)
+    # sources 는 도구 결과에 나온 순서다 (요구사항 4.6). search_places 결과는 rank_places 순위로 정렬되어 있다 (app/chat/ranking.py)
+    searched = [p["place_id"] for p in json.loads(model.tool_results()[0][1])]
+    in_search_order = [pid for pid in searched if pid in IDS]
     assert [(s.tool, s.id) for s in response.sources] == [("search_places", pid) for pid in in_search_order]
     assert response.sources[0].title == load_places()[in_search_order[0]].names["en"]
     assert len(model.requests) == 3  # 검색 → 일정 생성 → 답변
@@ -304,12 +306,25 @@ def test_answers_and_sources_use_the_profile_language(chat, language):
     assert ChatResponse.model_validate_json(response.model_dump_json()) == response  # 계약 모델 round-trip
 
 
-def test_place_name_falls_back_when_the_profile_language_has_none(chat):
-    # the-bay-101 은 일본어 이름이 없다 → 다른 언어 이름으로 대체하고 오류가 아니다
-    ids = ["the-bay-101", "haeundae-beach", "busan-tower"]
-    text = "[place:the-bay-101] [place:haeundae-beach] [place:busan-tower]"
-    response = chat(ScriptedModel(create_script(ids, text)), language="ja")
-    assert load_places()["the-bay-101"].names["en"] in response.answer
+def test_place_name_falls_back_when_the_profile_language_has_none(chat, monkeypatch):
+    # 일본어 이름이 없는 장소를 places.json 에서 찾는다 (ID 는 고정하지 않는다. 이름 보충으로 데이터가 바뀌어도 따라간다)
+    places = load_places()
+    without_ja = sorted(pid for pid, p in places.items() if not p.names.get("ja"))
+    if without_ja:
+        target = without_ja[0]
+    else:  # 이름 보충으로 모든 장소에 ja 가 생겼으면 the-bay-101 에서 ja 를 뺀 사본으로 바꿔 검사한다
+        target = "the-bay-101"
+        no_ja = {k: v for k, v in places[target].names.items() if k != "ja"}
+        monkeypatch.setitem(places, target, places[target].model_copy(update={"names": no_ja}))  # 캐시 dict 는 테스트 뒤 원복된다
+    # place_name 의 대체 순서는 표시 언어(ja) → en → ja → zh-Hans → zh-Hant → place_id 다. ja 가 없으니 en 부터 본다
+    names = load_places()[target].names
+    expected = next((names[k] for k in ("en", "zh-Hans", "zh-Hant") if names.get(k)), target)
+    others = [p for p in ("haeundae-beach", "busan-tower") if p != target]
+    ids = [target, *others]
+
+    # 다른 언어 이름으로 대체하고 오류가 아니다
+    response = chat(ScriptedModel(create_script(ids, " ".join(f"[place:{p}]" for p in ids))), language="ja")
+    assert expected in response.answer
     assert all(s.title.strip() for s in response.sources)
 
 
@@ -587,8 +602,9 @@ def test_fallback_plan_created_lists_places_with_the_enumeration_comma(chat, api
     assert ", " not in response.answer
     if language == "ja":
         assert response.answer == f"2026-11-28の旅程（4か所）を作りました：{'、'.join(names)}。"
-    # ChatResponse 구조는 그대로다
-    assert set(response.model_dump(mode="json")) == {"session_id", "plan_id", "answer", "language", "sources", "plan_changes"}
+    # ChatResponse 구조는 그대로다. search_places 결과에 순위를 매겼으니 v0.3 score_breakdown 이 함께 있다
+    assert set(response.model_dump(mode="json")) == {"session_id", "plan_id", "answer", "language", "sources", "plan_changes",
+                                                    "score_breakdown"}
     assert response.language == language and len(response.plan_changes) == 4
 
 

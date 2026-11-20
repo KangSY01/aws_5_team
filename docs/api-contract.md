@@ -1,10 +1,13 @@
-# API 계약 v0.2
+# API 계약 v0.3
+
+> v0.3 (11/20): `POST /chat` 응답에 빼도 되는 필드 `score_breakdown` 추가. 아래 「v0.3 추가 필드」. 그 밖의 형식은 v0.2 와 같다.
 
 > **변경 규칙**: 이 문서는 공용 파일이다. 뼈대 담당자 리뷰를 거친 PR로만 바꾼다.
 > 바꿀 때는 `backend/app/models/` 의 모델, `backend/app/data/` 의 샘플, 프론트엔드 mock 복사본을 같은 PR에서 함께 맞춘다.
 
 - 모든 요청·응답은 `application/json`, UTF-8. 예외는 `POST /chat` 스트리밍 응답(`text/event-stream`)뿐이다.
 - 필드 이름과 타입은 `backend/app/models/plan.py`(데이터)와 `backend/app/models/api.py`(요청·응답)의 Pydantic 모델과 같다.
+  지도 전용 `GET /events` 모델만 `backend/app/tools/events_map.py`에 있으며, 아래에서 형식을 정의한다.
   아래에서 `Plan`, `Place`, `Stop`, `Issue`, `RepairOption`, `StopChange` 는 그 모델을 가리킨다.
 - 시각은 시간대를 포함한 ISO 8601 (`2026-11-21T10:00:00+09:00`), 날짜는 `YYYY-MM-DD`.
 - `POST /chat` 만 스트리밍한다(SSE, 아래 「스트리밍」). 나머지 경로는 응답이 한 번에 온다.
@@ -100,6 +103,7 @@
 - `plan_changes`: 이번 응답에서 일정에 적용된 변경 (`StopChange` 목록). 변경이 없으면 `[]`.
   `before` 가 `null` 이면 추가, `after` 가 `null` 이면 제거.
 - `plan_changes` 가 비어 있지 않으면 프론트엔드는 `GET /plan/{plan_id}` 로 일정을 다시 읽는다.
+- `score_breakdown` (v0.3): 장소 점수 근거. 랭킹을 쓰지 않은 응답에는 위 예시처럼 키가 없다. 형식은 「v0.3 추가 필드」.
 
 ### 스트리밍
 
@@ -135,6 +139,46 @@ data: {"session_id": "sess-1", "plan_id": "plan-1", "answer": "...", "language":
 - `kind`: `board_game`, `escape_room`, `animal_cafe`, `scenic_cafe` 중 하나
 - 성공 응답은 `{"places": [...]}`이며, 각 항목은 `id`, `name`, `category`, `address`, `phone`, `url`을 포함한다. 운영시간, 사진, 평점은 이 조회의 응답에 포함되지 않는다.
 - 입력 오류는 `422`, 카카오 검색 실패는 `502`, 서버에서 `KAKAO_REST_API_KEY`가 설정되지 않은 경우는 `503`이다.
+
+## GET /events?date=YYYY-MM-DD
+
+지도 행사 레이어에 표시할 그날 운영 중인 행사를 돌려준다. `date`가 행사 전체 기간에 포함되면 장기 행사도 매일 포함한다. Guardian의 `get_events`가 혼잡 가중을 위해 7일보다 긴 행사를 개막일에만 돌려주는 규칙과 별개다.
+
+응답
+
+```json
+{
+  "date": "2026-11-28",
+  "events": [
+    {
+      "contentid": "2048902",
+      "name": "해운대 빛축제",
+      "names": {
+        "ko": "해운대 빛축제",
+        "en": "Haeundae Light Festival",
+        "ja": "海雲台光祭り",
+        "zh-Hans": "海云台灯光节",
+        "zh-Hant": "海雲臺燈節"
+      },
+      "type": "festival",
+      "lat": 35.1592056511,
+      "lng": 129.1615365475,
+      "main_place_id": "sea-life-busan",
+      "place_ids": ["haeundae-beach", "the-bay-101", "haeridan-gil", "haeundae-market", "busan-x-the-sky", "sea-life-busan"],
+      "start": "2026-11-28T18:00:00+09:00",
+      "end": "2026-11-28T23:00:00+09:00",
+      "period_start": "2026-11-28T18:00:00+09:00",
+      "period_end": "2027-01-10T23:00:00+09:00"
+    }
+  ]
+}
+```
+
+- `names`에는 관광공사에서 찾은 `ko` / `en` / `ja` / `zh-Hans` / `zh-Hant`만 들어간다. 없는 외국어 이름은 넣지 않으며 프론트엔드가 다른 언어로 대체한다.
+- `type`은 TourAPI 분류를 바꾼 `festival` / `performance` / `exhibition` / `event` 중 하나다.
+- `start`·`end`는 조회 날짜의 운영 시각이다. `playtime`을 확인한 행사는 그 시각, 모르면 `00:00:00`~`23:59:59`다. `period_start`·`period_end`는 전체 행사 기간이다.
+- 좌표가 없으면 `lat`·`lng`는 `null`, 연결할 장소가 없으면 `main_place_id`는 `null`, `place_ids`는 빈 목록이다.
+- `date`가 없거나 `YYYY-MM-DD` 형식이 아니면 `422 validation_error`다.
 
 ## GET /plan/{plan_id}
 
@@ -324,12 +368,49 @@ Schedule Guardian 으로 일정을 점검한다. LLM 을 호출하지 않는다.
 - `places`: `repairs` 에 새로 등장하는 장소의 `Place` 목록 (교체 후보 표시용). 없으면 `[]`.
 - 해결안을 적용하려면 프론트엔드가 `changes` 를 일정에 반영해 `PUT /plan/{plan_id}` 로 저장한다.
 
+## v0.3 추가 필드
+
+11/20 멘토 피드백 반영 회의 결정. 경로는 늘지 않는다. 경로 후보 2~3안은 계약에 넣지 않고 `/chat` 답변 문장으로 보여 준다.
+
+### POST /chat score_breakdown
+
+`ChatResponse.score_breakdown`: `PlaceScoreBreakdown` 목록. 랭킹 엔진(`backend/app/ranking/`, D)이 이번 답변의 장소 후보에 매긴 점수다. LLM 을 쓰지 않고 코드로 계산한다.
+스트리밍에서는 `done` 에만 들어 있다. 항목 하나의 예시:
+
+```json
+{
+  "place_id": "gwangalli-beach",
+  "total": 67.5,
+  "breakdown": { "interest": 0.5, "crowd": 1.0, "travel": 0.3, "weather": 1.0, "foreigner": 1.0, "dispersal": 0.0 },
+  "notes": ["interest:sea", "travel_min:42"]
+}
+```
+
+- 빼도 되는 필드다. 랭킹을 쓰지 않은 응답(고정 응답, 데모 캐시, 장소를 고르지 않은 답변)에는 이 키가 없다(v0.2 와 같은 응답). 프론트엔드는 키가 없거나 비어 있으면 칩을 그리지 않는다.
+- 순서는 점수 높은 순. 하드 필터(휴무·운영시간 밖)에 걸린 장소는 들어 있지 않다.
+- `total`: 0~100. 항목 가중치는 `backend/app/ranking/weights.py`.
+- `breakdown`: 항목 → 0~1. 1 이 좋은 쪽이다. 판단할 데이터가 없으면 0.5.
+
+  | 키 | 뜻 |
+  |---|---|
+  | `interest` | 프로필 관심사와 큐레이션 태그 겹침 |
+  | `crowd` | 그날 혼잡. Guardian 혼잡 배지와 같은 판단 (`high`=0, `medium`=0.4, `low`=0.75, 없음=1) |
+  | `travel` | 앞 장소에서 이동 시간 (0분=1, 60분 이상=0) |
+  | `weather` | 체류 시간대 비. 실내는 1 |
+  | `foreigner` | 다국어 관광정보 제공 언어 수 / 3 |
+  | `dispersal` | 원도심·서부산이면 1 (경도 기준 근사 규칙) |
+
+- `notes`: 근거 코드 `종류:값`. `interest:<태그>`, `crowd:<심각도>`, `rain:<심각도>`, `travel_min:<분>`, `dispersal:west`, `no_data:<항목>`.
+  화면 문장은 프론트엔드 번역 사전에서 만든다.
+- 집중률은 장소끼리 비교하는 값이 아니므로 `crowd` 는 "그날 그 장소 기준으로 붐비는가"만 뜻한다. 장소 간 혼잡 순위로 표시하지 않는다.
+
 ## v0.2 추가 경로
 
 11/20 결정. 담당은 `CONTRIBUTING.md` 「담당 영역」을 따른다. 아래 경로는 모두 `handler.py` 에 연결되어 있다.
 
 | 경로 | 용도 | 담당 |
 |---|---|---|
+| `GET /events?date=` | 지도에 그날 운영 중인 행사 표시 | B |
 | `POST /plan/{plan_id}/delay` | "늦었어요" 지연 재조정 | D(Guardian), A(연결) |
 | `GET /alerts?plan_id=` | 예약 점검 결과 조회 | A(API·저장), D(점검 로직) |
 | `POST /photo/upload-url` | 사진 업로드용 S3 presigned URL | D |

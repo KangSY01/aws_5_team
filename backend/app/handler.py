@@ -3,6 +3,7 @@
 POST /chat 은 app.agent.run_chat 을 부른다 (FAKE_LLM=1 이면 run_chat 이 고정 응답을 돌려준다). 스트리밍은 아직 없다.
 대화 처리 실패(ChatError: 시간 초과, 모델 오류, 답변 검증 실패)는 내부 사유를 숨기고 500 internal_error 로 바꾼다.
 GET·PUT /plan 은 app/storage 에서 읽고 쓴다 (USE_MOCK=1 이면 메모리, 아니면 DynamoDB).
+GET /events 는 app/data/events.json에서 조회 날짜가 전체 행사 기간에 포함된 행사를 모두 돌려준다.
 /plan/check, /plan/{plan_id}/delay 는 저장된 일정을 읽어 Guardian(app/guardian/service.py) 결과를 돌려준다.
 GET /alerts 는 예약 점검(app/scheduled_handler.py)이 저장한 마지막 결과를 읽기만 한다. 점검을 새로 하지 않는다.
 POST /photo/upload-url, /photo/translate 는 app/photo/service.py 를 부른다 (USE_MOCK=1 이면 샘플 메뉴판, FAKE_LLM=1 이면 고정 번역).
@@ -44,6 +45,8 @@ from app.photo import errors as photo_errors
 from app.photo import service as photo
 from app.speech import polly
 from app.storage import InvalidDataError, PlanNotFoundError, StorageError
+from app.tools import events_map
+from app.tools.lookup import LookupFailure
 from app.voice import service as voice
 from app.voice.errors import VoiceServiceError
 
@@ -150,6 +153,16 @@ def _photo(run):
         raise ApiError(500, "internal_error", "서버 오류가 발생했습니다.")
 
 
+def _events_response(date: str) -> events_map.EventsResponse:
+    """지도 행사 조회의 날짜 오류만 계약의 422로 바꾼다."""
+    try:
+        return events_map.events_on_date(date)
+    except LookupFailure as e:
+        if e.code == "invalid_date":
+            raise ApiError(422, "validation_error", e.message) from None
+        raise
+
+
 def _plan_response(plan: Plan) -> PlanResponse:
     ids = {s.place_id for s in plan.stops}
     places = [p for p in PLACES if p.place_id in ids]
@@ -194,6 +207,12 @@ def _route(event: dict) -> BaseModel:
             except (OSError, ValueError, KeyError):
                 logger.warning("Kakao activity search failed", exc_info=False)
                 raise ApiError(502, "activities_unavailable", "장소 검색에 실패했습니다.")
+
+        case "GET", ["events"]:
+            date = ((event.get("queryStringParameters") or {}).get("date") or "").strip()
+            if not date:
+                raise ApiError(422, "validation_error", "date 쿼리 파라미터가 필요합니다.")
+            return _events_response(date)
 
         case "GET", ["plan", plan_id]:
             return _plan_response(storage.get_plan(plan_id))

@@ -1,0 +1,426 @@
+{
+  "pbtResults": {
+    "1.3 속성 테스트: 채우기는 기존 값을 바꾸지 않는다": {
+      "status": "passed",
+      "lastRunTimestamp": 1795162596995
+    },
+    "1.4 속성 테스트: 같은 입력으로 다시 적용해도 결과가 같다": {
+      "status": "passed",
+      "lastRunTimestamp": 1795162677227
+    }
+  },
+  "executionHistory": {
+    "1.1 스크립트 뼈대와 보조 순수 함수 작성": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795159634604
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795159650812
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795159825854
+      }
+    ],
+    "1.2 `fill_names`와 `apply_fill` 구현": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795159635172
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795159833929
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795160074689
+      }
+    ],
+    "2.1 병합과 직렬화 순수 함수 구현": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795159635638
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795160078516
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795160260474
+      }
+    ],
+    "2.5 `plan_linked_steps`와 `run_chain` 구현": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795159635984
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795160264954
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795160378341
+      }
+    ],
+    "3. Checkpoint - 순수 함수 구역 점검": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795159636380
+      }
+    ],
+    "4.1 수집 함수와 호출 수 관리 구현": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795159636835
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795160388702
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795160793955
+      }
+    ],
+    "4.4 국문 기준 읽기와 복원 로직 구현": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795159637123
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795160797637
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795161133374
+      }
+    ],
+    "4.6 파일 쓰기와 보고서 구현": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795159637552
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795161137054
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795161713320
+      }
+    ],
+    "5.1 `main(argv)`로 전체 흐름 연결": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795159637929
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795161717263
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162396134
+      }
+    ],
+    "6. Checkpoint - 전체 테스트 통과 확인 (실제 API 호출 전 마지막 점검)": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795159638369
+      }
+    ],
+    "7.1 전체 실행 1회 수행 ⚠️ 사용자 확인 후 실행": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795159638762
+      }
+    ],
+    "7.2 결과 보고": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795159639373
+      }
+    ],
+    "1. 순수 함수 구역 구현": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795160075222
+      }
+    ],
+    "2. 병합, 직렬화, 연결 계획 구현": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795160378684
+      }
+    ],
+    "4. 입출력 구역 구현": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795161713710
+      }
+    ],
+    "5. `main` 연결": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162397134
+      }
+    ],
+    "1.3 속성 테스트: 채우기는 기존 값을 바꾸지 않는다": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162442965
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162466532
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162626267
+      }
+    ],
+    "1.4 속성 테스트: 같은 입력으로 다시 적용해도 결과가 같다": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162443810
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162630090
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162691940
+      }
+    ],
+    "1.5 속성 테스트: 이름은 후보 title의 strip_korean 값뿐이다": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162444622
+      },
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162696132
+      }
+    ],
+    "1.6 속성 테스트: 쓸 수 없는 후보는 없는 것과 같다": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162445209
+      }
+    ],
+    "1.7 속성 테스트: 후보 선택이 기존 일치 규칙과 같다": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162445844
+      }
+    ],
+    "1.8 속성 테스트: 같은 종류 후보가 여럿이면 가장 가까운 것, 거리까지 같으면 contentid가 작은 것": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162446455
+      }
+    ],
+    "1.9 속성 테스트: 못 채운 언어는 사유가 있는 review 행이 정확히 한 건이다": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162446908
+      }
+    ],
+    "1.10 속성 테스트: 쪽 계획은 totalCount만큼의 건수를 모두 덮는다": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162447432
+      }
+    ],
+    "1.11 속성 테스트: 보고 수치는 실제 변화와 맞는다": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162448262
+      }
+    ],
+    "1.12 `check_budget` 경계값 단위 테스트": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162448751
+      }
+    ],
+    "2.2 속성 테스트: 파일 직렬화는 왕복해도 같고 형식을 지킨다": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162450199
+      }
+    ],
+    "2.3 속성 테스트: review 병합은 채운 쌍의 행만 지운다": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162450994
+      }
+    ],
+    "2.4 속성 테스트: sources 병합은 채운 쌍의 항목만 바꾼다": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162451790
+      }
+    ],
+    "2.6 속성 테스트: 연결 스크립트는 정해진 순서로 실행되고 첫 실패에서 멈춘다": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162453005
+      }
+    ],
+    "4.2 속성 테스트: 저장된 쪽은 다시 호출하지 않는다": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162455686
+      }
+    ],
+    "4.3 수집 예시 테스트": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162456554
+      }
+    ],
+    "4.5 복원·시드 보정 예시 테스트": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162457192
+      }
+    ],
+    "4.7 쓰기·보고서 예시 테스트": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162457743
+      }
+    ],
+    "5.2 `main` 통합 테스트 (가짜 호출, `tmp_path`)": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162458488
+      }
+    ],
+    "5.3 정적 규칙 테스트": [
+      {
+        "executionId": "091646b0-d276-4684-a17b-dc97734f3e2c",
+        "chatSessionId": "sess_33dfb236-1eb8-45a0-80fb-58494db54126",
+        "timestamp": 1795162458988
+      }
+    ],
+    "8.1 실패 테스트 2개 고치기": [
+      {
+        "executionId": "88f6c12e-54a6-49ea-83ee-f464e483a7c6",
+        "chatSessionId": "sess_5e60931d-fa34-4e98-a1a8-0d6726370c39",
+        "timestamp": 1795163237785
+      },
+      {
+        "executionId": "88f6c12e-54a6-49ea-83ee-f464e483a7c6",
+        "chatSessionId": "sess_5e60931d-fa34-4e98-a1a8-0d6726370c39",
+        "timestamp": 1795163790681
+      }
+    ],
+    "8.2 hours.json에 biff-square, jeonpo-cafe-street 추가": [
+      {
+        "executionId": "88f6c12e-54a6-49ea-83ee-f464e483a7c6",
+        "chatSessionId": "sess_5e60931d-fa34-4e98-a1a8-0d6726370c39",
+        "timestamp": 1795163794923
+      },
+      {
+        "executionId": "88f6c12e-54a6-49ea-83ee-f464e483a7c6",
+        "chatSessionId": "sess_5e60931d-fa34-4e98-a1a8-0d6726370c39",
+        "timestamp": 1795164046372
+      }
+    ],
+    "8.3 events.json 다시 만들기": [
+      {
+        "executionId": "88f6c12e-54a6-49ea-83ee-f464e483a7c6",
+        "chatSessionId": "sess_5e60931d-fa34-4e98-a1a8-0d6726370c39",
+        "timestamp": 1795164049912
+      },
+      {
+        "executionId": "88f6c12e-54a6-49ea-83ee-f464e483a7c6",
+        "chatSessionId": "sess_5e60931d-fa34-4e98-a1a8-0d6726370c39",
+        "timestamp": 1795164153991
+      }
+    ],
+    "8.4 전체 테스트와 최종 보고": [
+      {
+        "executionId": "88f6c12e-54a6-49ea-83ee-f464e483a7c6",
+        "chatSessionId": "sess_5e60931d-fa34-4e98-a1a8-0d6726370c39",
+        "timestamp": 1795164158025
+      },
+      {
+        "executionId": "88f6c12e-54a6-49ea-83ee-f464e483a7c6",
+        "chatSessionId": "sess_5e60931d-fa34-4e98-a1a8-0d6726370c39",
+        "timestamp": 1795164406667
+      }
+    ],
+    "8. 후속 정리 (places.json 35곳 반영)": [
+      {
+        "executionId": "88f6c12e-54a6-49ea-83ee-f464e483a7c6",
+        "chatSessionId": "sess_5e60931d-fa34-4e98-a1a8-0d6726370c39",
+        "timestamp": 1795164407202
+      }
+    ]
+  }
+}

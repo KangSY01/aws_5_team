@@ -4,6 +4,7 @@
     $env:USE_MOCK="1"; uv run python -m eval.run_eval                 # 실제 Bedrock + 샘플 데이터
     $env:USE_MOCK="1"; $env:FAKE_LLM="1"; uv run python -m eval.run_eval   # 채점 경로만 확인 (고정 응답)
     uv run python -m eval.run_eval --ids 3 12 21 --delay 5            # 일부만, 호출 간격 5초
+    uv run python -m eval.run_eval --baseline eval/results/<전>.json   # 랭킹 지표를 전후로 비교
 
 - USE_MOCK=1 에서만 돈다. 편집 질의(3·11·12·20·21)가 plan-1 을 고치므로, 질의마다 메모리 저장소를 처음 상태로 되돌린다.
   실제 DynamoDB 의 데모 일정을 바꾸지 않기 위해서다.
@@ -29,9 +30,11 @@ from typing import Any
 
 from app import agent, config, storage
 from app.guardian import service as guardian
+from app.guardian.context import CheckContext, build_context
 from app.handler import PLACES
 from app.models.api import ChatRequest, DemoOverride
 from app.models.plan import Plan
+from app.ranking.weights import DISPERSAL_MAX_LNG
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +45,8 @@ SAMPLE_PLAN_PATH = EVAL_DIR.parent / "app" / "data" / "sample_plan.json"
 
 DEFAULT_NOW = "2026-11-21T09:00:00+09:00"  # 샘플 일정(plan-1) 날짜의 아침 (토요일)
 PLACE_NAMES = {p.place_id: p.names for p in PLACES}
+PLACE_LNG = {p.place_id: p.lng for p in PLACES}
+CROWDED_SEVERITIES = ("medium", "high")  # 혼잡 장소로 세는 Guardian 심각도 (🟡·🔴 배지)
 ACTION_ORDER = {"move_time": 0, "reorder": 1, "replace": 2, "remove": 3}
 
 # 시스템 프롬프트에만 있는 표현. 답변에 나오면 프롬프트가 새어 나간 것으로 본다 (질의 17)
@@ -197,7 +202,7 @@ def preservation_checks(query: dict, run: dict, original: Plan) -> dict[str, boo
     locked = {s.stop_id: s.model_dump(mode="json") for s in original.stops if s.locked}
     locked_kept = all(_stop(run["final_plan"], sid) == stop for sid, stop in locked.items()) if run["final_plan"] else not (changed_ids & set(locked))
     qid = query["id"]
-    if qid == 1:
+    if query["category"] == "plan_create":  # 1번과 랭킹 비교용 22~33번
         return {"3~5곳 생성": 3 <= len(changes) <= 5, "전부 추가(before null)": bool(changes) and all(c["before"] is None for c in changes)}
     if qid == 3:
         return {"s4만 바뀜": changed_ids == {"s4"}, "고정 일정 유지": locked_kept}
@@ -261,6 +266,91 @@ def judge(query: dict, run: dict, original: Plan) -> dict[str, Any]:
     return result
 
 
+# ---- 랭킹 지표 (멘토 피드백 반영 전후 비교) ----
+
+
+def new_stop_ids(run: dict) -> set[str]:
+    """이번 응답이 일정에 새로 넣은 장소의 stop_id (추가, 또는 다른 장소로 교체). 시간·순서만 바뀐 것은 뺀다."""
+    found = set()
+    for change in (run["response"] or {}).get("plan_changes", []):
+        before, after = change.get("before"), change.get("after")
+        if after and (before is None or before["place_id"] != after["place_id"]):
+            found.add(after["stop_id"])
+    return found
+
+
+def locked_slacks(plan: Plan, ctx: CheckContext) -> list[int]:
+    """고정 일정마다 앞 Stop 에서의 이동 여유(분) = 간격 - 이동 시간. 앞 Stop 이 없거나 이동 시간을 모르면 뺀다."""
+    stops = sorted(plan.stops, key=lambda s: s.start)
+    slacks = []
+    for prev, stop in zip(stops, stops[1:]):
+        travel = ctx.travel(prev.place_id, stop.place_id)
+        if stop.locked and travel is not None:
+            slacks.append(int((stop.start - prev.end).total_seconds() // 60) - travel)
+    return slacks
+
+
+def ranking_metrics(run: dict, now: dt.datetime) -> dict | None:
+    """질의 하나의 랭킹 지표 재료. 최종 일정이 없으면 None.
+
+    - new_places: 이번 응답이 일정에 넣은 장소
+    - crowded: 그중 Guardian 혼잡 배지가 medium·high 인 장소 (그 일정·그 시각 기준, check_plan 과 같은 판단)
+    - west: 그중 원도심·서부산 장소 (ranking.weights.DISPERSAL_MAX_LNG 보다 서쪽. 경도 기준 근사)
+    - locked_slack_min: 고정 일정 앞 이동 여유(분) 목록. 새로 넣은 장소가 없어도 잰다
+    """
+    if not run["final_plan"]:
+        return None
+    plan = Plan.model_validate(run["final_plan"])
+    ids = new_stop_ids(run)
+    new = [s for s in plan.stops if s.stop_id in ids]
+    check = guardian.run_check(plan, DemoOverride(now=now))
+    crowded_ids = {i.stop_id for i in check.issues if i.type == "crowded" and i.severity in CROWDED_SEVERITIES}
+    return {
+        "new_places": [s.place_id for s in new],
+        "crowded": [s.place_id for s in new if s.stop_id in crowded_ids],
+        "west": [s.place_id for s in new if PLACE_LNG.get(s.place_id, 999) < DISPERSAL_MAX_LNG],
+        "locked_slack_min": locked_slacks(plan, build_context(plan, demo_now=now)),
+    }
+
+
+def summarize_ranking(results: list[dict]) -> dict:
+    """혼잡 장소 추천 비율 · 분산 비율 · 고정 일정 앞 평균 여유. 랭킹 적용 전후 결과 파일끼리 비교한다."""
+    metrics = [r["ranking"] for r in results if r.get("ranking")]
+    new = sum(len(m["new_places"]) for m in metrics)
+    slacks = [x for m in metrics for x in m["locked_slack_min"]]
+    return {
+        "new_places": new,  # 비율의 분모
+        "crowded_rate": round(sum(len(m["crowded"]) for m in metrics) / new, 3) if new else None,  # 낮을수록 좋다
+        "dispersal_rate": round(sum(len(m["west"]) for m in metrics) / new, 3) if new else None,  # 높을수록 좋다
+        "locked_slack_avg_min": round(sum(slacks) / len(slacks), 1) if slacks else None,  # 높을수록 좋다
+        "locked_slack_n": len(slacks),
+    }
+
+
+def _pct(value: float | None) -> str:
+    return "-" if value is None else f"{value:.0%}"
+
+
+def _num(value: float | None, unit: str = "") -> str:
+    return "-" if value is None else f"{value:g}{unit}"
+
+
+def render_ranking(ranking: dict, baseline: dict | None) -> list[str]:
+    """랭킹 지표 표. baseline(이전 결과 파일의 summary.ranking)이 있으면 전후를 나란히 쓴다."""
+    rows = [
+        ("혼잡 장소 추천 비율 (🟡·🔴, 낮을수록 좋음)", "crowded_rate", _pct),
+        ("분산 비율 (원도심·서부산, 높을수록 좋음)", "dispersal_rate", _pct),
+        ("고정 일정 앞 평균 여유 (높을수록 좋음)", "locked_slack_avg_min", lambda v: _num(v, "분")),
+    ]
+    head = ["", "## 랭킹 지표", "", f"일정에 새로 넣은 장소 {ranking['new_places']}곳, 고정 일정 {ranking['locked_slack_n']}개 기준.", ""]
+    if baseline is None:
+        return head + ["| 항목 | 결과 |", "|---|---|"] + [f"| {name} | {fmt(ranking[key])} |" for name, key, fmt in rows]
+    head[3] += f" 기준 결과는 {baseline['new_places']}곳, {baseline['locked_slack_n']}개."
+    return head + ["| 항목 | 기준(전) | 이번(후) |", "|---|---|---|"] + [
+        f"| {name} | {fmt(baseline.get(key))} | {fmt(ranking[key])} |" for name, key, fmt in rows
+    ]
+
+
 # ---- 요약 ----
 
 
@@ -284,6 +374,7 @@ def summarize(results: list[dict]) -> dict:
         "errors": [r["id"] for r in results if r["judge"].get("error")],
         "response_time_sec": {"avg": round(sum(times) / len(times), 2) if times else None, "max": max(times, default=None)},
         "intent": "측정 안 함 (2단계 라우터 미구현)",
+        "ranking": summarize_ranking(results),
     }
 
 
@@ -291,7 +382,7 @@ def _fmt(rate: dict) -> str:
     return f"{rate['pass']}/{rate['total']}" if rate["total"] else "-"
 
 
-def render_markdown(meta: dict, summary: dict, results: list[dict]) -> str:
+def render_markdown(meta: dict, summary: dict, results: list[dict], baseline: dict | None = None) -> str:
     lines = [
         f"# 평가 결과 {meta['started_at']}",
         "",
@@ -319,6 +410,7 @@ def render_markdown(meta: dict, summary: dict, results: list[dict]) -> str:
             f"| {r['id']} | {r['category']} | {verdict} | {', '.join(j.get('missing_tools', [])) or ''} "
             f"| {', '.join(j.get('ungrounded_numbers', [])) or ''} | {' / '.join(r['expect']['checks'])} |"
         )
+    lines += render_ranking(summary["ranking"], baseline)
     if meta["fake_llm"]:
         lines += ["", "FAKE_LLM=1 이라 모든 /chat 질의가 같은 고정 응답이다. 채점 경로 확인용이며 수치는 의미가 없다."]
     return "\n".join(lines) + "\n"
@@ -342,8 +434,14 @@ def run(queries: list[dict], now: dt.datetime, delay_sec: float) -> list[dict]:
         runner = run_chat_query if query["endpoint"] == "/chat" else run_check_query
         run_result = runner(query, now)
         verdict = judge(query, run_result, original)
+        ranking = None
+        if query["endpoint"] == "/chat" and not run_result["error"]:
+            try:
+                ranking = ranking_metrics(run_result, now)
+            except Exception as exc:  # 지표 계산이 실패해도 채점은 남긴다
+                logger.warning("질의 %d 랭킹 지표 계산 실패: %s", query["id"], type(exc).__name__)
         results.append({"id": query["id"], "category": query["category"], "endpoint": query["endpoint"],
-                        "expect": query["expect"], "run": run_result, "judge": verdict})
+                        "expect": query["expect"], "run": run_result, "judge": verdict, "ranking": ranking})
         logger.info("질의 %d 완료: %s (%.1f초)", query["id"], "통과" if verdict.get("ok") else "실패", run_result["elapsed_sec"])
         if delay_sec and not config.FAKE_LLM and query["endpoint"] == "/chat" and index < len(queries) - 1:
             time.sleep(delay_sec)  # Bedrock 호출 제한에 걸리지 않게 간격을 둔다
@@ -356,7 +454,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--now", default=DEFAULT_NOW, help=f"기준 시각 (demo.now, 기본 {DEFAULT_NOW})")
     parser.add_argument("--delay", type=float, default=3.0, help="/chat 질의 사이 대기 초 (FAKE_LLM=1 이면 무시)")
     parser.add_argument("--out", type=Path, default=RESULTS_DIR, help="결과 폴더 (기본 eval/results)")
+    parser.add_argument("--baseline", type=Path, help="비교할 이전 결과 JSON (랭킹 적용 전). 랭킹 지표를 전후로 나란히 쓴다")
     args = parser.parse_args(argv)
+    baseline = None
+    if args.baseline:
+        baseline = json.loads(args.baseline.read_text(encoding="utf-8"))["summary"].get("ranking")
+        if baseline is None:
+            raise SystemExit(f"{args.baseline} 에 랭킹 지표가 없습니다 (이 기능 이전 결과 파일).")
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     sys.stdout.reconfigure(encoding="utf-8")
@@ -371,7 +475,7 @@ def main(argv: list[str] | None = None) -> int:
     stem = args.out / (started_at + ("-fake" if config.FAKE_LLM else ""))
     stem.with_suffix(".json").write_text(
         json.dumps({"meta": meta, "summary": summary, "results": results}, ensure_ascii=False, indent=2), encoding="utf-8")
-    markdown = render_markdown(meta, summary, results)
+    markdown = render_markdown(meta, summary, results, baseline)
     stem.with_suffix(".md").write_text(markdown, encoding="utf-8")
     print(markdown)
     print(f"결과: {stem.with_suffix('.json')}")
