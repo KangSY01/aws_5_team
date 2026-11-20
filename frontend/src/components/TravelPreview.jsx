@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getTravelCopy, languages } from "../constants/travelCopy.js";
 import { getPlannerCopy, transportPreferenceIds } from "../constants/plannerCopy.js";
+import { hasConfiguredPlanApi, saveTravelPlan } from "../api/planClient.js";
 import { recommendDemo, suggestDemo } from "../lib/demoPlanner.js";
 import { normalizeActivities } from "../lib/activityPreferences.js";
 import { localeFlags } from "../constants/localeFlags.js";
@@ -189,6 +190,8 @@ export default function TravelPreview({ night = false } = {}) {
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState([]);
+  const [scheduleSaveFailed, setScheduleSaveFailed] = useState(false);
+  const liveApi = hasConfiguredPlanApi();
   const [selectedId, setSelectedId] = useState(() => course?.plan.stops[0]?.stop_id ?? null);
   const [mapFocus, setMapFocus] = useState(null);
   const dragStart = useRef(null);
@@ -460,6 +463,27 @@ export default function TravelPreview({ night = false } = {}) {
     }
   }
 
+  async function saveStops(nextStops) {
+    if (requestInProgress.current) return false;
+    requestInProgress.current = true;
+    setPending("schedule");
+    setScheduleSaveFailed(false);
+    try {
+      const nextPlan = { ...plan, stops: nextStops };
+      const saved = liveApi && course.session_id ? await saveTravelPlan(nextPlan) : { plan: nextPlan };
+      const next = { ...course, ...saved };
+      setCourse(next);
+      save(courseStorageKey, next);
+      return true;
+    } catch {
+      setScheduleSaveFailed(true);
+      return false;
+    } finally {
+      requestInProgress.current = false;
+      setPending(null);
+    }
+  }
+
   function applySuggestion(message) {
     if (requestInProgress.current) return;
     if (message.snapshot !== course) {
@@ -604,10 +628,11 @@ export default function TravelPreview({ night = false } = {}) {
           ) : (
             <section className="travel-panel" aria-label={copy.itinerary}>
               {course?.demo && <small>{plannerCopy.demoCourse}</small>}
-              {plan.date && <time dateTime={plan.date}>{formatDate(plan.date, language)}</time>}
               {stops.length ? <PlanList plan={plan} places={places} displayLanguage={language}
                 selected={selected} onSelect={selectStop} lockedLabel={copy.locked} onEdit={openEdit} editLabel={plannerCopy.editStop}
-                formatStopDate={(date) => formatDate(date, language)} /> : <EmptyState message={copy.empty} />}
+                formatStopDate={(date) => formatDate(date, language)}
+                onSaveStops={saveStops} busy={Boolean(pending)}
+                saveError={scheduleSaveFailed ? plannerCopy.requestFailed : undefined} /> : <EmptyState message={copy.empty} />}
               {course?.lodging_unavailable && <p>{plannerCopy.lodgingUnavailable}</p>}
               {course?.limited_places && <p>{plannerCopy.limitedPlaces}</p>}
               {course?.unmatched_activities?.length > 0 && (
@@ -637,15 +662,15 @@ export default function TravelPreview({ night = false } = {}) {
           </button>
         </form>
         {!showTranslation && !showChat && !showPreferences && (
-          <div className="trip-actions">
+          <div className="trip-actions" data-has-stops={stops.length > 0}>
+            <button type="button" disabled={Boolean(pending)} onClick={() => setShowPreferences(true)}>
+              {stops.length ? plannerCopy.newCourse : plannerCopy.recommend}
+            </button>
             {stops.length > 0 && (
               <button type="button" disabled={Boolean(pending)} onClick={() => changeTrip(!tripStarted)}>
                 {tripStarted ? copy.endTrip : copy.startTrip}
               </button>
             )}
-            <button type="button" disabled={Boolean(pending)} onClick={() => setShowPreferences(true)}>
-              {stops.length ? plannerCopy.newCourse : plannerCopy.recommend}
-            </button>
           </div>
         )}
       </aside>

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { buildPlacesById, resolvePlaceName } from "../lib/resolvePlaceName.js";
+import { stopDate } from "../lib/itineraryTiming.js";
 import RegionMap from "./RegionMap.jsx";
 
 const tileOverride = import.meta.env.VITE_MAP_TILE_URL;
@@ -52,7 +53,7 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
   const visitSegments = useMemo(() => mappedStops.flatMap(({ coordinates, stop }, index) => {
     const next = mappedStops[index + 1];
     if (!coordinates || !next?.coordinates) return [];
-    if (stop.end?.slice(0, 10) !== next.stop.start?.slice(0, 10)) return [];
+    if (stopDate(stop.start) !== stopDate(next.stop.start)) return [];
     return [[coordinates, next.coordinates]];
   }), [mappedStops]);
 

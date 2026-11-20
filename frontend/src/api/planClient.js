@@ -154,3 +154,19 @@ export async function sendTravelMessage(message, language, session) {
 
   return chat;
 }
+
+export function hasConfiguredPlanApi() {
+  return Boolean(normalizeBaseUrl(import.meta.env?.VITE_API_BASE_URL));
+}
+
+function jsonRequest(method, body) {
+  return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+}
+
+export async function saveTravelPlan(plan) {
+  const body = await requestJson(`/plan/${encodeURIComponent(plan.plan_id)}`, { request: jsonRequest("PUT", plan) });
+  if (body?.plan?.plan_id !== plan.plan_id || !Array.isArray(body.plan.stops) || !Array.isArray(body.places)) {
+    throw new PlanClientError("invalid_response");
+  }
+  return body;
+}

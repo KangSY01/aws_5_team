@@ -22,21 +22,26 @@ function LockIcon() {
   );
 }
 
-export default function StopItem({ stop, place, language, number, active, onSelect, lockedLabel = LOCKED_LABEL, onEdit, editLabel, dayLabel }) {
+export default function StopItem({ stop, place, language, number, active, onSelect, lockedLabel = LOCKED_LABEL, onEdit, editLabel, day, formatStopDate, timing, overlap, dragging, insertion }) {
   // resolvePlaceName 은 Map 을 받으므로 단일 장소를 Map 으로 감싸 전달한다
   const placesById = place ? new Map([[stop.place_id, place]]) : new Map();
   const { name, isFallbackToId } = resolvePlaceName(stop, placesById, language);
   const lang = SUPPORTED_LANGUAGES.includes(language) ? language : 'en';
 
+  const time = (
+    <>
+      <time dateTime={stop.start}>{formatTime(stop.start)}</time>
+      {' – '}
+      <time dateTime={stop.end}>{formatTime(stop.end)}</time>
+    </>
+  );
   const content = (
     <>
-      {number != null && <span className="stop-number" aria-hidden="true">{number}</span>}
-      <span className="stop-item__time">
-        {dayLabel && <small className="stop-day">{dayLabel}</small>}
-        <time dateTime={stop.start}>{formatTime(stop.start)}</time>
-        {' – '}
-        <time dateTime={stop.end}>{formatTime(stop.end)}</time>
-      </span>
+      {number != null && (
+        <span className="stop-number" data-drag-handle={timing?.hint ? '' : undefined} title={timing?.hint}
+          {...(timing?.hint ? timing.handle : undefined)}>{number}</span>
+      )}
+      {!timing && <span className="stop-item__time">{time}</span>}
       {/* 이름이 place_id 로 대체되면 lang 을 붙이지 않는다. 텍스트로만 출력한다 */}
       <span
         className="stop-item__name"
@@ -50,19 +55,39 @@ export default function StopItem({ stop, place, language, number, active, onSele
           <span>{lockedLabel}</span>
         </span>
       )}
+      {overlap && <span className="stop-overlap">{overlap}</span>}
       {isFallbackToId && !onSelect && (
         <span className="stop-item__note">{PLACE_NAME_FALLBACK_NOTE}</span>
       )}
     </>
   );
   return (
-    <li className="stop-item">
+    <li className="stop-item" data-insert={insertion}>
+      {day && <time className="stop-day" dateTime={day}>{formatStopDate(day)}</time>}
       {onSelect ? (
-        <button type="button" className="stop-select" aria-pressed={active} onClick={onSelect}>
-          {content}
-        </button>
+        <div className="stop-row" data-editable-time={Boolean(timing)} data-dragging={dragging || undefined}>
+          <button type="button" className="stop-select" aria-pressed={active} onClick={onSelect}>
+            {content}
+          </button>
+          {timing && (
+            <button type="button" className="stop-time" disabled={timing.disabled}
+              aria-label={timing.label + ' · ' + name + ' · ' + formatTime(stop.start) + ' – ' + formatTime(stop.end)}
+              aria-haspopup="dialog" aria-description={timing.hint}
+              onClick={timing.open}>
+              <span>{time}</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 4 4M4 20l4-.8L20 7l-4-4L4.8 15z" /></svg>
+            </button>
+          )}
+          {onEdit && (
+            <button type="button" className="stop-edit" aria-label={editLabel + " · " + name} onClick={onEdit}>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3c0 5-4 9-9 9 5 0 9 4 9 9 0-5 4-9 9-9-5 0-9-4-9-9Z" />
+              </svg>
+              <span>{editLabel}</span>
+            </button>
+          )}
+        </div>
       ) : content}
-      {onEdit && <button type="button" className="stop-edit" aria-label={editLabel + " · " + name} onClick={onEdit}>{editLabel}</button>}
     </li>
   );
 }
