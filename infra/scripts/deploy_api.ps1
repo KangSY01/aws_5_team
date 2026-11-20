@@ -17,6 +17,7 @@ param(
     [switch]$AllowLocalhost,
     [ValidateRange(0, 1000)] [int]$ReservedConcurrency = 0,
     [string]$DataGoKrKey = $env:DATA_GO_KR_KEY_DECODING,
+    [string]$KakaoRestApiKey = $env:KAKAO_REST_API_KEY,
     [string]$DemoNow = "",
     [ValidateSet("true", "false")] [string]$DemoCache = "false",
     [string]$StackName = "busan-guide-api",
@@ -87,6 +88,7 @@ $Overrides = @(
     "DemoCacheEnabled=$DemoCache"
 )
 if ($DataGoKrKey) { $Overrides += "DataGoKrKey=$DataGoKrKey" }
+if ($KakaoRestApiKey) { $Overrides += "KakaoRestApiKey=$KakaoRestApiKey" }
 if ($DemoNow) { $Overrides += "DemoNow=$DemoNow" }
 $ExtraArgs = @()
 if ($ReviewOnly) { $ExtraArgs += "--no-execute-changeset" }
