@@ -35,7 +35,7 @@ def worst_case_context():
     travel = {(a, b): 20 for a, b in itertools.combinations(sorted(places), 2)}
     return make_context(
         weather=hourly_weather(rain_hours=range(15, 19)),
-        crowd=BASE_CROWD | {"haeundae-beach": 96.0},
+        crowd=BASE_CROWD | {"haeundae-beach": 99.0},
         events=[Event(name="테스트 행사", start=at(16), end=at(21), place_ids=["haeundae-beach", "gwangalli-beach"])],
         travel_min=travel,
     )

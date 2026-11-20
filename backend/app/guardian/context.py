@@ -131,7 +131,7 @@ def build_context(
     출력: CheckContext
     - 도구가 없거나, 아직 구현되지 않았거나, {"error": ...} 를 돌려주거나, 예외를 던지면 그 값만 비워 둔다.
       비어 있는 값을 쓰는 규칙만 건너뛰고 점검은 계속한다 (요구사항 6.4).
-    - 이동 시간은 일정에 있는 장소끼리만 조회한다. 교체 후보까지는 with_repair_travel 로 넓힌다.
+    - 집중률·운영시간·이동 시간은 일정에 있는 장소만 조회한다. 교체 후보까지는 with_repair_travel 로 넓힌다.
     - 카카오 경로 결과는 이 요청의 context 에만 두고 저장하지 않는다 (data-rules.md).
     """
     tools = lookups if lookups is not None else _default_lookups()
@@ -143,15 +143,7 @@ def build_context(
     else:
         weather = _weather_from(_call(tools, "get_weather", date))
 
-    crowd: dict[str, float] = {}
-    hours = {}
-    for place_id in place_ids:
-        ratio = (_call(tools, "get_crowd", place_id, date) or {}).get("ratio")
-        if ratio is not None:  # ratio null 은 요일 규칙 대상이라 넣지 않는다
-            crowd[place_id] = float(ratio)
-        opening = _model(OpeningHours, _call(tools, "get_hours", place_id))
-        if opening is not None:
-            hours[place_id] = opening
+    crowd, hours = _place_data(tools, place_ids, date)
 
     events = [
         e for e in (_model(Event, item) for item in (_call(tools, "get_events", date) or {}).get("events", []))
@@ -173,14 +165,18 @@ def build_context(
 def with_repair_travel(
     ctx: CheckContext, plan: Plan, stop_ids: Iterable[str], lookups: ModuleType | Any | None = None
 ) -> CheckContext:
-    """해결안 탐색에 필요한 이동 시간을 더한 context. 문제가 있는 비고정 Stop 만 넘겨 조회 수를 줄인다.
+    """해결안 탐색에 필요한 조회 값을 더한 context. 문제가 있는 비고정 Stop 만 넘겨 조회 수를 줄인다.
 
-    교체 후보(같은 category 또는 실내 장소)와 그 Stop 의 앞뒤 Stop 사이 이동 시간을 조회한다.
+    교체 후보(같은 category 또는 실내 장소)마다
+    - 그 Stop 의 앞뒤 Stop 과의 이동 시간
+    - 방문일 집중률과 운영시간. 없으면 후보가 "데이터 없음"으로 보여 붐비거나 휴무인 장소가 대안에 나온다
+    을 조회한다.
     """
     tools = lookups if lookups is not None else _default_lookups()
     stops = sorted(plan.stops, key=lambda s: s.start)
     wanted = set(stop_ids)
     pairs: set[tuple[str, str]] = set()
+    candidates: set[str] = set()
     for i, stop in enumerate(stops):
         current = ctx.places.get(stop.place_id)
         if stop.stop_id not in wanted or stop.locked or current is None:
@@ -188,8 +184,28 @@ def with_repair_travel(
         neighbors = [stops[j].place_id for j in (i - 1, i + 1) if 0 <= j < len(stops)]
         for place in ctx.places.values():
             if place.category == current.category or place.indoor:
+                candidates.add(place.place_id)
                 pairs.update((n, place.place_id) for n in neighbors if n != place.place_id)
+
+    # 일정에 있는 장소는 build_context 가 이미 조회했다
+    new = sorted(candidates - {s.place_id for s in plan.stops})
+    crowd, hours = _place_data(tools, new, plan.date.isoformat())
+    ctx = ctx.model_copy(update={"crowd": ctx.crowd | crowd, "hours": ctx.hours | hours})
     return _with_travel(ctx, pairs, tools)
+
+
+def _place_data(tools: Any, place_ids: Iterable[str], date: str) -> tuple[dict[str, float], dict[str, OpeningHours]]:
+    """장소별 방문일 집중률과 운영시간. 값이 없거나 조회에 실패한 장소는 넣지 않는다."""
+    crowd: dict[str, float] = {}
+    hours: dict[str, OpeningHours] = {}
+    for place_id in place_ids:
+        ratio = (_call(tools, "get_crowd", place_id, date) or {}).get("ratio")
+        if ratio is not None:  # ratio null 은 요일 규칙 대상이라 넣지 않는다
+            crowd[place_id] = float(ratio)
+        opening = _model(OpeningHours, _call(tools, "get_hours", place_id))
+        if opening is not None:
+            hours[place_id] = opening
+    return crowd, hours
 
 
 def _with_travel(ctx: CheckContext, pairs: set[tuple[str, str]], tools: Any) -> CheckContext:

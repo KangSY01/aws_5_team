@@ -58,7 +58,7 @@ def test_sort_by_severity_then_start_then_type():
     ctx = make_context(
         weather=hourly_weather(rain_hours=range(15, 18)),  # s4 rain high
         hours={"busan-tower": OpeningHours(closed_weekdays=[5])},  # s3 closed high
-        crowd={"haeundae-beach": 90, "jagalchi-market": 60, "busan-tower": 50},  # s4 crowded medium
+        crowd={"haeundae-beach": 96, "jagalchi-market": 60, "busan-tower": 50},  # s4 crowded medium
     )
     assert ids(check_plan(PLAN, ctx)) == [
         ("s3-closed", "high"),  # high 중 시작이 이른 쪽
@@ -81,8 +81,8 @@ def test_unsorted_stops_use_time_order():
 
 def test_missing_data_skips_rules():
     ctx = make_context(weather=None, crowd={}, hours={}, travel_min={})
-    # 집중률·예보·영업 정보·이동 시간이 모두 없으면 요일 규칙만 남는다
-    assert ids(check_plan(PLAN, ctx)) == [("s1-crowded", "medium")]
+    # 집중률·예보·영업 정보·이동 시간이 모두 없으면 요일 규칙(감천·부산타워, 토요일)만 남는다
+    assert ids(check_plan(PLAN, ctx)) == [("s1-crowded", "medium"), ("s3-crowded", "medium")]
 
 
 def test_failing_rule_is_skipped(monkeypatch):

@@ -101,9 +101,9 @@ def test_build_context_skips_missing_or_failing_tools():
     lookups = SimpleNamespace(get_weather=boom, get_crowd=lambda *a: {"error": {"code": "x", "message": "y"}})
     ctx = build_context(PLAN, demo_now=at(9), lookups=lookups)
     assert (ctx.weather, ctx.crowd, ctx.hours, ctx.travel_min, ctx.events) == (None, {}, {}, {}, [])
-    # 이 context 로도 check_plan 이 돈다: 요일 규칙(감천, 토요일)만 남는다
+    # 이 context 로도 check_plan 이 돈다: 요일 규칙(감천·부산타워, 토요일)만 남는다
     response = run_check(PLAN, DemoOverride(now=at(9)), lookups=lookups)
-    assert [i.issue_id for i in response.issues] == ["s1-crowded"]
+    assert [i.issue_id for i in response.issues] == ["s1-crowded", "s3-crowded"]
 
 
 @pytest.fixture
@@ -134,6 +134,32 @@ def test_with_repair_travel_adds_candidates_for_issue_stops_only():
     assert ("busan-tower", "haeundae-beach") not in asked  # 이미 아는 구간은 다시 묻지 않는다
 
 
+def test_with_repair_travel_adds_candidate_crowd_and_hours():
+    # 후보의 집중률·운영시간을 모르면 붐비거나 휴무인 장소가 "문제없음"으로 대안에 나온다
+    lookups = fake_lookups(
+        crowd={"haeundae-beach": 70, "songjeong-beach": 99},
+        hours={"shinsegae-centum-city": {"opens": "10:30", "closes": "20:00", "closed_weekdays": [], "closed_dates": []}},
+    )
+    ctx = build_context(PLAN, demo_now=at(9), lookups=lookups)
+    assert "songjeong-beach" not in ctx.crowd
+    ctx = with_repair_travel(ctx, PLAN, ["s4"], lookups=lookups)
+    assert ctx.crowd["songjeong-beach"] == 99.0  # 같은 beach 후보
+    assert ctx.crowd["haeundae-beach"] == 70.0  # 일정 장소 값은 그대로
+    assert ctx.hours["shinsegae-centum-city"].opens == dt.time(10, 30)  # 실내 후보
+
+
+def test_run_check_skips_equally_crowded_candidate():
+    # 토요일 해운대 99(high). 송정도 99 라 바꿔도 high 가 남아 대안이 아니다. 광안리(80)만 남는다
+    lookups = fake_lookups(
+        crowd={"haeundae-beach": 99, "songjeong-beach": 99, "gwangalli-beach": 80},
+        travel=TRAVEL | {("busan-tower", "gwangalli-beach"): 30, ("busan-tower", "songjeong-beach"): 45},
+    )
+    response = run_check(PLAN, DemoOverride(now=at(9)), lookups=lookups)
+    targets = [next(c.after.place_id for c in o.changes if c.after) for o in response.repairs["s4-crowded"]
+               if o.action == "replace"]
+    assert targets == ["gwangalli-beach"]
+
+
 def test_resolve_now_priority(monkeypatch):
     monkeypatch.setattr(config, "DEMO_NOW", "2026-11-21T13:40:00")
     assert resolve_now(at(9)) == at(9)  # demo.now 가 먼저
@@ -160,8 +186,8 @@ def test_run_check_rain_gives_indoor_replace_and_places():
     response = run_check(PLAN, DemoOverride(now=at(9)), lookups=fake_lookups(weather=RAIN_15_18))
 
     assert response.checked_at == at(9)
-    assert [i.issue_id for i in response.issues] == ["s4-rain", "s1-crowded"]
-    assert set(response.repairs) == {"s4-rain", "s1-crowded"}
+    assert [i.issue_id for i in response.issues] == ["s4-rain", "s1-crowded", "s3-crowded"]
+    assert set(response.repairs) == {"s4-rain", "s1-crowded", "s3-crowded"}
     first = response.repairs["s4-rain"][0]
     assert first.action == "replace"
     assert next(c.after.place_id for c in first.changes) == "shinsegae-centum-city"
@@ -170,8 +196,8 @@ def test_run_check_rain_gives_indoor_replace_and_places():
 
 
 def test_run_check_no_issue_gives_empty_repairs():
-    # 토요일 감천(요일 규칙)을 뺀 일정은 문제가 없다 → issues [], repairs {} (요구사항 2.10)
-    plan = PLAN.model_copy(update={"stops": PLAN.stops[1:]})
+    # 토요일 요일 규칙 장소(감천·부산타워)를 뺀 일정은 문제가 없다 → issues [], repairs {} (요구사항 2.10)
+    plan = PLAN.model_copy(update={"stops": [PLAN.stops[1], PLAN.stops[3]]})
     response = run_check(plan, DemoOverride(now=at(9)), lookups=fake_lookups())
     assert (response.issues, response.repairs, response.places) == ([], {}, [])
 
@@ -195,12 +221,12 @@ def call(method, path, body):
 
 
 def test_handler_plan_check_uses_guardian(no_lookup_data):
-    # 조회 데이터가 없으면 요일 규칙만 남는다 (감천 토요일 → remove 하나, 계약 예시와 같은 경우)
+    # 조회 데이터가 없으면 요일 규칙만 남는다 (감천 토요일 → remove 하나, 계약 예시와 같은 경우. 부산타워도 요일 규칙)
     status, body = call("POST", "/plan/check", {"plan_id": PLAN.plan_id, "demo": {"now": at(9).isoformat()}})
     assert status == 200
     response = CheckResponse.model_validate_json(body)
     assert response.checked_at == at(9)
-    assert [i.issue_id for i in response.issues] == ["s1-crowded"]
+    assert [i.issue_id for i in response.issues] == ["s1-crowded", "s3-crowded"]
     assert [o.action for o in response.repairs["s1-crowded"]] == ["remove"]
 
 
@@ -214,8 +240,9 @@ def test_handler_plan_check_with_real_lookup(monkeypatch):
     assert status == 200
     response = CheckResponse.model_validate_json(body)
     assert response.checked_at == at(9)
-    # 집중률(congestion.json, 11/21 토)이 들어와 s4 해운대 97.18 → high, s2 자갈치 94.56 → 고정이라 low 가 추가됐다
-    assert [i.issue_id for i in response.issues] == ["s4-crowded", "s1-crowded", "s4-tight_transfer", "s2-crowded"]
+    # 집중률(congestion.json, 11/21 토): s4 해운대 97.18 → medium(98 미만), s2 자갈치 94.56 → 95 미만이라 문제 없음
+    # 부산타워는 집중률에 없어 요일 규칙(토 medium)
+    assert [i.issue_id for i in response.issues] == ["s1-crowded", "s3-crowded", "s4-crowded", "s4-tight_transfer"]
     assert "replace" not in {o.action for o in response.repairs["s1-crowded"]}
 
 

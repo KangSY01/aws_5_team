@@ -43,7 +43,9 @@ def test_check_one_has_alerts_shape_without_repairs():
     result = check_one(PLAN, at(9), lookups(RAIN_15_18))
     assert isinstance(result, AlertsResponse)
     assert result.checked_at == at(9)
-    assert [(i.issue_id, i.severity) for i in result.issues] == [("s4-rain", "high"), ("s1-crowded", "medium")]
+    assert [(i.issue_id, i.severity) for i in result.issues] == [
+        ("s4-rain", "high"), ("s1-crowded", "medium"), ("s3-crowded", "medium")  # 감천·부산타워 토요일 요일 규칙
+    ]
     AlertsResponse.model_validate_json(result.model_dump_json())  # 계약 형식
 
 
