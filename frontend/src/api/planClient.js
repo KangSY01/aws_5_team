@@ -39,6 +39,10 @@ export function getBaseUrl() {
   return fromEnv ?? DEFAULT_BASE_URL;
 }
 
+export function getRequestBaseUrl(baseUrl) {
+  return normalizeBaseUrl(baseUrl) ?? (import.meta.env.DEV && hasConfiguredPlanApi() ? "/__busannow_api" : getBaseUrl());
+}
+
 function createAbortError() {
   return new DOMException("요청이 취소되었습니다.", "AbortError");
 }
@@ -67,7 +71,7 @@ export async function requestJson(
 ) {
   if (signal?.aborted) throw createAbortError();
 
-  const base = normalizeBaseUrl(baseUrl) ?? (import.meta.env.DEV && hasConfiguredPlanApi() ? "/__busannow_api" : getBaseUrl());
+  const base = getRequestBaseUrl(baseUrl);
   const url = `${base}${path}`;
 
   // 호출자 signal 과 타임아웃을 하나의 컨트롤러로 합친다.

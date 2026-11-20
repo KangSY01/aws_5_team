@@ -111,6 +111,10 @@ const stopLockCopy = {
   "zh-Hant": ["AI 會保留已鎖定的行程。", "鎖定{place}行程", "解鎖{place}行程"],
 };
 
+const runningLate = {
+  ko: "늦었어요", en: "I’m running late", ja: "遅れそうです", "zh-Hans": "我要迟到了", "zh-Hant": "我要遲到了",
+};
+
 export function getTravelCopy(language) {
   const [intro, prompt, example, submit, title, edit, itinerary, map, schematic, locked, languageLabel, night, loading, empty, network, timeout, http, invalidResponse, retry] = copy[language];
   const [ask, send, close, expand, reduce, ready, messageLabel, sampleTitle, home, chat, navigation] = chatCopy[language];
@@ -124,7 +128,7 @@ export function getTravelCopy(language) {
   const [find, pending, denied, unavailable] = locationLabels[language];
   return {
     location: { find, pending, denied, unavailable },
-    guardian: { check, clear, apply, options, close: closeOptions, noOptions, undo, lock, unlock, crowdingWarning, warning, delayMinutes, delay,
+    guardian: { check, clear, apply, options, close: closeOptions, noOptions, undo, lock, unlock, crowdingWarning, warning, delayMinutes, delay, late: runningLate[language],
       actions: { move_time, reorder, replace, remove } },
     stopLock: { hint: lockHint, label: (place, locked) => (locked ? unlockStop : lockStop).replace("{place}", () => place) },
     emergency: emergencyCopy[language],

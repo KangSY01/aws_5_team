@@ -62,9 +62,10 @@ it.each([
   expect(JSON.parse(third.body)).toEqual({ key, language: "ja" });
 
   if (status === 200) {
-    const overlay = container.querySelector(".translation-image-overlay span");
-    expect(overlay).toHaveTextContent("キムチチゲ");
-    expect(overlay).toHaveStyle({ left: "10%", top: "20%", width: "30%", height: "5%" });
+    const list = container.querySelector(".translation-photo-results");
+    expect(list).toHaveTextContent("김치찌개");
+    expect(list).toHaveTextContent("キムチチゲ");
+    expect(screen.getAllByText("キムチチゲ")).toHaveLength(1);
   } else {
     expect(screen.getByRole("button", { name: "Translate image" })).toBeEnabled();
   }

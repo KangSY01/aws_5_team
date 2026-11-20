@@ -98,6 +98,7 @@ it("runs the demo script, refreshes issue badges, locks a stop, applies a repair
   click(/장면 5 오후 비/);
   await waitFor(() => expect(checkBodies.at(-1).demo).toEqual({ now: "2026-11-28T13:00:00+09:00", weather_preset: "rain-afternoon" }));
   click(/장면 6 늦었어요/);
+  click("I’m running late");
   click("View delay alternatives");
   expect(await screen.findByText("No alternatives available.")).toBeVisible();
   expect(delayBodies).toEqual([{ plan_id: plan.plan_id, delay_min: 30, demo: { now: "2026-11-28T14:00:00+09:00" } }]);
@@ -129,4 +130,29 @@ it("opens the offline demo course at a demo time and restores the normal course 
   expect(screen.getByRole("button", { name: "1. Ordinary stop" })).toBeInTheDocument();
   expect(JSON.parse(localStorage.getItem("busannow.course"))).toEqual(ordinary);
   expect(JSON.parse(localStorage.getItem("busannow.course.demo")).plan.date).toBe("2026-11-28");
+});
+
+it("opens travel phrases independently of emergency help and sends Korean text to speech", async () => {
+  vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+  const fetchMock = vi.fn().mockResolvedValue(Response.json({ content_type: "audio/mpeg", audio_base64: "eA==" }));
+  const play = vi.fn().mockResolvedValue(undefined);
+  vi.stubGlobal("fetch", fetchMock);
+  vi.stubGlobal("Audio", class {
+    play = play;
+    pause() {}
+  });
+  render(<App />);
+  const trigger = screen.getAllByRole("button", { name: "Travel Phrases", exact: true })[0];
+  fireEvent.click(trigger);
+  expect(screen.getByRole("dialog", { name: "Useful Korean Phrases" })).toBeVisible();
+  expect(document.querySelector(".emergency-dialog")).not.toHaveAttribute("open");
+  expect(window.history.state?.busanEmergencyHelp).toBeUndefined();
+  fireEvent.click(screen.getByRole("button", { name: /Could you make it less spicy/ }));
+  const card = screen.getAllByRole("dialog", { name: "Show this to a local" }).at(-1);
+  expect(within(card).getByText("덜 맵게 해 주실 수 있나요?")).toBeVisible();
+  fireEvent.click(within(card).getByRole("button", { name: /Play in Korean/ }));
+  await waitFor(() => expect(play).toHaveBeenCalledOnce());
+  const [[url, request]] = fetchMock.mock.calls;
+  expect(url).toMatch(/\/speak$/);
+  expect(JSON.parse(request.body)).toEqual({ text: "덜 맵게 해 주실 수 있나요?", language: "ko" });
 });

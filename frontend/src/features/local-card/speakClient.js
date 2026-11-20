@@ -1,6 +1,6 @@
 // POST /speak 호출 (D). 형식은 docs/api-contract.md 「POST /speak」: { text, language } → { content_type, audio_base64 }.
 // 현지인 카드는 language "ko" 로 한국어 음성을 받는다. 같은 문장은 한 번만 받아 재사용한다.
-import { getBaseUrl } from "../../api/planClient.js";
+import { getRequestBaseUrl } from "../../api/planClient.js";
 
 const TIMEOUT_MS = 10000;
 const MAX_TEXT = 500; // 계약: text 1~500자
@@ -28,7 +28,7 @@ export async function fetchSpeech(text, language = "ko", { baseUrl, fetchImpl = 
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   let response;
   try {
-    response = await fetchImpl(`${(baseUrl ?? getBaseUrl()).replace(/\/+$/, "")}/speak`, {
+    response = await fetchImpl(`${getRequestBaseUrl(baseUrl)}/speak`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: trimmed, language }),

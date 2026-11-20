@@ -19,6 +19,9 @@ import "./emergency-help.css";
 import PlanList from "./PlanList.jsx";
 import ChatPlaceCards from "./ChatPlaceCards.jsx";
 import GuardianAlternatives from "./GuardianAlternatives.jsx";
+import TravelActionDialog from "./TravelActionDialog.jsx";
+import { LocalCardPicker } from "../features/local-card";
+import { copyFor as localCardCopyFor } from "../features/local-card/phrases.js";
 import { SCENES, useDemoSwitch } from "../features/demo-panel";
 import { demoItineraryPrompt, makeLocalDemoCourse } from "../features/demo-panel/demoCourse.js";
 import TravelPreferences from "./TravelPreferences.jsx";
@@ -210,6 +213,8 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const [alternative, setAlternative] = useState(null);
   const [undoRepair, setUndoRepair] = useState(null);
   const [delayMinutes, setDelayMinutes] = useState("30");
+  const [showDelay, setShowDelay] = useState(false);
+  const [showLocalCard, setShowLocalCard] = useState(false);
   const demo = useDemoSwitch();
   const [scheduleSaveFailed, setScheduleSaveFailed] = useState(false);
   const liveApi = hasConfiguredPlanApi();
@@ -225,6 +230,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const composer = useRef(null);
   const languageMenu = useRef(null);
   const copy = getTravelCopy(language);
+  const localCardCopy = localCardCopyFor(language);
   const plannerCopy = getPlannerCopy(language);
   const languageLabel = copy.languageLabel + ": " + languages[language];
   const plan = course?.plan ?? emptyPlan;
@@ -795,8 +801,17 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
     if (!Number.isInteger(minutes) || minutes < 1 || minutes > 240) return;
     void guardianAction(async () => {
       const result = await delayTravelPlan(plan.plan_id, minutes);
+      setShowDelay(false);
       setAlternative({ plan, demo, repairs: result.repairs, places: result.places });
     });
+  }
+
+  function openDelay() {
+    setGuardianActionError(false);
+    setShowPreferences(false);
+    setOpen(true);
+    setPanel("itinerary");
+    setShowDelay(true);
   }
 
   function renderStopChecks(stop) {
@@ -900,11 +915,49 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
             onDone: () => finishRegions(true), onCancel: () => finishRegions(false),
           }} />
         <header className="travel-header">
-          <div className="travel-brand-group">
-            <span className="travel-brand">Busan<span>Now</span></span>
-            {tripStarted && <span className="trip-status">{copy.traveling}</span>}
+          <div className="travel-brand-column">
+            <div className="travel-brand-group">
+              <span className="travel-brand">Busan<span>Now</span></span>
+              {tripStarted && <span className="trip-status">{copy.traveling}</span>}
+            </div>
+            {tab === "home" && !regionDraft && (currentPlace || mapDetail || tripStarted && liveCourse) && (
+              <div className="travel-map-cards">
+                {currentPlace && (
+                  <div className="trip-next">
+                    <span>{copy.currentPlace}</span>
+                    <strong>{currentPlace}</strong>
+                  </div>
+                )}
+                {tripStarted && liveCourse && (
+                  <div className="travel-tool-actions">
+                    <button type="button" aria-haspopup="dialog" disabled={Boolean(pending)} onClick={openDelay}>{copy.guardian.late}</button>
+                  </div>
+                )}
+                {mapDetail && (
+                  <section id="busan-map-detail" className="map-event-card" data-landmark={Boolean(mapDetail.description)} aria-label={mapDetail.names[language]}>
+                    <button type="button" aria-label={mapDetail.description ? closeLandmark[language] : plannerCopy.closeEvent} onClick={() => setMapDetail(null)}>×</button>
+                    {!mapDetail.description && <small>{plannerCopy.sampleEvent}</small>}
+                    <h2>{mapDetail.names[language]}</h2>
+                    {mapDetail.description ? <p>{mapDetail.description[language]}</p> : (
+                      <>
+                        <p>{formatDate(mapDetail.from, language)}{mapDetail.from !== mapDetail.to && " – " + formatDate(mapDetail.to, language)}</p>
+                        <p>{mapDetail.place.names[language] ?? mapDetail.place.names.en}</p>
+                      </>
+                    )}
+                  </section>
+                )}
+              </div>
+            )}
           </div>
-          <EmergencyHelp copy={copy.emergency} />
+          <div className="travel-map-tools">
+            <EmergencyHelp copy={copy.emergency} />
+            <button type="button" className="travel-phrases" aria-haspopup="dialog" onClick={() => setShowLocalCard(true)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d={tabIcons.chat} />
+              </svg>
+              <span>{localCardCopy.trigger}</span>
+            </button>
+          </div>
           <LanguageTrigger className="travel-language-trigger" label={languageLabel} />
           <div id="travel-language-menu" className="travel-language-menu" ref={languageMenu}
             popover="auto" role="group" aria-label={copy.languageLabel}>
@@ -913,29 +966,6 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
               languageMenu.current.hidePopover();
             }} />
           </div>
-          {tab === "home" && !regionDraft && (currentPlace || mapDetail) && (
-            <div className="travel-map-cards">
-              {currentPlace && (
-                <div className="trip-next">
-                  <span>{copy.currentPlace}</span>
-                  <strong>{currentPlace}</strong>
-                </div>
-              )}
-              {mapDetail && (
-                <section id="busan-map-detail" className="map-event-card" data-landmark={Boolean(mapDetail.description)} aria-label={mapDetail.names[language]}>
-                  <button type="button" aria-label={mapDetail.description ? closeLandmark[language] : plannerCopy.closeEvent} onClick={() => setMapDetail(null)}>×</button>
-                  {!mapDetail.description && <small>{plannerCopy.sampleEvent}</small>}
-                  <h2>{mapDetail.names[language]}</h2>
-                  {mapDetail.description ? <p>{mapDetail.description[language]}</p> : (
-                    <>
-                      <p>{formatDate(mapDetail.from, language)}{mapDetail.from !== mapDetail.to && " – " + formatDate(mapDetail.to, language)}</p>
-                      <p>{mapDetail.place.names[language] ?? mapDetail.place.names.en}</p>
-                    </>
-                  )}
-                </section>
-              )}
-            </div>
-          )}
         </header>
       </div>
       {profile && <ProfilePage copy={copy} plannerCopy={plannerCopy} language={language} onLanguageChange={changeLanguage} />}
@@ -975,6 +1005,9 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
         <div className="chat-content" ref={log} hidden={showTranslation}>
           <div className="chat-messages" role="log" hidden={!showChat}>
             <p className="chat-bubble">{copy.greeting}</p>
+            <div className="travel-tool-actions travel-phrases-desktop">
+              <button type="button" aria-haspopup="dialog" onClick={() => setShowLocalCard(true)}>{localCardCopy.trigger}</button>
+            </div>
             {draft.trim() === demoItineraryPrompt && planError && <p role="alert">{planError}</p>}
             {messages.map((message, index) => {
               if (message.options) return <ChatPlaceCards key={index} message={message} language={language}
@@ -1042,16 +1075,10 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
                     {guardianLoading ? copy.loading : copy.guardian.check}
                   </button>
                   {undoRepair?.applied === plan && <button type="button" disabled={Boolean(pending)} onClick={undoGuardianRepair}>{copy.guardian.undo}</button>}
-                  {(guardian?.error || (guardianActionError && !alternative)) && <p role="alert">{plannerCopy.requestFailed}</p>}
+                  {(guardian?.error || (guardianActionError && !alternative && !showDelay)) && <p role="alert">{plannerCopy.requestFailed}</p>}
                   {guardian?.issues?.length === 0 && <p role="status">{copy.guardian.clear}</p>}
-                  {demo.enabled && demo.now === SCENES[2].now && (
-                    <div className="guardian-delay">
-                      <label>{copy.guardian.delayMinutes}
-                        <input type="number" min="1" max="240" value={delayMinutes} onChange={(event) => setDelayMinutes(event.target.value)} />
-                      </label>
-                      <button type="button" disabled={Boolean(pending) || !(Number(delayMinutes) >= 1 && Number(delayMinutes) <= 240)}
-                        onClick={requestDelay}>{copy.guardian.delay}</button>
-                    </div>
+                  {(tripStarted || demo.enabled && demo.now === SCENES[2].now) && (
+                    <button type="button" aria-haspopup="dialog" disabled={Boolean(pending)} onClick={openDelay}>{copy.guardian.late}</button>
                   )}
                 </section>
               )}
@@ -1093,6 +1120,24 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
           </div>
         )}
       </aside>
+      {showDelay && (
+        <TravelActionDialog title={copy.guardian.late} closeLabel={copy.guardian.close} busy={Boolean(pending)} onClose={() => setShowDelay(false)}>
+          <form className="guardian-delay" onSubmit={requestDelay}>
+            <label>{copy.guardian.delayMinutes}
+              <input type="number" required min="1" max="240" value={delayMinutes} disabled={Boolean(pending)}
+                onChange={(event) => setDelayMinutes(event.target.value)} />
+            </label>
+            <button type="submit" disabled={Boolean(pending)}>{pending === "guardian" ? copy.loading : copy.guardian.delay}</button>
+            {guardianActionError && <p role="alert">{plannerCopy.requestFailed}</p>}
+          </form>
+        </TravelActionDialog>
+      )}
+      {showLocalCard && (
+        <TravelActionDialog title={localCardCopy.listTitle} closeLabel={localCardCopy.close} className="travel-phrases-dialog"
+          onClose={() => setShowLocalCard(false)}>
+          <LocalCardPicker language={language} hideTitle />
+        </TravelActionDialog>
+      )}
       <nav ref={tabBar} className="travel-tabs" data-active-tab={tab} aria-label={copy.navigation} inert={regionDraft !== null}>
         <span className="travel-tab-indicator" aria-hidden="true" />
         {Object.entries(tabIcons).map(([name, path]) => (

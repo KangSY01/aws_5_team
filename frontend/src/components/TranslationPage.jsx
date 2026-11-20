@@ -270,15 +270,6 @@ export default function TranslationPage({ mode, active, language, copy, onInputF
                 {preview && (
                   <div className="translation-image">
                     <img className="translation-preview" src={preview} alt={copy.preview} onError={handlePreviewError} />
-                    <div className="translation-image-overlay" aria-hidden="true">
-                      {photoItems.map(({ bbox, translated }, index) => (
-                        <span key={index} lang={target} style={{
-                          left: `${bbox.left * 100}%`, top: `${bbox.top * 100}%`,
-                          width: `${Math.min(bbox.width, 1 - bbox.left) * 100}%`,
-                          height: `${Math.min(bbox.height, 1 - bbox.top) * 100}%`,
-                        }}>{translated}</span>
-                      ))}
-                    </div>
                   </div>
                 )}
               </>

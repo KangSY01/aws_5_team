@@ -66,17 +66,6 @@
   border-radius: 12px;
 }
 .translation-preview { display: block; width: auto; height: auto; max-width: 100%; max-height: 220px; }
-.translation-image-overlay { position: absolute; inset: 0; pointer-events: none; }
-.translation-image-overlay span {
-  position: absolute;
-  overflow: hidden;
-  background: #145440;
-  color: #fff;
-  font-size: clamp(.56rem, 2.3vw, .76rem);
-  line-height: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .translation-photo-results { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .translation-photo-results li { display: grid; gap: 3px; padding-block: 6px; border-block-end: 1px solid var(--color-border); overflow-wrap: anywhere; }
 .translation-photo-results li :is(span, small) { color: var(--color-muted); }
@@ -120,9 +109,8 @@
 .translation-result { padding: 12px; border: 1px solid #c5dfd2; border-radius: 12px; background: #edf7f2; }
 .translation-result h2 { margin: 0 0 6px; font-size: 14px; }
 .translation-result p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.translation-status section { margin-top: 12px; padding: 12px; border: 1px solid var(--color-border); border-radius: 12px; }
+.translation-status { margin-top: 12px; padding: 12px; border: 1px solid var(--color-border); border-radius: 12px; }
 .translation-status h2 { margin: 0 0 6px; font-size: 1rem; }
-.translation-status section p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 .translation-page[hidden] { display: none; }
 .translation-page .translation-body { padding-block-start: 6px; }

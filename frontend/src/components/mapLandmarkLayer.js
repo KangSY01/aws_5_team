@@ -43,7 +43,10 @@ export function addLandmarkLayer(map, language, onSelect) {
 
   function layout(vectorMap, selectingRegions) {
     const bounds = container.getBoundingClientRect();
-    const occupied = [...container.querySelectorAll(".busan-map-pin, .busan-event-pin:not([hidden]), .busan-location-pin, .leaflet-control-zoom")]
+    const occupied = [
+      ...container.querySelectorAll(".busan-map-pin, .busan-event-pin:not([hidden]), .busan-location-pin, .leaflet-control-zoom"),
+      ...container.parentElement.querySelectorAll(".travel-map-tools > button"),
+    ]
       .map((element) => element.getBoundingClientRect())
       .filter((rect) => rect.width && rect.height);
     const labels = labelLayers.filter((id) => vectorMap?.getLayer(id));

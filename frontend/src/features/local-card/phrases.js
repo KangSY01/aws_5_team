@@ -5,6 +5,7 @@
 export const PHRASES = [
   {
     id: "less_spicy", // 장면 4 대본 문장
+    group: "dining",
     ko: "덜 맵게 해 주실 수 있나요?",
     en: "Could you make it less spicy?",
     ja: "辛さを控えめにしてもらえますか？",
@@ -13,6 +14,7 @@ export const PHRASES = [
   },
   {
     id: "no_spicy",
+    group: "dining",
     ko: "매운 음식을 못 먹어요.",
     en: "I can't eat spicy food.",
     ja: "辛い料理が食べられません。",
@@ -21,6 +23,7 @@ export const PHRASES = [
   },
   {
     id: "recommend",
+    group: "dining",
     ko: "추천 메뉴가 뭐예요?",
     en: "What do you recommend?",
     ja: "おすすめのメニューは何ですか？",
@@ -29,6 +32,7 @@ export const PHRASES = [
   },
   {
     id: "pay_card",
+    group: "dining",
     ko: "카드로 계산할 수 있나요?",
     en: "Can I pay by card?",
     ja: "カードで支払えますか？",
@@ -37,6 +41,7 @@ export const PHRASES = [
   },
   {
     id: "restroom",
+    group: "help",
     ko: "화장실이 어디에 있나요?",
     en: "Where is the restroom?",
     ja: "トイレはどこですか？",
@@ -45,6 +50,7 @@ export const PHRASES = [
   },
   {
     id: "photo",
+    group: "help",
     ko: "사진 좀 찍어 주실 수 있나요?",
     en: "Could you take a photo of us?",
     ja: "写真を撮っていただけますか？",
@@ -53,6 +59,7 @@ export const PHRASES = [
   },
   {
     id: "help",
+    group: "help",
     ko: "좀 도와주실 수 있나요?",
     en: "Could you help me, please?",
     ja: "少し手伝っていただけますか？",
@@ -69,12 +76,21 @@ export function findPhrase(id) {
 
 // 카드 화면 고정 문구 (사용자 언어). 사용자가 보는 화면이라 4개 언어로 둔다.
 export const COPY = {
-  en: { title: "Show this to a local", listTitle: "Phrases to show", speak: "Play in Korean", speaking: "Playing…", loading: "Loading audio…", close: "Close", speakError: "Couldn't play the audio. Show the text instead.", meaning: "Meaning" },
-  ja: { title: "現地の人に見せる", listTitle: "見せるフレーズ", speak: "韓国語で再生", speaking: "再生中…", loading: "音声を準備中…", close: "閉じる", speakError: "音声を再生できませんでした。画面の文字を見せてください。", meaning: "意味" },
-  "zh-Hans": { title: "给当地人看", listTitle: "常用句子", speak: "用韩语播放", speaking: "正在播放…", loading: "正在准备语音…", close: "关闭", speakError: "无法播放语音，请直接出示文字。", meaning: "意思" },
-  "zh-Hant": { title: "給當地人看", listTitle: "常用句子", speak: "用韓語播放", speaking: "正在播放…", loading: "正在準備語音…", close: "關閉", speakError: "無法播放語音，請直接出示文字。", meaning: "意思" },
+  ko: { trigger: "여행 회화", title: "현지인에게 보여주기", listTitle: "바로 쓰는 한국어", speak: "한국어로 듣기", speaking: "재생 중…", loading: "음성을 준비하는 중…", close: "닫기", speakError: "음성을 재생하지 못했어요. 화면의 문장을 보여 주세요.", meaning: "뜻" },
+  en: { trigger: "Travel Phrases", title: "Show this to a local", listTitle: "Useful Korean Phrases", speak: "Play in Korean", speaking: "Playing…", loading: "Loading audio…", close: "Close", speakError: "Couldn't play the audio. Show the text instead.", meaning: "Meaning" },
+  ja: { trigger: "旅行会話", title: "現地の人に見せる", listTitle: "すぐ使える韓国語", speak: "韓国語で再生", speaking: "再生中…", loading: "音声を準備中…", close: "閉じる", speakError: "音声を再生できませんでした。画面の文字を見せてください。", meaning: "意味" },
+  "zh-Hans": { trigger: "旅行会话", title: "给当地人看", listTitle: "即用韩语短句", speak: "用韩语播放", speaking: "正在播放…", loading: "正在准备语音…", close: "关闭", speakError: "无法播放语音，请直接出示文字。", meaning: "意思" },
+  "zh-Hant": { trigger: "旅行會話", title: "給當地人看", listTitle: "即用韓語短句", speak: "用韓語播放", speaking: "正在播放…", loading: "正在準備語音…", close: "關閉", speakError: "無法播放語音，請直接出示文字。", meaning: "意思" },
+};
+
+const phraseListCopy = {
+  ko: { dining: "식당·결제", help: "여행 중 도움", back: "목록으로" },
+  en: { dining: "Dining & payment", help: "Help while traveling", back: "Back to phrases" },
+  ja: { dining: "食事・支払い", help: "旅行中の困りごと", back: "フレーズ一覧へ" },
+  "zh-Hans": { dining: "用餐与付款", help: "旅行求助", back: "返回短句列表" },
+  "zh-Hant": { dining: "用餐與付款", help: "旅行求助", back: "返回短句列表" },
 };
 
 export function copyFor(language) {
-  return COPY[language] ?? COPY.en;
+  return { ...(COPY[language] ?? COPY.en), ...(phraseListCopy[language] ?? phraseListCopy.en) };
 }

@@ -388,6 +388,44 @@
 .guardian-delay { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
 .guardian-delay label { display: grid; gap: 4px; font-size: .8rem; }
 .guardian-delay input { width: 6rem; min-height: 44px; font: inherit; }
+.guardian-delay [role="alert"] { flex-basis: 100%; margin: 0; color: var(--stop-warning, #a33129); }
+.travel-action-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.travel-action-dialog header h2 { margin: 0; }
+.travel-phrases-dialog[open] {
+  --color-bg: #fff;
+  --color-text: #171717;
+  --color-muted: #596269;
+  --color-border: #e5e7e9;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: min(80dvh, calc(var(--visible-height, 100dvh) - 24px));
+  overflow: hidden;
+  padding: 10px 16px 12px;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+.travel-phrases-dialog header { margin-bottom: 4px; }
+.travel-preview .travel-phrases-dialog header button {
+  min-width: 44px;
+  min-height: 44px;
+  margin-inline-end: -6px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #292929;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.travel-tool-actions { display: flex; flex-wrap: wrap; gap: 6px; pointer-events: auto; }
+.travel-preview .travel-tool-actions button {
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  padding: 4px 8px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: .8rem;
+}
 .guardian-alternatives { width: min(420px, calc(100% - 24px)); }
 .guardian-alternatives header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .guardian-alternatives article { padding-block: 10px; border-top: 1px solid var(--color-border); }
@@ -842,6 +880,11 @@
 }
 @media (max-width: 899px) {
   .travel-header .travel-language-trigger { display: none; }
+  .travel-header { align-items: flex-start; }
+  .travel-brand-column { min-width: 0; flex: 1; }
+  .travel-header .travel-brand-group { min-height: 44px; flex-wrap: wrap; }
+  .travel-header .travel-map-cards { position: static; margin-top: 8px; }
+  .chat-messages .travel-phrases-desktop { display: none; }
   .travel-tabs[data-active-tab="translation"] { --tab-slide: 300%; }
   .travel-tabs[data-active-tab="profile"] { --tab-slide: 400%; }
 }
