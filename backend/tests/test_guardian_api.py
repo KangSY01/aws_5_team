@@ -106,10 +106,18 @@ def test_build_context_skips_missing_or_failing_tools():
     assert [i.issue_id for i in response.issues] == ["s1-crowded"]
 
 
-def test_build_context_works_with_current_lookup_module():
-    # 지금 main 의 app/tools/lookup.py (시그니처만 있음)로도 실패하지 않는다
+@pytest.fixture
+def no_lookup_data(monkeypatch):
+    """handler 가 쓰는 기본 조회 도구를 '데이터 없음'으로 고정한다 (실행 환경·도구 구현 상태와 무관하게)."""
+    monkeypatch.setattr(guardian_context, "_default_lookups", lambda: fake_lookups(travel={}))
+
+
+def test_build_context_with_real_lookup_module_in_mock_mode(monkeypatch):
+    # 실제 app/tools/lookup.py (#25) + USE_MOCK=1 샘플: 날씨는 sample_weather.json, 감천은 요일 규칙(ratio null)
+    monkeypatch.setattr(config, "USE_MOCK", True)
     ctx = build_context(PLAN, demo_now=at(9))
-    assert ctx.weather is None and ctx.crowd == {}
+    assert ctx.weather is not None and any(w.has_precipitation for w in ctx.weather)
+    assert "gamcheon-village" not in ctx.crowd
 
 
 def test_with_repair_travel_adds_candidates_for_issue_stops_only():
@@ -186,19 +194,41 @@ def call(method, path, body):
     return result["statusCode"], result["body"]
 
 
-def test_handler_plan_check_uses_guardian():
-    # 실제 lookup.py 를 쓴다. 키가 없어 예보는 건너뛰고, 요일 규칙(감천 토요일)과
-    # 이동 시간 추정표(부산타워 → 해운대 약 52분, 일정 간격 60분 → 여유 8분)가 남는다.
-    # 이동 시간을 알게 되어 감천은 remove 대신 같은 분류 장소로 replace 를 제안한다
+def test_handler_plan_check_uses_guardian(no_lookup_data):
+    # 조회 데이터가 없으면 요일 규칙만 남는다 (감천 토요일 → remove 하나, 계약 예시와 같은 경우)
+    status, body = call("POST", "/plan/check", {"plan_id": PLAN.plan_id, "demo": {"now": at(9).isoformat()}})
+    assert status == 200
+    response = CheckResponse.model_validate_json(body)
+    assert response.checked_at == at(9)
+    assert [i.issue_id for i in response.issues] == ["s1-crowded"]
+    assert [o.action for o in response.repairs["s1-crowded"]] == ["remove"]
+
+
+def test_handler_plan_check_with_real_lookup(monkeypatch):
+    # 실제 lookup.py 를 쓴다. 실행 환경과 무관하게 예보는 건너뛰도록 USE_MOCK·키를 끈다.
+    # 요일 규칙(감천 토요일)과 이동 시간 추정표(부산타워 → 해운대 약 52분, 일정 간격 60분 → 여유 8분)가 남는다.
+    # 감천의 같은 village(흰여울)도 요일 규칙 대상이라 토요일엔 교체해도 혼잡이 남아 replace 는 나오지 않는다
+    monkeypatch.setattr(config, "USE_MOCK", False)
+    monkeypatch.setattr(config, "DATA_GO_KR_KEY", "")
     status, body = call("POST", "/plan/check", {"plan_id": PLAN.plan_id, "demo": {"now": at(9).isoformat()}})
     assert status == 200
     response = CheckResponse.model_validate_json(body)
     assert response.checked_at == at(9)
     assert [i.issue_id for i in response.issues] == ["s1-crowded", "s4-tight_transfer"]
-    assert [o.action for o in response.repairs["s1-crowded"]] == ["replace"]
+    assert "replace" not in {o.action for o in response.repairs["s1-crowded"]}
 
 
-def test_handler_delay_route():
+def test_handler_plan_check_with_mock_samples(monkeypatch):
+    # USE_MOCK=1: B 의 data/weather/2026-11-21.json(15~18시 비) → 해운대 rain high 가 맨 앞
+    monkeypatch.setattr(config, "USE_MOCK", True)
+    status, body = call("POST", "/plan/check", {"plan_id": PLAN.plan_id, "demo": {"now": at(9).isoformat()}})
+    assert status == 200
+    response = CheckResponse.model_validate_json(body)
+    assert [(i.issue_id, i.severity) for i in response.issues][0] == ("s4-rain", "high")
+    assert set(response.repairs) == {i.issue_id for i in response.issues}
+
+
+def test_handler_delay_route(no_lookup_data):
     status, body = call("POST", f"/plan/{PLAN.plan_id}/delay",
                         {"plan_id": PLAN.plan_id, "delay_min": 30, "demo": {"now": at(13, 40).isoformat()}})
     assert status == 200
