@@ -1,0 +1,462 @@
+/* 디자인 실험 (design/giljabi-ui). 레퍼런스 HTML(랜딩 페이지 언어 전환 동작)의 값으로 화면 전체를 덮어쓴다.
+   main.jsx 에서 마지막에 불러온다. 되돌리려면 main.jsx 의 import 한 줄을 지우면 된다.
+   지도: 면 색(육지·녹지·모래·바다)만 바꾸고(public/maps/busan-poster.json), 도로·지명·해안선의 모양과 굵기는 원본 그대로다. */
+
+/* ---------- 팔레트 (레퍼런스 HTML 값) ---------- */
+.travel-preview {
+  --skin-paper: #f5f0e6;   /* 사이드바·패널 배경 */
+  --skin-card: #fffdf8;    /* 카드·말풍선 */
+  --skin-ink: #1c2433;     /* 글자·주 버튼·사용자 말풍선 */
+  --skin-muted: #5a6170;
+  --skin-body: #3a4252;   /* 본문 보조 글자 */
+  --skin-line: #d8cfbe;    /* 카드 테두리 */
+  --skin-divider: #e4dccb; /* 구획선 */
+  --skin-coral: #b83a26;   /* 강조 빨강·혼잡 */
+  --skin-coral-surface: #f6e2dc;
+  --skin-ochre: #d9a441;   /* 금색·보통 */
+  --skin-calm: #2f6f64;    /* 초록·여유·라벨 */
+  --skin-track: #d5cfc0;
+  --skin-sans: "IBM Plex Sans KR", "Pretendard Variable", "Noto Sans CJK KR", "Noto Sans CJK JP", "Noto Sans CJK SC",
+    "Hiragino Sans", "Yu Gothic", "PingFang SC", "Malgun Gothic", system-ui, sans-serif;
+  --skin-serif: "Gowun Batang", Georgia, "Noto Serif KR", "Noto Serif JP", "Source Han Serif", "Yu Mincho", "Batang", serif;
+
+  --color-bg: var(--skin-card);
+  --color-surface: var(--skin-paper);
+  --color-text: var(--skin-ink);
+  --color-muted: var(--skin-muted);
+  --color-border: var(--skin-line);
+  --color-selected: var(--skin-paper);
+  --color-selected-text: var(--skin-ink);
+  --color-action: var(--skin-ink);
+  --color-shadow: #1c243318;
+  --capsule-surface: rgb(255 253 248 / 96%);
+  --coast-coral: var(--skin-coral);
+  --coast-coral-surface: var(--skin-coral-surface);
+  --trip-green: var(--skin-ink);
+  font-family: var(--skin-sans);
+}
+
+/* ---------- 글꼴: 장소 이름·로고는 serif ---------- */
+.travel-preview :is(.stop-item__name, .chat-place-card h3, .guardian-alternative-place h3, .guardian-replacement-heading, .map-event-card h2) {
+  font-family: var(--skin-serif);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.travel-preview .stop-item__name { font-size: 18px; }
+.travel-preview .chat-heading h1 { font-family: var(--skin-sans); font-weight: 600; letter-spacing: 0; }
+
+/* 로고: 임시 로고 이미지 (public/brand/busannow-logo.svg) */
+.travel-preview .travel-brand { display: inline-flex; align-items: center; padding: 8px 12px; }
+.travel-preview .travel-brand__logo { display: block; height: 28px; width: auto; }
+.sidebar-brand .travel-brand__logo { height: 40px; }
+
+/* ---------- 버튼 ---------- */
+.travel-preview :is(.trip-actions button:last-child, .guardian-apply, .planner-actions button[type="submit"]) {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 4px;
+  background: var(--skin-ink);
+  color: var(--skin-paper);
+  font-weight: 600;
+}
+.travel-preview :is(.trip-actions[data-has-stops="true"] button:first-child, .guardian-review button, .guardian-candidate-toggle) {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 6px;
+  background: var(--skin-card);
+  color: var(--skin-ink);
+  font-weight: 600;
+}
+.travel-preview :is(.chat-suggestions button, .activity-chip, .duration-chip, .travel-tool-actions button) {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--skin-ink);
+}
+.travel-preview :is(.chat-suggestions button, .activity-chip, .duration-chip)[aria-pressed="true"] {
+  background: var(--skin-ink);
+  color: var(--skin-card);
+}
+
+/* ---------- 패널·채팅 ---------- */
+.travel-preview .travel-chat { background: var(--skin-paper); border-color: var(--skin-divider); }
+.travel-preview .chat-heading { border-bottom: 1px solid var(--skin-divider); }
+.travel-preview .chat-bubble {
+  border: 1px solid var(--skin-line);
+  border-radius: 12px;
+  background: var(--skin-card);
+  line-height: 1.6;
+}
+.travel-preview .chat-bubble[data-role="user"] {
+  border-color: var(--skin-ink);
+  background: var(--skin-ink);
+  color: var(--skin-card);
+}
+.travel-preview .chat-compose textarea {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 999px;
+  background: var(--skin-card);
+  color: var(--skin-ink);
+}
+.travel-preview .chat-compose button[type="submit"]::before { background: var(--skin-coral); }
+.travel-preview .chat-compose button[type="submit"] { color: #fff; }
+.travel-preview .chat-compose button[type="submit"]:disabled { opacity: .45; }
+
+/* ---------- 카드 ---------- */
+.travel-preview :is(.guardian-candidate, .map-event-card, .trip-next) {
+  border: 1px solid var(--skin-line);
+  border-radius: 6px;
+  background: var(--skin-card);
+  box-shadow: none;
+}
+.travel-preview .chat-place-card {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 6px;
+  background: var(--skin-card);
+  box-shadow: none;
+}
+.travel-preview .chat-place-card { padding: 16px 18px; }
+.travel-preview .chat-place-card h3 { margin: 0 0 6px; font-size: 24px; font-weight: 400; line-height: 1.3; }
+.travel-preview .chat-place-reason strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--skin-calm);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.travel-preview .chat-place-reason span { color: var(--skin-body); line-height: 1.6; }
+
+/* ---------- 일정 목록 ---------- */
+/* 선택 행: 연두 배경 대신 카드 + 잉크 테두리 */
+.travel-preview:not([data-trip-active="true"]) .stop-row:has(.stop-select[aria-pressed="true"]),
+.travel-preview .stop-row:has(.stop-select[aria-current="true"]) {
+  background: var(--skin-card);
+  box-shadow: inset 0 0 0 1.5px var(--skin-ink);
+  color: var(--skin-ink);
+  --color-muted: var(--skin-muted);
+}
+.travel-preview .stop-number {
+  border-radius: 6px;
+  background: var(--skin-ink);
+  color: var(--skin-card);
+}
+.travel-preview .guardian-dot { background: var(--skin-coral); }
+.travel-preview .guardian-stop-controls .guardian-badge[data-crowding="true"] {
+  border-color: transparent;
+  background: var(--skin-coral-surface);
+  color: var(--skin-coral);
+}
+.travel-preview .guardian-review { background: transparent; }
+
+/* ---------- 지도 위 버튼: 잉크 테두리 사각 ---------- */
+.travel-preview .busan-map .leaflet-control-zoom {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 8px;
+  box-shadow: none;
+  overflow: hidden;
+}
+.travel-preview .busan-map .leaflet-control-zoom a {
+  width: 40px;
+  height: 40px;
+  line-height: 38px;
+  background: var(--skin-card);
+  color: var(--skin-ink);
+}
+.travel-preview .busan-map .busan-location-control,
+.travel-preview .travel-language-trigger {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 8px;
+  background: var(--skin-card);
+  color: var(--skin-ink);
+  box-shadow: none;
+}
+
+/* ---------- 하단 탭 ---------- */
+.travel-preview .travel-tabs {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 14px;
+  background: var(--skin-card);
+  color: var(--skin-ink);
+  box-shadow: none;
+}
+.travel-preview .travel-tabs > button { border-radius: 8px; }
+.travel-preview .travel-tabs [aria-current="page"] { background: var(--skin-ink); color: var(--skin-card); }
+
+/* 패널을 열 때 프로그램이 포커스를 옮기는 제목(tabIndex -1)에는 키보드 포커스 테두리를 그리지 않는다 */
+.travel-preview [tabindex="-1"]:focus-visible { outline: none; }
+
+/* =====================================================================
+   화면 구조
+   ===================================================================== */
+
+/* ---------- 데스크톱: 왼쪽 사이드바 + 오른쪽 지도 ---------- */
+@media (min-width: 900px) {
+  .travel-preview[data-sidebar="true"] { grid-template: minmax(0, 1fr) / 380px minmax(0, 1fr); }
+  .travel-preview[data-sidebar="true"] .travel-shell { grid-column: 2; grid-row: 1; }
+  .travel-preview[data-sidebar="true"] .travel-chat {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    width: 380px;
+    height: 100%;
+    margin: 0;
+    border-width: 0 1px 0 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .travel-preview[data-sidebar="true"] .travel-chat > .chat-content { flex: 1 1 auto; min-height: 0; }
+  .travel-preview[data-sidebar="true"] .chat-heading { padding: 12px 20px 10px; }
+  .travel-preview[data-sidebar="true"] .chat-heading :is(.chat-close, .chat-collapse) { display: none; }
+  .travel-preview[data-sidebar="true"] .chat-content { padding: 14px 20px; }
+  .travel-preview[data-sidebar="true"] .chat-compose { padding: 12px 20px 18px; border-top: 1px solid var(--skin-divider); }
+  .travel-preview[data-sidebar="true"] .trip-actions { padding: 10px 20px 18px; }
+
+  .sidebar-brand {
+    display: flex;
+    align-items: center;
+    min-height: 76px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--skin-divider);
+  }
+  .sidebar-brand .travel-brand { padding: 0; border: 0; background: transparent; box-shadow: none; font-size: 1.5rem; }
+
+  .travel-preview[data-sidebar="true"] .travel-brand-group > .travel-brand { display: none; }
+  .travel-preview[data-sidebar="true"] .travel-tabs { left: calc(380px + (100% - 380px) / 2); }
+  .travel-preview[data-sidebar="true"] .travel-tabs [data-tab="home"] { display: none; }
+  body:has(.travel-preview[data-sidebar="true"]) .demo-panel { left: 396px; bottom: 120px; }
+
+  .travel-ask { display: none; }
+}
+
+/* ---------- 모바일: 상단 "무엇이든 물어보세요" 알약 ---------- */
+.travel-ask { display: none; }
+@media (max-width: 899px) {
+  .travel-header { flex-wrap: wrap; }
+  .travel-ask {
+    order: -1;
+    flex: 1 1 calc(100% - 56px);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 50px;
+    padding: 5px 16px 5px 6px;
+    border: 1.5px solid var(--skin-ink);
+    border-radius: 999px;
+    background: var(--skin-card);
+    color: var(--skin-muted);
+    text-align: start;
+    pointer-events: auto;
+  }
+  .travel-ask__mark {
+    display: block;
+    flex: none;
+    width: 34px;
+    height: 34px;
+  }
+  /* 지도 위 비상 도움·여행 문구 버튼: 잉크 테두리 알약 */
+  .travel-preview .travel-map-tools :is(.emergency-help, .travel-phrases) {
+    border: 1.5px solid var(--skin-ink);
+    border-radius: 999px;
+    background: var(--skin-card);
+    color: var(--skin-ink);
+    box-shadow: none;
+  }
+  .travel-preview .travel-map-tools .emergency-help { border-color: var(--skin-coral); color: var(--skin-coral); }
+  .travel-ask__text { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .travel-preview .travel-brand-group > .travel-brand { display: none; }
+  .travel-preview .travel-map-tools { flex-basis: 100%; justify-content: flex-end; }
+}
+
+/* ---------- 지도 일정 마커: 혼잡도 색 사각 타일 + 이름표 ---------- */
+.busan-map-pin {
+  --crowd-fill: #1c2433;
+  --pin-fill: var(--crowd-fill);
+  --pin-ink: #fffdf8;
+  --pin-edge: #fffdf8;
+  overflow: visible;
+}
+.busan-map-pin[data-crowd="calm"] { --crowd-fill: #2f6f64; }
+.busan-map-pin[data-crowd="moderate"] { --crowd-fill: #d9a441; }
+.busan-map-pin[data-crowd="busy"] { --crowd-fill: #b83a26; }
+.busan-map-pin rect {
+  fill: var(--pin-fill);
+  stroke: var(--pin-edge);
+  stroke-width: 2px;
+}
+.busan-map-pin svg { filter: drop-shadow(0 1px 2px #1c243333); }
+.travel-preview:not([data-trip-active="true"]) .busan-map-pin[aria-pressed="true"],
+.busan-map-pin[data-next-stop] {
+  --pin-fill: var(--crowd-fill);
+  --pin-ink: #fffdf8;
+  --pin-edge: #1c2433;
+}
+.busan-map-pin[data-displaced]::before { top: 22px; }
+.busan-map-pin__label {
+  position: absolute;
+  top: 9px;
+  left: calc(100% - 6px);
+  padding: 3px 9px;
+  border: 1.5px solid #1c2433;
+  border-radius: 4px;
+  background: #fffdf8;
+  color: #1c2433;
+  font-family: "IBM Plex Sans KR", "Pretendard Variable", system-ui, sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.busan-map-pin[aria-pressed="true"] .busan-map-pin__label,
+.busan-map-pin[data-next-stop] .busan-map-pin__label {
+  background: #1c2433;
+  color: #fffdf8;
+}
+.busan-visit-line {
+  stroke: #b83a26;
+  stroke-width: 3px;
+  stroke-dasharray: 2 7;
+  stroke-linecap: round;
+  stroke-opacity: .9;
+}
+
+/* 데스크톱: 프로필 화면도 지도 자리(사이드바 오른쪽)에 띄운다 */
+@media (min-width: 900px) {
+  .travel-preview[data-sidebar="true"] .travel-profile { left: 380px; }
+}
+
+/* 이름표를 핀 왼쪽에 붙이는 경우 (지도 오른쪽 끝) */
+.busan-map-pin[data-label-left] .busan-map-pin__label { left: auto; right: calc(100% - 6px); }
+
+/* ---------- 모바일 상단 정리 (레퍼런스 모바일 화면) ---------- */
+@media (max-width: 899px) {
+  .travel-preview .travel-header { align-items: center; row-gap: 10px; }
+  .travel-preview .travel-ask { order: -2; flex: 1 1 0; min-width: 0; }
+  /* 알약 오른쪽 언어 버튼: 잉크색 원 */
+  .travel-preview .travel-header .travel-language-trigger {
+    order: -1;
+    display: grid;
+    flex: none;
+    width: 50px;
+    height: 50px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--skin-ink);
+    color: var(--skin-paper);
+  }
+  .travel-preview .travel-brand-column { order: 0; flex: 1 1 auto; min-width: 0; }
+  .travel-preview .travel-map-tools { order: 1; flex: none; flex-basis: auto; gap: 8px; }
+  /* 비상 도움·여행 문구: 아이콘만 있는 원형 버튼, 글자는 스크린리더용으로 남긴다 */
+  .travel-preview .travel-map-tools :is(.emergency-help, .travel-phrases) {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .travel-preview .travel-map-tools :is(.emergency-help, .travel-phrases) > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  /* 범례: 한 줄로 줄이고 DEMO 버튼 위로 */
+  .crowd-legend { bottom: calc(var(--nav-bottom, 12px) + 132px); padding: 7px 12px; }
+  .crowd-legend p { display: none; }
+}
+
+/* 모바일 상단을 2줄 그리드로: 1줄 = 검색 알약 + 언어, 2줄 = 지도 카드 + 아이콘 버튼 */
+@media (max-width: 899px) {
+  .travel-preview .travel-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: 10px;
+  }
+  .travel-preview .travel-ask { grid-column: 1; grid-row: 1; }
+  .travel-preview .travel-header .travel-language-trigger { grid-column: 2; grid-row: 1; }
+  .travel-preview .travel-brand-column { grid-column: 1; grid-row: 2; }
+  .travel-preview .travel-map-tools { grid-column: 2; grid-row: 2; display: flex; flex-direction: row; }
+  .travel-preview .travel-brand-group:not(:has(.trip-status)) { display: none; }
+}
+
+/* ---------- 데스크톱 사이드바 접기·펼치기 탭 ---------- */
+.sidebar-toggle { display: none; }
+@media (min-width: 900px) {
+  .travel-preview .sidebar-toggle {
+    position: absolute;
+    z-index: 5;
+    top: 50%;
+    left: 0;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    min-width: 24px;
+    height: 56px;
+    padding: 0;
+    border: 1.5px solid var(--skin-ink);
+    border-left: 0;
+    border-radius: 0 8px 8px 0;
+    background: var(--skin-card);
+    color: var(--skin-ink);
+    transform: translateY(-50%);
+  }
+  .travel-preview[data-sidebar="true"] .sidebar-toggle { left: 380px; }
+  .travel-preview .sidebar-toggle svg { width: 18px; height: 18px; }
+  .travel-preview .sidebar-toggle:focus-visible { outline: 2px solid var(--skin-ink); outline-offset: 2px; }
+}
+
+/* ---------- 모바일: 비상 도움·여행 문구 = 아이콘 + 짧은 글자 ---------- */
+@media (max-width: 899px) {
+  .travel-preview .travel-map-tools :is(.emergency-help, .travel-phrases) {
+    width: auto;
+    height: 38px;
+    min-height: 38px;
+    gap: 5px;
+    padding: 0 12px 0 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .travel-preview .travel-map-tools :is(.emergency-help, .travel-phrases) svg { width: 18px; height: 18px; }
+  .travel-preview .travel-map-tools .emergency-help::after { content: "Help" / ""; }
+  .travel-preview .travel-map-tools .travel-phrases::after { content: "Phrases" / ""; }
+  .travel-preview:lang(ko) .travel-map-tools .emergency-help::after { content: "비상" / ""; }
+  .travel-preview:lang(ko) .travel-map-tools .travel-phrases::after { content: "문구" / ""; }
+  .travel-preview:lang(ja) .travel-map-tools .emergency-help::after { content: "緊急" / ""; }
+  .travel-preview:lang(ja) .travel-map-tools .travel-phrases::after { content: "会話" / ""; }
+  .travel-preview:lang(zh-Hans) .travel-map-tools .emergency-help::after { content: "紧急" / ""; }
+  .travel-preview:lang(zh-Hans) .travel-map-tools .travel-phrases::after { content: "会话" / ""; }
+  .travel-preview:lang(zh-Hant) .travel-map-tools .emergency-help::after { content: "緊急" / ""; }
+  .travel-preview:lang(zh-Hant) .travel-map-tools .travel-phrases::after { content: "會話" / ""; }
+}
+
+/* 모바일 상단 3줄: 1 = 알약 + 언어, 2 = 아이콘 버튼(오른쪽), 3 = 지도 카드 */
+@media (max-width: 899px) {
+  .travel-preview .travel-map-tools { grid-column: 1 / -1; grid-row: 2; justify-self: end; }
+  .travel-preview .travel-brand-column { grid-column: 1 / -1; grid-row: 3; }
+  .travel-preview .travel-map-tools :is(.emergency-help, .travel-phrases) { white-space: nowrap; }
+}
+
+/* 선택된 칩: 기존 CSS 의 연한 초록 캡슐(::before)이 잉크 배경 위를 덮어 글자가 안 보이던 문제.
+   캡슐도 잉크색으로 맞춘다. 직접 입력 칩(.activity-custom-chip)은 선택 상태가 아니므로 종이색 */
+.travel-preview :is(.activity-chip, .duration-chip):is([aria-pressed="true"], [data-selected="true"], :has(input:checked)) {
+  color: var(--skin-paper);
+}
+.travel-preview :is(.activity-chip, .duration-chip):is([aria-pressed="true"], [data-selected="true"], :has(input:checked))::before {
+  background: var(--skin-ink);
+  border-color: var(--skin-ink);
+}
+.travel-preview .activity-chip.activity-custom-chip:not([aria-pressed="true"], [data-selected="true"], :has(input:checked))::before {
+  background: var(--skin-paper);
+}
+
+/* 모바일: 비 예보 배너(지혜님 연결, .travel-rain-notice)는 상단 4번째 줄 전체 폭 */
+@media (max-width: 899px) {
+  .travel-preview .travel-header > .travel-rain-notice { grid-column: 1 / -1; grid-row: 4; min-width: 0; }
+  .travel-preview .travel-rain-notice .rain-notice { width: 100%; box-sizing: border-box; }
+}

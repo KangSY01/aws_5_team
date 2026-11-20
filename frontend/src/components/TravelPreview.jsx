@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TravelerProfileForm, { travelerCopy } from "./TravelerProfile.jsx";
-import { ChatSources, RainNotice } from "../features/data-notices";
+import { ChatSources, CrowdLegend, RainNotice } from "../features/data-notices";
 import { getTravelCopy, languages } from "../constants/travelCopy.js";
 import { closeLandmark, mapLandmarks } from "../constants/mapLandmarks.js";
 import { getPlannerCopy, transportPreferenceIds, durationIds, areaIds } from "../constants/plannerCopy.js";
@@ -37,6 +37,41 @@ import TravelPreferences from "./TravelPreferences.jsx";
 import TripAlbum from "../features/trip-poster/TripAlbum.jsx";
 import { saveCompletedTrip } from "../features/trip-poster/album.js";
 import "./travel-preview.css";
+
+// 디자인 실험(design/giljabi-ui): 넓은 화면에서는 왼쪽 사이드바 패널을 항상 연다.
+// jsdom 처럼 matchMedia 가 없으면 false 라 기존 동작과 같다.
+// 임시 로고 (디자인 실험). public/brand/ 의 SVG
+const brandLogo = import.meta.env.BASE_URL + "brand/busannow-logo.svg";
+const brandSymbol = import.meta.env.BASE_URL + "brand/busannow-symbol.svg";
+
+const WIDE_QUERY = "(min-width: 900px)";
+// 모바일 검색 알약 문구 (레퍼런스 "Search or ask Giljabi" 방식, 이름은 BusanNow)
+const ASK_COPY = {
+  ko: "BusanNow에게 물어보세요",
+  en: "Search or ask BusanNow",
+  ja: "BusanNowに聞いてみる",
+  "zh-Hans": "向 BusanNow 提问",
+  "zh-Hant": "向 BusanNow 提問",
+};
+// 데스크톱 사이드바 접기·펼치기 버튼 이름
+const SIDEBAR_TOGGLE_COPY = {
+  ko: ["패널 접기", "패널 펼치기"],
+  en: ["Collapse panel", "Expand panel"],
+  ja: ["パネルを閉じる", "パネルを開く"],
+  "zh-Hans": ["收起面板", "展开面板"],
+  "zh-Hant": ["收起面板", "展開面板"],
+};
+function useWideScreen() {
+  const [wide, setWide] = useState(() => Boolean(globalThis.matchMedia?.(WIDE_QUERY).matches));
+  useEffect(() => {
+    const media = globalThis.matchMedia?.(WIDE_QUERY);
+    if (!media) return undefined;
+    const update = () => setWide(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  return wide;
+}
 
 const recommendationCatalog = buildPlacesById([...catalogPlaces, ...regionalPlaces]);
 
@@ -256,6 +291,8 @@ export default function TravelPreview({ night = false, demoMode = false, travele
   const [translationExpanded, setTranslationExpanded] = useState(false);
   const page = route;
   const [open, setOpen] = useState(false);
+  const wide = useWideScreen();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [course, setCourse] = useState(() => {
     const saved = loadSaved(courseKey);
     return Array.isArray(saved?.plan?.stops) && Array.isArray(saved?.places) ? saved : null;
@@ -341,9 +378,12 @@ export default function TravelPreview({ night = false, demoMode = false, travele
   const profile = page === "profile";
   const isMap = page === "map";
   const translationCopy = getTranslationCopy(language);
-  const baseTab = isMap ? open ? panel : "home" : page;
+  // 넓은 화면은 프로필 화면에서도 사이드바를 유지한다(하단 탭 위치가 바뀌지 않게). 지도 상세 카드는 홈 탭이 아니어도 보인다
+  const sidebar = wide && !sidebarCollapsed;
+  const sidebarMap = sidebar && isMap;
+  const baseTab = isMap ? open || sidebarMap ? panel : "home" : page;
   const showTranslation = translationMode !== null;
-  const sheetOpen = open || showTranslation;
+  const sheetOpen = open || showTranslation || sidebar;
   const sheetExpanded = showTranslation ? translationExpanded : expanded;
   const tab = showTranslation || translationMenu ? "translation" : baseTab;
   const showChat = panel === "chat";
@@ -829,8 +869,8 @@ export default function TravelPreview({ night = false, demoMode = false, travele
           const { options, text } = chatRecommendations(answer, chat.sources, placesById, language);
           setMessages((previous) => [
             ...previous,
-            ...(options.length ? [{ options, readOnly: true, lang: answerLanguage }] : []),
             { text, sources: chat.sources, lang: answerLanguage, role: "assistant" },
+            ...(options.length ? [{ options, readOnly: true, lang: answerLanguage }] : []),
           ]);
         } else {
           const query = activityTextKey(message).replace(/\s/g, "");
@@ -1064,24 +1104,44 @@ export default function TravelPreview({ night = false, demoMode = false, travele
     }
   }
 
+  // 지도 마커 혼잡도 (디자인 실험): Guardian 점검의 crowded 이슈. high=busy, medium=moderate, 없음·low=calm. 점검 전이면 null
+  const crowdLevels = guardian?.plan === plan && Array.isArray(guardian.issues)
+    ? Object.fromEntries(stops.map((stop) => {
+      const issue = guardian.issues.find((item) => item.stop_id === stop.stop_id && item.type === "crowded");
+      return [stop.stop_id, issue?.severity === "high" ? "busy" : issue?.severity === "medium" ? "moderate" : "calm"];
+    }))
+    : null;
+
+  function openChat() {
+    navigatePage("map");
+    setShowPreferences(false);
+    setPanel("chat");
+    setOpen(true);
+  }
+
   return (
     <main ref={root} className="travel-preview" data-trip-active={tripStarted} data-night={night} data-page={page} data-sheet={sheetOpen ? "open" : "closed"} data-expanded={sheetExpanded}
-      data-compact-itinerary={!showTranslation && !showChat && !showPreferences && !stops.length} data-region-picker={regionDraft !== null} lang={language}>
+      data-compact-itinerary={!showTranslation && !showChat && !showPreferences && !stops.length} data-region-picker={regionDraft !== null} data-sidebar={sidebar} lang={language}>
       <div className="travel-shell" inert={!isMap} aria-hidden={!isMap}>
         <BusanMap plan={plan} places={places} events={events} onEventSelect={setMapDetail} onLandmarkSelect={setMapDetail}
           language={language} label={copy.map} locationCopy={copy.location}
-          selectedId={selectedId} nextStopId={nextStop?.stop_id} onSelect={setSelectedId} focusRequest={mapFocus}
+          selectedId={selectedId} nextStopId={nextStop?.stop_id} onSelect={setSelectedId} focusRequest={mapFocus} crowdLevels={crowdLevels}
           regionPicker={regionDraft && {
             selected: regionDraft, onChange: setRegionDraft, copy: plannerCopy,
             onDone: () => finishRegions(true), onCancel: () => finishRegions(false),
           }} />
+        {crowdLevels && stops.length > 0 && !regionDraft && <CrowdLegend language={language} />}
         <header className="travel-header">
+          <button type="button" className="travel-ask" aria-controls="travel-chat" onClick={openChat}>
+            <img className="travel-ask__mark" src={brandSymbol} alt="" aria-hidden="true" />
+            <span className="travel-ask__text">{ASK_COPY[language] ?? ASK_COPY.en}</span>
+          </button>
           <div className="travel-brand-column">
             <div className="travel-brand-group">
-              <span className="travel-brand">Busan<span>Now</span></span>
+              <span className="travel-brand"><img className="travel-brand__logo" src={brandLogo} alt="BusanNow" /></span>
               {tripStarted && <span className="trip-status">{copy.traveling}</span>}
             </div>
-            {tab === "home" && !regionDraft && (currentPlace || mapDetail) && (
+            {(tab === "home" || sidebarMap) && !regionDraft && (currentPlace || mapDetail) && (
               <div className="travel-map-cards">
                 {currentPlace && (
                   <div className="trip-next">
@@ -1137,8 +1197,18 @@ export default function TravelPreview({ night = false, demoMode = false, travele
       {profile && <ProfilePage copy={copy} language={language} onLanguageChange={changeLanguage}
         demoMode={demoMode} albumRevision={albumRevision} archiveError={archiveError}
         traveler={traveler} onTravelerSave={onTravelerSave} />}
+      {wide && isMap && (
+        <button type="button" className="sidebar-toggle" aria-controls="travel-chat" aria-expanded={!sidebarCollapsed}
+          aria-label={(SIDEBAR_TOGGLE_COPY[language] ?? SIDEBAR_TOGGLE_COPY.en)[sidebarCollapsed ? 1 : 0]}
+          onClick={() => setSidebarCollapsed((value) => !value)}>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d={sidebarCollapsed ? "m9 6 6 6-6 6" : "m15 6-6 6 6 6"} />
+          </svg>
+        </button>
+      )}
       <aside id="travel-chat" className="travel-chat" data-translation={showTranslation} hidden={!sheetOpen} inert={!sheetOpen} aria-hidden={!sheetOpen} aria-labelledby="travel-panel-title"
         onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
+        {sidebar && <div className="sidebar-brand"><img className="travel-brand__logo" src={brandLogo} alt="BusanNow" /></div>}
         <div className="chat-grab" aria-hidden="true"
           onPointerDown={(event) => {
             dragStart.current = event.clientY;
@@ -1407,6 +1477,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
                 return;
               }
               navigatePage("map");
+              if (name !== "home") setSidebarCollapsed(false);
               if (name === "home") {
                 setOpen(false);
                 setExpanded(false);
