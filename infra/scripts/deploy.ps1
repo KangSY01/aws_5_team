@@ -1,10 +1,12 @@
 ﻿# AgentCore Runtime(Hello) 배포: zip 빌드 -> S3 업로드 -> sam deploy
-# 실행 (infra/ 에서): .\scripts\deploy.ps1 [-FakeLlm 1] [-ModelId <id>]
+# 실행 (infra/ 에서): .\scripts\deploy.ps1 [-FakeLlm 1] [-ModelId <id>] [-ReviewOnly]
+# -ReviewOnly: zip 업로드와 변경 세트 생성까지만 하고 스택은 바꾸지 않는다. 교체(Replacement)·삭제(Remove)가 있는지 본 뒤 옵션 없이 다시 실행한다
 # 필요: uv, AWS CLI, SAM CLI, 자격 증명(ap-northeast-2 에 배포 권한)
 param(
     [ValidateSet("0", "1")] [string]$FakeLlm = "0",
     [string]$ModelId = $(if ($env:BEDROCK_MODEL_ID) { $env:BEDROCK_MODEL_ID } else { "global.anthropic.claude-haiku-5-5" }),
-    [string]$StackName = "busan-guide-agent"
+    [string]$StackName = "busan-guide-agent",
+    [switch]$ReviewOnly   # 변경 세트만 만들어 보여 주고 적용하지 않는다
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,6 +20,19 @@ function Assert-Ok($what) {
 $Account = aws sts get-caller-identity --query Account --output text --region $Region
 Assert-Ok "자격 증명 확인"
 $Bucket = "busan-guide-agentcore-code-$Account-$Region"
+
+# 공용 스택(busan-guide-base)이 만든 데이터 접근 정책 ARN 과 세션 테이블 이름. 값은 코드에 두지 않고 매번 조회한다
+function Get-BaseOutput($key) {
+    $value = aws cloudformation describe-stacks --stack-name busan-guide-base --region $Region `
+        --query "Stacks[0].Outputs[?OutputKey=='$key'].OutputValue" --output text
+    Assert-Ok "busan-guide-base 출력 $key 조회"
+    if (-not $value -or $value -eq "None") { throw "busan-guide-base 스택에 $key 출력이 없습니다." }
+    return $value.Trim()
+}
+$PolicyArn = Get-BaseOutput "DataAccessPolicyArn"
+$TableName = Get-BaseOutput "SessionsTableName"
+Write-Host "데이터 접근 정책: $PolicyArn"
+Write-Host "DynamoDB 테이블: $TableName"
 
 # 1) zip 빌드
 $buildOut = uv run --no-project python scripts/build_zip.py
@@ -43,15 +58,32 @@ aws s3 cp $ZipPath "s3://$Bucket/$Key" --region $Region
 Assert-Ok "zip 업로드"
 
 # 3) 배포 (template.yaml 은 51,200 바이트 미만이라 버킷 없이도 되지만, 같은 버킷을 재사용한다)
+$ExtraArgs = @()
+if ($ReviewOnly) { $ExtraArgs += "--no-execute-changeset" }
 sam deploy `
+    @ExtraArgs `
     --template-file template.yaml `
     --stack-name $StackName `
     --region $Region `
     --capabilities CAPABILITY_IAM `
     --s3-bucket $Bucket --s3-prefix sam `
     --no-confirm-changeset --no-fail-on-empty-changeset `
-    --parameter-overrides "CodeBucket=$Bucket" "CodeKey=$Key" "BedrockModelId=$ModelId" "FakeLlm=$FakeLlm"
+    --parameter-overrides "CodeBucket=$Bucket" "CodeKey=$Key" "BedrockModelId=$ModelId" "FakeLlm=$FakeLlm" "DataAccessPolicyArn=$PolicyArn" "DynamoDbTable=$TableName"
 Assert-Ok "sam deploy"
+
+if ($ReviewOnly) {
+    $ChangeSet = aws cloudformation list-change-sets --stack-name $StackName --region $Region `
+        --query "reverse(sort_by(Summaries,&CreationTime))[0].ChangeSetName" --output text
+    Assert-Ok "변경 세트 조회"
+    Write-Host ""
+    Write-Host "변경 세트: $ChangeSet (적용하지 않음)"
+    aws cloudformation describe-change-set --stack-name $StackName --change-set-name $ChangeSet --region $Region `
+        --query "Changes[].ResourceChange.{Action:Action,Logical:LogicalResourceId,Type:ResourceType,Replacement:Replacement}" --output table
+    Assert-Ok "변경 세트 내용 조회"
+    Write-Host "Action 이 Remove 이거나 Replacement 가 True/Conditional 이면 적용하지 말고 알려 주세요."
+    Write-Host "적용: 같은 값으로 -ReviewOnly 없이 다시 실행. 이 변경 세트를 지우려면: aws cloudformation delete-change-set --stack-name $StackName --change-set-name $ChangeSet --region $Region"
+    return
+}
 
 $Arn = aws cloudformation describe-stacks --stack-name $StackName --region $Region `
     --query "Stacks[0].Outputs[?OutputKey=='AgentRuntimeArn'].OutputValue" --output text
