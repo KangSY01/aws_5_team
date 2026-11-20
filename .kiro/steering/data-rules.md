@@ -75,14 +75,15 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - 환승역 6곳(Seomyeon, Yeonsan, Dongnae, Suyeong, Deokcheon, Minam)은 한 항목으로 합치고 좌표는 행들의 평균입니다. `lines`는 참고용이며 노선·환승을 단정하지 마십시오.
 - 동해선·경전철 역은 없습니다. `nearest_station` 중 표에 없는 값은 `OSIRIA`(해동용궁사) 하나이고, 스크립트가 경고로 출력합니다.
 - CSV의 `name_en` 5개(교대, 부산대, 경성대부경대, 국제금융센터부산은행, 부산대양산캠퍼스)는 원본의 이중 이스케이프(`Nat''''''''l`)를 작은따옴표 1개로 복원했습니다(`Pusan Nat'l Univ.` 등). 다른 값은 원본 그대로입니다.
+- `names`(`ja`, `zh-Hans`, `zh-Hant`, 키는 `places.json`의 `names`와 같음)는 2호선 역에만 있습니다. 국가철도공단 부산 2호선 역명 데이터(기준일 2026-06-30)를 옮긴 `backend/scripts/busan_line2_station_names.csv`의 한글 역명을 '역'과 괄호 표기를 떼고 `name_ko`와 비교해 넣습니다(일본어 40곳, 간체·번체 39곳). 이름이 안 맞는 2호선 역 3곳(시립미술관, 경성대부경대, 국제금융센터부산은행)과 2호선 밖 역, 빈 칸은 넣지 않고 지어내지 않습니다.
 - 도구: `get_return_options` (`backend/app/tools/return_options.py`). 역 사이 시간은 이 표의 좌표로 카카오 대중교통 경로를 실시간 호출해 쓰고(위 「카카오 대중교통 경로」), 실패·`USE_MOCK=1`·키 없음이면 이 표의 좌표와 `travel_times.json`의 `rule`로 계산한 추정으로 대체합니다(`time_source`로 구분). 역 혼잡과 혼잡 시간대는 규칙 기반 가정입니다(실측·실시간 아님).
 
 ## 막차 시각 (부산교통공사 표준 열차시각표)
-- API: [공공데이터포털 15000522 부산 도시철도 열차시각표 조회 서비스](https://www.data.go.kr/data/15000522/openapi.do), 서비스 URL `https://data.humetro.busan.kr/voc/api/open_api_process.tnn`.
-- 파라미터: `serviceKey`, `scode`(CSV 역번호), `day`(`1` 평일 / `2` 토요일 / `3` 일요일·공휴일), `updown`(`0` 상행 / `1` 하행), `act=json`. 응답의 `hour`·`time` 중 가장 늦은 값을 막차로 씁니다.
+- API: 공공데이터포털 「부산교통공사_부산도시철도 열차시각표 조회 서비스_GW」, 서비스 URL `https://apis.data.go.kr/B551542/trainTime/getTrainTime`.
+- 파라미터: `serviceKey`, `pageNo`, `numOfRows`, `scode`(CSV 역번호), `stime`·`etime`(시분 4자리), `enum`, `act=json`. 응답에는 `day`·`updown` 요청 값과 관계없이 모든 요일·방향이 섞여 오므로 두 값은 고정해 보내고, 역마다 시간 구간 두 개(22:00~23:59, 00:00~01:30)만 받아 코드에서 `scode`·`line`·`dayType`(`1` 평일 / `2` 토요일 / `3` 일요일·공휴일)·`updown`(`0` 상행 / `1` 하행)으로 거릅니다. 목적지 전에 끝나는 열차(`endcode`가 목적지에 못 미침)는 빼고, 남은 `arrtime` 중 가장 늦은 값을 막차로 씁니다(자정 뒤는 24시 이상으로 둠).
 - `uv run --env-file .env python -m scripts.fetch_last_trains --reuse-raw`가 Haeundae·Dongbaek·Jung-dong의 Seomyeon 방향과 Seomyeon의 Haeundae 방향을 요일 구분별로 받아 `backend/app/data/last_trains.json`에 막차만 저장합니다. 같은 raw는 다시 호출하지 않으며 `--offline`도 지원합니다.
 - 역번호는 `backend/scripts/busan_stations.csv`의 2호선 행(203·204·202·219)만 읽습니다. 방향은 2호선 역번호가 작아지는 상행(`0`, 해운대 방향)과 커지는 하행(`1`, 서면 방향)으로 정합니다.
-- `get_return_options`의 `shift_later`는 해당 역·방향·요일 데이터가 있으면 제안 출발 시각과 막차를 비교합니다. 막차 뒤면 `last_train_missed`, 막차 시각과 같거나 앞이면 막차 경고가 없습니다. 행이나 파일이 없으면 `last_train_unknown`입니다.
+- `get_return_options`는 `baseline`과 모든 안에 그 역에서 도착역 방향 막차 시각(`last_train`)을 붙이고, 해당 역·방향·요일 데이터가 있으면 역에 닿는 시각(출발 시각, 도보안은 걸어서 그 역에 도착하는 시각)과 막차를 비교합니다. 막차 뒤면 `last_train_missed`, 막차 시각과 같거나 앞이면 막차 경고가 없습니다. 행이나 파일이 없으면 `last_train_unknown`입니다.
 - 평일 공휴일을 식별할 휴일 달력은 저장하지 않았습니다. 코드는 월~금은 평일, 토요일은 토요일, 일요일은 일요일·공휴일 표를 고릅니다. 표준 도착시각이므로 실제 운행 시각과 다를 수 있습니다.
 
 ## 대중교통 (역 표와 좌표 기반 추정)
