@@ -223,7 +223,7 @@ Schedule Guardian 으로 일정을 점검한다. LLM 을 호출하지 않는다.
             }
           }
         ],
-        "metrics": { "changed": 1, "kept": 3, "extra_travel_min": 0, "locked_kept": true }
+        "metrics": { "changed": 0, "kept": 4, "extra_travel_min": 0, "locked_kept": true }
       }
     ],
     "i2": [
@@ -275,5 +275,7 @@ Schedule Guardian 으로 일정을 점검한다. LLM 을 호출하지 않는다.
 - `issues`: `Issue` 목록. `type` 은 `crowded` / `rain` / `closed` / `tight_transfer`, `severity` 는 `low` / `medium` / `high`. 문제가 없으면 `[]`.
 - `repairs`: `issue_id` → `RepairOption` 목록. 변경이 작은 순서 (시간 이동 → 순서 변경 → 교체 → 제외).
   `action` 은 `move_time` / `reorder` / `replace` / `remove`.
+- `metrics.changed` 는 장소가 교체·제거된 Stop 수다. 시각·순서만 바뀐 Stop 은 세지 않는다 (시간만 옮긴 해결안은 `changed: 0`).
+  시각이 바뀐 Stop 은 모두 `changes` 에 들어 있다.
 - `places`: `repairs` 에 새로 등장하는 장소의 `Place` 목록 (교체 후보 표시용). 없으면 `[]`.
 - 해결안을 적용하려면 프론트엔드가 `changes` 를 일정에 반영해 `PUT /plan/{plan_id}` 로 저장한다.

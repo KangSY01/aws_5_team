@@ -40,7 +40,7 @@
             }
           }
         ],
-        "metrics": { "changed": 1, "kept": 3, "extra_travel_min": 0, "locked_kept": true }
+        "metrics": { "changed": 0, "kept": 4, "extra_travel_min": 0, "locked_kept": true }
       }
     ],
     "i2": [
