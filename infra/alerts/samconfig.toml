@@ -1,0 +1,11 @@
+version = 0.1
+[default.global.parameters]
+stack_name = "busan-guide-alerts"
+[default.validate.parameters]
+lint = true
+[default.deploy.parameters]
+stack_name = "busan-guide-alerts"
+region = "ap-northeast-2"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+fail_on_empty_changeset = false

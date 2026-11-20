@@ -1,7 +1,8 @@
 """대화 에이전트 시스템 프롬프트 (임시, 에이전트 담당).
 
-D 의 app/prompts.py 가 아직 비어 있어서 docs/prompt-review.md 의 제안 전문을 바탕으로 여기에 둔다.
-D 가 prompts.py 를 구현하면 app/agent.py 의 build_system_prompt 호출만 그쪽 함수로 바꾼다 (같은 인자를 받는다).
+[더 이상 쓰지 않는다] app/agent.py 는 D 의 최종 프롬프트(app/prompts.py)를 쓴다.
+이 파일을 남겨 둔 이유: D 의 tests/test_prompts.py 가 두 함수의 시그니처를 비교하려고 이 모듈을 import 한다.
+D 와 함께 그 테스트를 정리할 때 이 파일도 지운다.
 
 모델이 읽는 문장이라 영어로 쓴다 (tech.md).
 """

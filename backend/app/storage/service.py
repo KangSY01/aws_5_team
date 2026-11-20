@@ -3,6 +3,8 @@
 키 구조 (단일 테이블, pk + sk):
   일정  pk=PLAN#<plan_id>        sk=META  plan(Plan 의 JSON 맵), updated_at
   세션  pk=SESSION#<session_id>  sk=META  SessionState 필드 (session_id, plan_id, profile, created_at, updated_at)
+  알림  pk=PLAN#<plan_id>        sk=ALERTS  AlertsResponse 필드 (plan_id, checked_at, issues), updated_at
+        예약 점검(guardian/scheduled.py)의 마지막 결과. 같은 키에 덮어쓰고 일정의 META 항목은 건드리지 않는다.
 
 규칙:
 - 쓰기 전에 Pydantic 모델로 다시 검증한다. 읽을 때도 검증하고, 맞지 않으면 StorageError.
@@ -23,6 +25,7 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 
 from app import config
+from app.models.api import AlertsResponse
 from app.models.plan import Plan, Profile
 from app.storage.backends import Backend, ItemExists, ItemMissing, MemoryBackend
 from app.storage.errors import (
@@ -38,6 +41,8 @@ from app.storage.models import SessionState
 logger = logging.getLogger(__name__)
 
 _SAMPLE_PLAN_PATH = Path(__file__).parent.parent / "data" / "sample_plan.json"
+PLAN_PK_PREFIX = "PLAN#"
+ALERTS_SORT_KEY = "ALERTS"
 
 
 def new_plan_id() -> str:
@@ -49,7 +54,7 @@ def new_session_id() -> str:
 
 
 def _plan_pk(plan_id: str) -> str:
-    return f"PLAN#{plan_id}"
+    return f"{PLAN_PK_PREFIX}{plan_id}"
 
 
 def _session_pk(session_id: str) -> str:
@@ -127,6 +132,30 @@ class Storage:
     def _require_plan_exists(self, plan_id: str) -> None:
         if self._backend.get(_plan_pk(plan_id)) is None:
             raise PlanNotFoundError(plan_id)
+
+    def list_plan_ids(self) -> list[str]:
+        """저장된 일정의 plan_id 전부 (정렬, 알림 항목 제외). 예약 점검 대상 목록용이며 날짜로는 거르지 않는다."""
+        return [pk.removeprefix(PLAN_PK_PREFIX) for pk in self._backend.list_pks(PLAN_PK_PREFIX)]
+
+    # ---- 알림 (예약 점검 결과) ----
+
+    def save_alerts(self, alerts: AlertsResponse) -> AlertsResponse:
+        """예약 점검 결과를 저장한다. 같은 일정의 이전 결과는 덮어쓰고, 일정(META)은 바꾸지 않는다. 없는 일정이면 PlanNotFoundError."""
+        alerts = _validated(AlertsResponse, alerts)
+        _require_id(alerts.plan_id, "plan_id")
+        self._require_plan_exists(alerts.plan_id)  # 없는 일정의 알림이 남지 않게 한다
+        attrs = {**alerts.model_dump(mode="json"), "updated_at": self._clock().isoformat()}
+        self._backend.put(_plan_pk(alerts.plan_id), attrs, sk=ALERTS_SORT_KEY)
+        return alerts
+
+    def get_alerts(self, plan_id: str) -> AlertsResponse:
+        """마지막 예약 점검 결과. 아직 점검 전이면 checked_at 이 None 이고 issues 가 빈 응답. 없는 일정이면 PlanNotFoundError."""
+        _require_id(plan_id, "plan_id")
+        self._require_plan_exists(plan_id)
+        item = self._backend.get(_plan_pk(plan_id), sk=ALERTS_SORT_KEY)
+        if item is None:
+            return AlertsResponse(plan_id=plan_id, checked_at=None, issues=[])
+        return _load(AlertsResponse, {name: item.get(name) for name in AlertsResponse.model_fields}, "알림")
 
     # ---- 세션 ----
 

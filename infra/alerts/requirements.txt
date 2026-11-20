@@ -1,0 +1,5 @@
+# 예약 점검 Lambda zip 에 넣을 의존성 (arm64 wheel 로 설치한다. scripts/build_alerts_zip.py)
+# 점검 경로가 app/tools/lookup.py 를 불러오고 그 파일이 strands 의 @tool 을 쓰므로 strands-agents 가 필요하다
+# (점검에서는 LLM 을 부르지 않는다). boto3 는 strands-agents 가 가져온다. 최소 버전은 backend/pyproject.toml 과 맞춘다.
+strands-agents>=1.65.0
+pydantic>=2.14.3

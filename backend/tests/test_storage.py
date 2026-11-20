@@ -41,6 +41,7 @@ class FakeTable:
         self.items: dict[tuple[str, str], dict] = {}
         self.calls: list[tuple[str, dict]] = []
         self.fail_with = fail_with
+        self.page_size = 1000  # scan 한 번에 읽는 항목 수 (테스트에서 줄여 페이지 이어 읽기를 확인한다)
 
     def _enter(self, name: str, **kwargs):
         self.calls.append((name, kwargs))
@@ -56,7 +57,7 @@ class FakeTable:
         item = self.items.get((Key["pk"], Key["sk"]))
         return {"Item": copy.deepcopy(item)} if item is not None else {}
 
-    def put_item(self, Item, ConditionExpression):
+    def put_item(self, Item, ConditionExpression=None):
         self._enter("put_item", Item=Item, ConditionExpression=ConditionExpression)
         TypeSerializer().serialize(Item)  # float 등 DynamoDB 가 받지 않는 값이면 TypeError
         exists = (Item["pk"], Item["sk"]) in self.items
@@ -65,6 +66,24 @@ class FakeTable:
         ):
             raise self._condition_failed("PutItem")
         self.items[(Item["pk"], Item["sk"])] = copy.deepcopy(Item)
+
+    def scan(self, FilterExpression, ProjectionExpression, ExpressionAttributeNames, ExpressionAttributeValues,
+             ConsistentRead=False, ExclusiveStartKey=None):
+        """페이지 크기 page_size 개씩 돌려주는 Scan 대역. begins_with(pk) AND sk 필터만 지원한다."""
+        self._enter("scan", Filter=FilterExpression, Projection=ProjectionExpression, ConsistentRead=ConsistentRead,
+                    ExclusiveStartKey=ExclusiveStartKey)
+        assert FilterExpression == "begins_with(#pk, :prefix) AND #sk = :sk"
+        assert ExpressionAttributeNames == {"#pk": "pk", "#sk": "sk"}
+        keys = sorted(self.items)  # (pk, sk) 순서로 읽는다
+        start = keys.index(tuple(ExclusiveStartKey.values())) + 1 if ExclusiveStartKey else 0
+        page = keys[start:start + self.page_size]
+        items = [{"pk": pk} for pk, sk in page
+                 if pk.startswith(ExpressionAttributeValues[":prefix"]) and sk == ExpressionAttributeValues[":sk"]]
+        more = start + self.page_size < len(keys)
+        response = {"Items": items}
+        if more:
+            response["LastEvaluatedKey"] = {"pk": page[-1][0], "sk": page[-1][1]}
+        return response
 
     def update_item(self, Key, UpdateExpression, ExpressionAttributeNames, ExpressionAttributeValues, ConditionExpression):
         self._enter("update_item", Key=Key, UpdateExpression=UpdateExpression, Names=ExpressionAttributeNames)
@@ -115,7 +134,7 @@ def store(request, clock) -> Storage:
 
 def raw_item(store: Storage, pk: str) -> dict:
     backend = store._backend
-    return backend._items[pk] if isinstance(backend, MemoryBackend) else backend._table.items[(pk, "META")]
+    return backend._items[(pk, "META")] if isinstance(backend, MemoryBackend) else backend._table.items[(pk, "META")]
 
 
 # ---- 메모리 백엔드 ----

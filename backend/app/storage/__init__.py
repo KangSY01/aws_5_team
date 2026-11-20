@@ -4,6 +4,7 @@ agent.py, handler.py 는 아래 함수를 쓴다. USE_MOCK=1 이면 메모리, �
 오류는 errors.py 의 예외로 올라오며, api-contract 오류 형식으로 바꾸는 일은 부르는 쪽이 한다.
 """
 
+from app.models.api import AlertsResponse
 from app.models.plan import Plan, Profile
 from app.storage.errors import (
     InvalidDataError,
@@ -27,14 +28,17 @@ __all__ = [
     "StorageError",
     "create_plan",
     "create_session",
+    "get_alerts",
     "get_plan",
     "get_plan_for_session",
     "get_session",
     "get_storage",
     "link_plan",
+    "list_plan_ids",
     "new_plan_id",
     "new_session_id",
     "reset_mock_store",
+    "save_alerts",
     "update_plan",
 ]
 
@@ -65,3 +69,15 @@ def link_plan(session_id: str, plan_id: str) -> SessionState:
 
 def get_plan_for_session(session_id: str, plan_id: str) -> Plan:
     return get_storage().get_plan_for_session(session_id, plan_id)
+
+
+def list_plan_ids() -> list[str]:
+    return get_storage().list_plan_ids()
+
+
+def save_alerts(alerts: AlertsResponse) -> AlertsResponse:
+    return get_storage().save_alerts(alerts)
+
+
+def get_alerts(plan_id: str) -> AlertsResponse:
+    return get_storage().get_alerts(plan_id)
