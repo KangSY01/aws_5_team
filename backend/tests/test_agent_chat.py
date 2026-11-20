@@ -304,12 +304,25 @@ def test_answers_and_sources_use_the_profile_language(chat, language):
     assert ChatResponse.model_validate_json(response.model_dump_json()) == response  # 계약 모델 round-trip
 
 
-def test_place_name_falls_back_when_the_profile_language_has_none(chat):
-    # the-bay-101 은 일본어 이름이 없다 → 다른 언어 이름으로 대체하고 오류가 아니다
-    ids = ["the-bay-101", "haeundae-beach", "busan-tower"]
-    text = "[place:the-bay-101] [place:haeundae-beach] [place:busan-tower]"
-    response = chat(ScriptedModel(create_script(ids, text)), language="ja")
-    assert load_places()["the-bay-101"].names["en"] in response.answer
+def test_place_name_falls_back_when_the_profile_language_has_none(chat, monkeypatch):
+    # 일본어 이름이 없는 장소를 places.json 에서 찾는다 (ID 는 고정하지 않는다. 이름 보충으로 데이터가 바뀌어도 따라간다)
+    places = load_places()
+    without_ja = sorted(pid for pid, p in places.items() if not p.names.get("ja"))
+    if without_ja:
+        target = without_ja[0]
+    else:  # 이름 보충으로 모든 장소에 ja 가 생겼으면 the-bay-101 에서 ja 를 뺀 사본으로 바꿔 검사한다
+        target = "the-bay-101"
+        no_ja = {k: v for k, v in places[target].names.items() if k != "ja"}
+        monkeypatch.setitem(places, target, places[target].model_copy(update={"names": no_ja}))  # 캐시 dict 는 테스트 뒤 원복된다
+    # place_name 의 대체 순서는 표시 언어(ja) → en → ja → zh-Hans → zh-Hant → place_id 다. ja 가 없으니 en 부터 본다
+    names = load_places()[target].names
+    expected = next((names[k] for k in ("en", "zh-Hans", "zh-Hant") if names.get(k)), target)
+    others = [p for p in ("haeundae-beach", "busan-tower") if p != target]
+    ids = [target, *others]
+
+    # 다른 언어 이름으로 대체하고 오류가 아니다
+    response = chat(ScriptedModel(create_script(ids, " ".join(f"[place:{p}]" for p in ids))), language="ja")
+    assert expected in response.answer
     assert all(s.title.strip() for s in response.sources)
 
 

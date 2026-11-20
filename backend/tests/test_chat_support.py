@@ -83,10 +83,20 @@ def test_plan_changed_formats_count_in_every_language():
 def test_place_name_falls_back_to_other_languages():
     places = load_places()
     assert place_name(places["haeundae-beach"], "ja") == places["haeundae-beach"].names["ja"]
-    partial = places["the-bay-101"]  # ja 이름이 없다
-    assert place_name(partial, "ja") == partial.names["en"]
+    # 일본어 이름이 없는 장소를 places.json 에서 찾는다 (ID 는 고정하지 않는다. place_id 순으로 첫 장소)
+    partial = next((p for p in sorted(places.values(), key=lambda p: p.place_id) if not p.names.get("ja")), None)
+    if partial is None:  # 이름 보충으로 모든 장소에 ja 가 생겼으면 the-bay-101 에서 ja 를 뺀 사본으로 검사한다
+        base = places["the-bay-101"]
+        partial = base.model_copy(update={"names": {k: v for k, v in base.names.items() if k != "ja"}})
+    # 대체 순서는 표시 언어(ja) → en → ja → zh-Hans → zh-Hant → place_id 다. ja 가 없으니 en 부터 본다
+    expected = next((partial.names[k] for k in ("en", "zh-Hans", "zh-Hant") if partial.names.get(k)), partial.place_id)
+    assert place_name(partial, "ja") == expected
+    # 실제 데이터가 한 언어만 갖고 있어도 en → zh-Hans → zh-Hant 순서가 지켜지는지 확인한다
+    ordered = partial.model_copy(update={"names": {"zh-Hant": "繁", "zh-Hans": "简", "en": "English"}})
+    assert place_name(ordered, "ja") == "English"
+    assert place_name(ordered.model_copy(update={"names": {"zh-Hant": "繁", "zh-Hans": "简"}}), "ja") == "简"
     nameless = partial.model_copy(update={"names": {}})
-    assert place_name(nameless, "en") == "the-bay-101"
+    assert place_name(nameless, "en") == partial.place_id
 
 
 # ---- validate_plan ----
