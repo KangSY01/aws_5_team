@@ -9,6 +9,7 @@
 import datetime as dt
 import json
 import logging
+import re
 import threading
 import time
 from collections import Counter
@@ -113,6 +114,25 @@ def _payload(result: dict) -> Any | None:
     return None
 
 
+_QUOTES_ONLY = re.compile(r"""^[\s"'“”‘’`「」『』]*$""")  # 따옴표·공백만 있는 검색어
+
+
+def _normalize_search_input(event: BeforeToolCallEvent) -> None:
+    """search_places 의 query 가 따옴표·공백뿐이면 빈 문자열로 바꾼다. 그 밖의 입력은 그대로 둔다.
+
+    프롬프트의 `query ""` 를 모델이 따옴표 두 글자('""')로 그대로 넣는 일이 있다. B 의 search_places 는 이 값을
+    장소 이름의 일부로 찾아 category 가 맞아도 결과가 0곳이고, 모델은 다른 category 로 검색을 되풀이하다
+    도구 한도(5회)를 다 써 create_plan 을 부르지 못했다 (평가 29).
+    """
+    tool_input = event.tool_use.get("input")
+    if not isinstance(tool_input, dict):
+        return
+    query = tool_input.get("query")
+    if isinstance(query, str) and query and _QUOTES_ONLY.match(query):
+        event.tool_use = {**event.tool_use, "input": {**tool_input, "query": ""}}
+        logger.info("search_places 검색어가 따옴표뿐이라 빈 문자열로 바꿨습니다.")
+
+
 class ToolRecorder(HookProvider):
     """도구 호출을 5회로 제한하고, 성공한 결과를 요청 범위에 모은다.
 
@@ -120,8 +140,11 @@ class ToolRecorder(HookProvider):
     도구(B 의 도구는 실패해도 status 가 success 다)는 outputs 에 넣지 않고 errors 로 센다.
     """
 
-    def __init__(self, max_calls: int = MAX_TOOL_CALLS):
+    def __init__(self, max_calls: int = MAX_TOOL_CALLS, finish_tool: str | None = None):
         self.max_calls = max_calls
+        # 한도에 걸린 뒤에도 한 번 허용하는 마무리 도구 (create 모드의 create_plan). 아직 한 번도 부르지 않았을 때만.
+        # 검색만 하다 한도를 다 쓰면 찾아 둔 후보로 일정을 만들 기회가 없어서다 (평가 29). 조회 도구는 계속 막는다
+        self.finish_tool = finish_tool
         self.outputs: list[ToolOutput] = []
         self.counts: Counter[str] = Counter()  # 실행을 허용한 호출 (도구 이름별)
         self.errors: Counter[str] = Counter()  # 실패한 호출
@@ -156,13 +179,18 @@ class ToolRecorder(HookProvider):
             self.model_errors[type(event.exception).__name__] += 1
 
     def _before(self, event: BeforeToolCallEvent) -> None:
+        name = event.tool_use["name"]
         with self._lock:
             over = sum(self.counts.values()) >= self.max_calls
+            if over and name == self.finish_tool and self.counts[name] == 0:
+                over = False  # 마무리 도구는 한 번 더 허용한다 (조회 도구는 아니다)
             if over:
                 self.rejected += 1
                 self._rejected_ids.add(event.tool_use["toolUseId"])
             else:
-                self.counts[event.tool_use["name"]] += 1
+                self.counts[name] += 1
+        if not over and name == "search_places":
+            _normalize_search_input(event)
         if over:
             event.cancel_tool = (
                 f"Tool call limit reached ({self.max_calls}). Do not call any more tools. "
