@@ -1,5 +1,10 @@
 .travel-preview {
   --trip-green: #145440;
+  --panel-white: #fff;
+  --panel-divider: #d6d9dd;
+  --panel-scrollbar: #aeb5bd;
+  --panel-field: #f5f6f7;
+  --selection-mint: #edf7f2;
   --mobile-nav-height: 48px;
   --color-bg: #fffdf8;
   --color-surface: #f8f2e8;
@@ -157,6 +162,7 @@
   border-radius: 50%;
   background: var(--color-action);
 }
+.chat-compose button[type="submit"]:enabled::before { background: var(--trip-green); }
 .chat-compose button:disabled { color: var(--color-muted); cursor: default; }
 .chat-compose button:disabled::before { background: var(--color-border); }
 
@@ -203,7 +209,7 @@
 }
 .travel-preview:not([data-trip-active="true"]) .stop-row:has(.stop-select[aria-pressed="true"]),
 .stop-row:has(.stop-select[aria-current="true"]) {
-  background: #EDF7F2;
+  background: var(--selection-mint);
   box-shadow: inset 0 0 0 1px #b4d7ca;
   color: #16362c;
   --color-muted: #465951;
@@ -317,7 +323,7 @@
 .stop-lock svg { flex: none; }
 .travel-preview .stop-lock[aria-pressed="true"] { color: var(--trip-green); }
 .travel-preview[data-night="true"] .stop-lock[aria-pressed="true"] {
-  background: #EDF7F2;
+  background: var(--selection-mint);
 }
 .stop-lock:disabled { opacity: .55; }
 .stop-lock:focus-visible, .stop-edit:focus-visible { outline-offset: -2px; }
@@ -1155,7 +1161,7 @@
   background: var(--color-action); color: var(--color-on-action);
 }
 .planner-actions button[type="submit"], .translation-page .translation-submit {
-  background: #145440; color: #fff;
+  background: var(--trip-green); color: var(--color-on-action);
 }
 .planner-suggestion dl { display: grid; gap: 8px; margin: 8px 0; }
 .planner-suggestion dt { color: var(--color-muted); font-size: .85rem; }
@@ -1765,24 +1771,20 @@
 
 @media (max-width: 899px) {
   .travel-preview[data-sheet="open"]:not([data-night="true"]):has(> .travel-tabs[data-active-tab="itinerary"]):has(.travel-chat .travel-panel) {
-    --itinerary-surface: #fff;
-    --itinerary-divider: #d6d9dd;
-    --itinerary-scrollbar: #aeb5bd;
-
     &::after {
-      background: var(--itinerary-surface);
-      border-color: var(--itinerary-divider);
+      background: var(--panel-white);
+      border-color: var(--panel-divider);
     }
 
     & .travel-chat > :is(.chat-heading, .chat-content, .trip-actions) {
-      background: var(--itinerary-surface);
+      background: var(--panel-white);
     }
 
-    & .chat-heading { border-block-end-color: var(--itinerary-divider); }
-    & .chat-content { scrollbar-color: var(--itinerary-scrollbar) transparent; }
-    & .stop-track::before { background: var(--itinerary-divider); }
+    & .chat-heading { border-block-end-color: var(--panel-divider); }
+    & .chat-content { scrollbar-color: var(--panel-scrollbar) transparent; }
+    & .stop-track::before { background: var(--panel-divider); }
     & .stop-number[data-drag-handle] {
-      box-shadow: 0 0 0 2px var(--itinerary-surface), 0 0 0 3px var(--itinerary-divider);
+      box-shadow: 0 0 0 2px var(--panel-white), 0 0 0 3px var(--panel-divider);
     }
 
     & .travel-panel > section.guardian-review {
@@ -1791,8 +1793,8 @@
     }
 
     & :is(.travel-panel > section.guardian-review button, .trip-actions[data-has-stops="true"] button:first-child) {
-      background: var(--itinerary-surface);
-      border-color: var(--itinerary-divider);
+      background: var(--panel-white);
+      border-color: var(--panel-divider);
     }
   }
 }
@@ -1899,3 +1901,41 @@
 .chat-compose .chat-voice-button::before { background: var(--color-surface); }
 .chat-compose .chat-voice-button[aria-pressed="true"]::before { background: var(--color-selected); }
 .chat-compose .chat-voice-button:disabled { opacity: .55; }
+
+.travel-preview:not([data-night="true"]) > .travel-tabs {
+  --color-bg: var(--panel-white);
+  --color-border: var(--panel-divider);
+  --color-selected: var(--selection-mint);
+  --color-selected-text: var(--trip-green);
+  --color-muted: #555b60;
+}
+
+.travel-preview:not([data-night="true"]):has(> .travel-tabs:is([data-active-tab="chat"], [data-active-tab="translation"])) {
+  & > .travel-chat {
+    --color-bg: var(--panel-white);
+    --color-surface: var(--panel-field);
+    --color-border: var(--panel-divider);
+    --color-selected: var(--selection-mint);
+    --color-selected-text: var(--trip-green);
+  }
+
+  & .travel-chat > :is(.chat-heading, .chat-content, .chat-compose, .edit-target),
+  & .translation-page > :is(.translation-body, .translation-footer) {
+    background: var(--panel-white);
+  }
+
+  & .travel-chat .chat-content { scrollbar-color: var(--panel-scrollbar) transparent; }
+
+  & .translation-page :is(.translation-select, .translation-text-source, .translation-photo-inputs label, .translation-voice-input) {
+    background: var(--panel-white);
+  }
+
+  & .translation-page :is(.translation-text-result, .translation-status, .translation-result) { background: var(--panel-white); border-color: var(--panel-divider); }
+}
+
+@media (max-width: 899px) {
+  .travel-preview:not([data-night="true"])[data-sheet="open"]:has(> .travel-tabs:is([data-active-tab="chat"], [data-active-tab="translation"]))::after {
+    background: var(--panel-white);
+    border-color: var(--panel-divider);
+  }
+}

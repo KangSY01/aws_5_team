@@ -315,7 +315,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const showTranslation = translationMode !== null;
   const sheetOpen = open || showTranslation;
   const sheetExpanded = showTranslation ? translationExpanded : expanded;
-  const tab = showTranslation ? "translation" : baseTab;
+  const tab = showTranslation || translationMenu ? "translation" : baseTab;
   const showChat = panel === "chat";
   const collapseLabel = showChat ? copy.collapse : copy.collapseItinerary;
   const closeLabel = showChat ? copy.close : copy.closeItinerary;
@@ -1341,6 +1341,12 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
             aria-expanded={name === "translation" ? translationMenu || showTranslation : name === "chat" || name === "itinerary" ? tab === name : undefined}
             onClick={() => {
               if (name === "translation") {
+                navigatePage("map");
+                setOpen(false);
+                setExpanded(false);
+                setTranslationMode(null);
+                setTranslationExpanded(false);
+                setMapDetail(null);
                 setTranslationMenu(!translationMenu);
                 return;
               }

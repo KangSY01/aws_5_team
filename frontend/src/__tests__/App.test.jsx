@@ -450,3 +450,19 @@ it("shows live activity details without itinerary controls even when a course ex
   expect(card.queryByRole("button", { name: /add to itinerary/i })).not.toBeInTheDocument();
   expect(activityCalls.map((params) => Object.fromEntries(params))).toEqual([{ area: "해운대", kind: "escape_room" }]);
 });
+
+it("opens only the translation menu on the map from other travel tabs", () => {
+  render(<App />);
+  const click = (name) => fireEvent.click(screen.getByRole("button", { name, exact: true }));
+  for (const name of ["Chat", "Itinerary", "Profile"]) {
+    click(name);
+    click("Translate");
+    const app = document.querySelector(".travel-preview");
+    expect(app).toHaveAttribute("data-page", "map");
+    expect(app).toHaveAttribute("data-sheet", "closed");
+    expect(screen.getByRole("group", { name: "Translate" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Translate", exact: true })).toHaveAttribute("aria-current", "page");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("group", { name: "Translate" })).not.toBeInTheDocument();
+  }
+});
