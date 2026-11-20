@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field, model_serializer
 
 from app.models.plan import Issue, Language, Place, Plan, Profile, RepairOption, StopChange
 
@@ -34,6 +34,15 @@ class ChatDelta(BaseModel):
     text: str
 
 
+class PlaceScoreBreakdown(BaseModel):
+    """v0.3. 랭킹 엔진(app/ranking/)이 매긴 장소 점수와 근거. 화면의 점수 근거 칩용."""
+
+    place_id: str
+    total: float = Field(ge=0, le=100)  # 가중합 점수 0~100
+    breakdown: dict[str, float]  # 항목 → 0~1 (interest, crowd, travel, weather, foreigner, dispersal)
+    notes: list[str] = []  # 근거 코드. 예: "crowd:high", "interest:sea", "travel_min:15", "dispersal:west"
+
+
 class ChatResponse(BaseModel):
     session_id: str
     plan_id: str
@@ -41,6 +50,15 @@ class ChatResponse(BaseModel):
     language: Language
     sources: list[Source]
     plan_changes: list[StopChange]
+    score_breakdown: list[PlaceScoreBreakdown] = []  # v0.3. 랭킹을 쓰지 않은 응답은 빈 목록
+
+    @model_serializer(mode="wrap")
+    def _omit_empty_score_breakdown(self, handler):
+        # 비어 있으면 JSON 에서 뺀다. 랭킹을 쓰지 않는 응답은 v0.2 와 같은 모양으로 나간다
+        data = handler(self)
+        if not data.get("score_breakdown"):
+            data.pop("score_breakdown", None)
+        return data
 
 
 class PlanResponse(BaseModel):
