@@ -22,7 +22,7 @@ Lambda 하나가 `app.handler.handler` 로 모든 경로를 처리하고 Lambda 
 | `ApiFunction` | Python 3.13, arm64, 1024MB, 제한 시간 30초(파라미터), 핸들러 `app.handler.handler` |
 | `ApiFunctionUrl` (SAM 이 생성) | `AuthType: NONE`, `InvokeMode: BUFFERED`, CORS 는 `AllowedOrigins` 만 |
 | 공개 호출 권한 2개 (SAM 이 생성) | `lambda:InvokeFunctionUrl`(`FunctionUrlAuthType=NONE`), `lambda:InvokeFunction`(`InvokedViaFunctionUrl=true`) |
-| `ApiRole` | 로그(이 스택 로그 그룹), DynamoDB `GetItem`·`PutItem`·`UpdateItem`(세션 테이블만), Bedrock `InvokeModel`·`InvokeModelWithResponseStream`(이 모델·추론 프로필만), Polly `SynthesizeSpeech`, 사진 인식용 S3 `PutObject`·`GetObject`(업로드 버킷의 `photos/*`만)와 `textract:DetectDocumentText` |
+| `ApiRole` | 로그(이 스택 로그 그룹), DynamoDB `GetItem`·`PutItem`·`UpdateItem`(세션 테이블만), 날씨 캐시 `GetItem`·`PutItem`(`busan-guide-cache`만), Bedrock `InvokeModel`·`InvokeModelWithResponseStream`(이 모델·추론 프로필만), Polly `SynthesizeSpeech`, 사진 인식용 S3 `PutObject`·`GetObject`(업로드 버킷의 `photos/*`만)와 `textract:DetectDocumentText` |
 | `ApiLogGroup` | `/aws/lambda/busan-guide-api-handler`, 14일 보관, JSON 형식, INFO 이상 |
 
 환경 변수: `BEDROCK_MODEL_ID`, `FAKE_LLM`(기본 0), `USE_MOCK`(기본 0), `STORAGE_BACKEND=dynamodb`(고정), `DYNAMODB_TABLE`,

@@ -32,6 +32,11 @@ Parameters:
     Type: String
     Default: busan-guide-sessions
     Description: 일정·세션을 저장하는 DynamoDB 단일 테이블 이름. 런타임 환경 변수 DYNAMODB_TABLE 로 들어간다. 테이블은 busan-guide-base 스택이 만든다
+  DataGoKrKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: 공공데이터포털 Decoding 키 (기상청 단기예보). 런타임 환경 변수 DATA_GO_KR_KEY_DECODING 으로만 들어간다. 비어 있으면 날씨 도구가 missing_key 오류를 돌려준다
 
 Resources:
   AgentExecutionRole:
@@ -126,6 +131,7 @@ Resources:
         BEDROCK_MODEL_ID: !Ref BedrockModelId
         FAKE_LLM: !Ref FakeLlm
         DYNAMODB_TABLE: !Ref DynamoDbTable
+        DATA_GO_KR_KEY_DECODING: !Ref DataGoKrKey
 
 Outputs:
   AgentRuntimeArn:

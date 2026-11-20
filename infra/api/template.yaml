@@ -100,6 +100,12 @@ Resources:
                 Effect: Allow
                 Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem]
                 Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DynamoDbTable}
+              # 날씨 캐시 (B 의 get_weather, /chat·/plan/check 가 쓴다). 읽기(GetItem)·저장(PutItem)만. 테이블은 공용 스택이 만들고,
+              # 이름은 config.CACHE_TABLE 기본값과 같아서 환경 변수로 따로 넘기지 않는다
+              - Sid: WeatherCache
+                Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:PutItem]
+                Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/busan-guide-cache
               # 모델 직접 호출(지역 모델 ID) 또는 추론 프로필 호출. Strands 는 ConverseStream 을 쓰므로 스트리밍 권한도 필요하다
               - Sid: BedrockModelOrProfile
                 Effect: Allow

@@ -287,6 +287,29 @@ def test_dynamodb_permissions_match_what_the_api_calls(template):
     assert "list_plan_ids" not in Path(handler_module.__file__).read_text(encoding="utf-8")
 
 
+def test_api_can_use_the_weather_cache_and_no_other_table(template, function):
+    from app.tools import lookup
+
+    found = statements(template)
+    cache = found["WeatherCache"]
+    assert set(cache["Action"]) == {"dynamodb:GetItem", "dynamodb:PutItem"}
+    assert cache["Resource"] == {"Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/busan-guide-cache"}
+    base_cache = load_template(BASE_TEMPLATE)["Resources"]["CacheTable"]["Properties"]["TableName"]
+    default = re.search(r'os\.environ\.get\("CACHE_TABLE", "([^"]*)"\)', Path(config.__file__).read_text(encoding="utf-8"))
+    assert default.group(1) == base_cache == "busan-guide-cache"
+    assert "CACHE_TABLE" not in function["Environment"]["Variables"]  # 기본값을 쓴다. 권한의 테이블 이름과 어긋나지 않게
+    used = set(re.findall(r"_cache_table\(\)\.(\w+)\(", Path(lookup.__file__).read_text(encoding="utf-8")))
+    assert used == {"get_item", "put_item"}
+
+    # DynamoDB 권한은 세션 테이블과 캐시 테이블 두 곳뿐이다
+    dynamo = [s for s in found.values() if any(a.startswith("dynamodb:") for a in (s["Action"] if isinstance(s["Action"], list) else [s["Action"]]))]
+    assert {s["Sid"] for s in dynamo} == {"SessionsTable", "WeatherCache"}
+    assert all("*" not in s["Resource"]["Fn::Sub"] for s in dynamo)
+    # 다른 권한은 그대로 있다
+    assert {"Logs", "SessionsTable", "BedrockModelOrProfile", "BedrockModelsBehindProfile", "PhotoUploads", "PhotoTextract",
+            "PollySpeak", "WeatherCache"} == set(found)
+
+
 def test_deployed_storage_is_dynamodb_even_with_sample_data(monkeypatch):
     sentinel = object()
     built = []
