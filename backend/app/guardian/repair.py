@@ -96,17 +96,19 @@ def _improvement(plan: Plan, after: list[Stop], issue: Issue, ctx: CheckContext)
     """해결안 적용 후 대상 Issue 의 남은 심각도 순위(사라지면 -1). 쓸 수 없는 해결안이면 None.
 
     - 원래 없던 high Issue 가 새로 생기면 None
-    - crowded: check_crowded 는 하루 단위라 시각을 옮겨도 Issue 가 남는다.
+    - crowded 이고 장소가 그대로면: check_crowded 는 하루 단위라 시각을 옮겨도 Issue 가 남는다.
       원래 체류가 행사 시간대와 겹쳤고, 바뀐 뒤 겹치지 않으면 -1. 아니면 None
-    - 그 밖의 유형: 같은 Issue 가 사라지거나 심각도가 낮아져야 한다
+    - 그 밖(다른 유형, 또는 장소를 바꾼 경우): 같은 Issue 가 사라지거나 심각도가 낮아져야 한다
     """
     after_issues = _recheck(plan, after, ctx)
     if after_issues is None:
         return None
-    if issue.type == "crowded":
-        before_stop = next((s for s in plan.stops if s.stop_id == issue.stop_id), None)
-        after_stop = next((s for s in after if s.stop_id == issue.stop_id), None)
-        if before_stop is None or after_stop is None or not _event_overlaps(before_stop, ctx):
+    before_stop = next((s for s in plan.stops if s.stop_id == issue.stop_id), None)
+    after_stop = next((s for s in after if s.stop_id == issue.stop_id), None)
+    same_place = before_stop is not None and after_stop is not None and before_stop.place_id == after_stop.place_id
+    if issue.type == "crowded" and same_place:
+        # 장소가 그대로면(시간 이동·순서 변경) 행사 시간대를 벗어났는지로 판단한다
+        if not _event_overlaps(before_stop, ctx):
             return None
         return None if _event_overlaps(after_stop, ctx) else -1
     return _remaining_rank(issue, after_issues)
@@ -248,6 +250,49 @@ def _swap_pair(stops: list[Stop], first: int, ctx: CheckContext) -> list[Stop] |
     after = list(stops)
     after[first], after[first + 1] = new_b, new_a
     return after
+
+
+# ---------- 3단계: 비슷한 장소로 교체 ----------
+
+def try_replace(plan: Plan, issue: Issue, ctx: CheckContext) -> list[RepairOption]:
+    """대상 Stop 의 장소를 비슷한 장소로 바꾸는 해결안 목록. 시각은 그대로 둔다.
+
+    - 후보는 ctx.places(places.json)에 있는 장소만 쓴다. 일정에 이미 있는 장소는 빼고 새 ID 를 만들지 않는다.
+    - 후보 조건: 같은 category. rain 이면 category 가 달라도 실내(indoor) 장소를 넣는다 (요구사항 4.4).
+    - 이동 시간을 모르는 구간이 생기거나 이동 시간 증가가 REPLACE_MAX_EXTRA_MIN 을 넘으면 뺀다.
+    - 바꾼 뒤 같은 Issue 가 사라지거나 낮아져야 하고, 새 high Issue 가 생기면 뺀다.
+    - 순서: rain 이면 실내 장소 먼저 → 이동 시간 증가가 작은 순 → place_id 순 (항상 같은 결과).
+    - metrics.changed 는 1 이다 (장소가 바뀐 Stop 1곳).
+    """
+    stops = _ordered(plan.stops)
+    idx = _find(stops, issue.stop_id)
+    if idx is None or stops[idx].locked:
+        return []
+    target = stops[idx]
+    current = ctx.places.get(target.place_id)
+    old_total = total_travel_min(stops, ctx)
+    if current is None or old_total is None:
+        return []
+
+    used = {s.place_id for s in stops}
+    found: list[tuple[tuple[bool, int, str], RepairOption]] = []
+    for place in ctx.places.values():
+        if place.place_id in used:
+            continue
+        same_category = place.category == current.category
+        if not (same_category or (issue.type == "rain" and place.indoor)):
+            continue
+        after = list(stops)
+        after[idx] = target.model_copy(update={"place_id": place.place_id})
+        new_total = total_travel_min(after, ctx)
+        if new_total is None or new_total - old_total > th.REPLACE_MAX_EXTRA_MIN:
+            continue
+        if _improvement(plan, after, issue, ctx) is None:
+            continue
+        indoor_first = issue.type == "rain" and not place.indoor
+        found.append(((indoor_first, new_total - old_total, place.place_id), _option("replace", plan, after, ctx)))
+    found.sort(key=lambda item: item[0])
+    return [option for _, option in found]
 
 
 def _shrink(stop: Stop, *, start: dt.datetime | None = None, end: dt.datetime | None = None) -> Stop | None:

@@ -4,7 +4,7 @@ import datetime as dt
 
 from app.guardian.check import check_plan
 from app.guardian.context import Event, OpeningHours
-from app.guardian.repair import try_move_time, try_reorder
+from app.guardian.repair import try_move_time, try_reorder, try_replace
 from app.models.plan import Plan, RepairOption
 from guardian_fixtures import BASE_TRAVEL_MIN, at, hourly_weather, load_sample_plan, make_context
 
@@ -209,3 +209,66 @@ def test_reorder_crowded_only_with_event_window():
     late = Event(name="테스트 행사", start=at(18), end=at(22), place_ids=["haeundae-beach"])
     ctx = make_context(events=[late], travel_min=REORDER_TRAVEL)
     assert try_reorder(PLAN, issue_of(PLAN, ctx, "s4-crowded"), ctx) == []
+
+
+# ---------- 5.4 try_replace ----------
+
+def travel_with(**extra: int) -> dict:
+    """기본 이동 시간 + 부산타워에서 후보 장소까지 이동 시간. 인자 이름의 _ 는 - 로 바꾼다."""
+    return dict(BASE_TRAVEL_MIN) | {("busan-tower", name.replace("_", "-")): m for name, m in extra.items()}
+
+
+def test_replace_rain_with_indoor_place_like_contract_example():
+    # 계약 예시와 같은 장면: 15~18시 비, 해운대 → 신세계 센텀시티(실내), 이동 +5분
+    # 광안리(같은 beach)는 실외라 비가 남아 빠지고, 자갈치·부산타워는 이미 일정에 있어 후보가 아니다
+    ctx = make_context(
+        weather=hourly_weather(rain_hours=range(15, 18)),
+        travel_min=travel_with(shinsegae_centum_city=45, gwangalli_beach=30),
+    )
+    issue = issue_of(PLAN, ctx, "s4-rain")
+
+    options = try_replace(PLAN, issue, ctx)
+
+    assert [after_of(o, "s4").place_id for o in options] == ["shinsegae-centum-city"]
+    opt = options[0]
+    assert opt.action == "replace"
+    s4 = after_of(opt, "s4")
+    assert (s4.start, s4.end) == (PLAN.stops[3].start, PLAN.stops[3].end)  # 시각은 그대로
+    m = opt.metrics
+    assert (m.changed, m.kept, m.extra_travel_min, m.locked_kept) == (1, 3, 5, True)
+    assert_locked_untouched(opt)
+
+
+def test_replace_crowded_with_same_category_only():
+    # 토요일 해운대 집중률 96 → crowded high. 같은 beach 인 광안리로만 바꾼다 (실내 장소는 비 문제일 때만)
+    ctx = make_context(
+        crowd={"jagalchi-market": 60.0, "busan-tower": 50.0, "haeundae-beach": 96.0},
+        travel_min=travel_with(gwangalli_beach=30, shinsegae_centum_city=45),
+    )
+    issue = issue_of(PLAN, ctx, "s4-crowded")
+    assert issue.severity == "high"
+
+    options = try_replace(PLAN, issue, ctx)
+
+    assert [after_of(o, "s4").place_id for o in options] == ["gwangalli-beach"]
+    assert options[0].metrics.extra_travel_min == -10
+
+
+def test_replace_excludes_over_limit_and_unknown_travel():
+    # 광안리 +35분(30분 초과), 신세계 이동 시간 모름 → 후보 없음
+    ctx = make_context(
+        weather=hourly_weather(rain_hours=range(15, 18)),
+        crowd={"jagalchi-market": 60.0, "busan-tower": 50.0, "haeundae-beach": 96.0},
+        travel_min=travel_with(gwangalli_beach=75),
+    )
+    assert try_replace(PLAN, issue_of(PLAN, ctx, "s4-crowded"), ctx) == []
+    assert try_replace(PLAN, issue_of(PLAN, ctx, "s4-rain"), ctx) == []
+
+
+def test_replace_skips_locked_target_and_no_candidate():
+    # 고정 일정(자갈치)은 바꾸지 않는다
+    ctx = make_context(hours={"jagalchi-market": OpeningHours(closed_weekdays=[5])})
+    assert try_replace(PLAN, issue_of(PLAN, ctx, "s2-closed"), ctx) == []
+    # 감천은 places.json 에서 유일한 village 라 같은 분류 후보가 없다
+    ctx = make_context()
+    assert try_replace(PLAN, issue_of(PLAN, ctx, "s1-crowded"), ctx) == []
