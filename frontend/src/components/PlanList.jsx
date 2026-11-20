@@ -27,7 +27,7 @@ function buildKeys(stops) {
   });
 }
 
-export default function PlanList({ plan, places, displayLanguage, selected, tripStopId, onSelect, lockedLabel, onEdit, editLabel, formatStopDate, onSaveStops, busy, saveError, renderStopChecks, onToggleLock, lockCopy, events }) {
+export default function PlanList({ plan, places, displayLanguage, selected, tripStopId, onSelect, lockedLabel, onEdit, editLabel, formatStopDate, onSaveStops, busy, saveError, renderStopChecks, onToggleLock, lockCopy, events, checkedIds }) {
   const stops = Array.isArray(plan?.stops) ? plan.stops : [];
   const placesById = buildPlacesById(places);
   const language = displayLanguage ?? plan?.profile?.language;
@@ -67,7 +67,8 @@ export default function PlanList({ plan, places, displayLanguage, selected, trip
             eventName={eventName(findStopEvent(stop, events), language)}
             language={language}
             number={onSelect ? index + 1 : undefined}
-            active={selected === index}
+            active={checkedIds ? checkedIds.includes(stop.stop_id) : selected === index}
+            checked={checkedIds ? checkedIds.includes(stop.stop_id) : undefined}
             tripTarget={tripStopId != null && stop.stop_id === tripStopId}
             onSelect={onSelect ? () => onSelect(index) : undefined}
             lockedLabel={lockedLabel}

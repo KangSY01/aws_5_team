@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useMapEvents } from "../hooks/useMapEvents.js";
 import TravelerProfileForm, { dietLabels, travelerCopy } from "./TravelerProfile.jsx";
 import { ChatSources, CrowdLegend, RainNotice } from "../features/data-notices";
+import { getSelectModeCopy } from "../constants/selectModeCopy.js";
 import { getTravelCopy, languages } from "../constants/travelCopy.js";
 import { closeLandmark, mapLandmarks } from "../constants/mapLandmarks.js";
 import { getPlannerCopy, transportPreferenceIds, durationIds, areaIds } from "../constants/plannerCopy.js";
@@ -301,6 +302,10 @@ export default function TravelPreview({ night = false, demoMode = false, travele
   const regionSession = useRef(null);
   const restorePreferencesScroll = useRef(null);
   const [editId, setEditId] = useState(null);
+  // 일정 선택 모드: 여러 장소를 골라 삭제하거나 AI 채팅에 멘션한다
+  const [selectMode, setSelectMode] = useState(false);
+  const [checkedIds, setCheckedIds] = useState([]);
+  const [mentionIds, setMentionIds] = useState([]);
   const [reviewStatus, setReviewStatus] = useState(null);
   const [planError, setPlanError] = useState(null);
   const [pending, setPending] = useState(null);
@@ -356,6 +361,10 @@ export default function TravelPreview({ night = false, demoMode = false, travele
     ? resolvePlaceName(nextStop, placesById, language).name : null;
   const editIndex = stops.findIndex((stop) => stop.stop_id === editId);
   const editStop = stops[editIndex];
+  const selectCopy = getSelectModeCopy(language);
+  const checkedStops = stops.filter((stop) => checkedIds.includes(stop.stop_id));
+  const mentionStops = stops.filter((stop) => mentionIds.includes(stop.stop_id));
+  const chipStops = editStop ? [editStop] : mentionStops; // 채팅 입력창 위에 @장소 칩으로 표시
   const selected = Math.max(0, stops.findIndex((stop) => stop.stop_id === selectedId));
   const profile = page === "profile";
   const isMap = page === "map";
@@ -813,10 +822,38 @@ export default function TravelPreview({ night = false, demoMode = false, travele
     requestInProgress.current = true;
     setPending(editStop ? "edit" : "chat");
     setReviewStatus(null);
-    setMessages((previous) => [...previous, { text: message, lang: language, role: "user" }]);
+    const mentionText = chipStops.map((stop) => "@" + resolvePlaceName(stop, placesById, language).name).join(" ");
+    setMessages((previous) => [...previous, { text: mentionText ? mentionText + " " + message : message, lang: language, role: "user" }]);
     setDraft("");
     let requestStage = "POST /chat";
     try {
+      if (mentionStops.length && liveApi && course?.session_id) {
+        // 선택 모드에서 멘션한 장소들. 바꾸라는 요청이면 이 장소들만 바꾸고 나머지는 지키도록 넘긴다
+        const instruction = [
+          "The traveler selected these stops in the current itinerary. If the request asks for a change, change only these stops, keep their stop IDs where possible, and preserve every other stop. If it is a question, answer about these stops.",
+          ...mentionStops.map((stop) => "- " + stop.stop_id + " (" + resolvePlaceName(stop, placesById, language).name + ", "
+            + formatTime(stop.start) + "–" + formatTime(stop.end) + (stop.locked ? ", locked" : "") + ")"),
+          "Traveler request: " + message,
+        ].join("\n");
+        const chat = await sendTravelMessage(instruction, language, { session_id: course.session_id, plan_id: plan.plan_id }, { ...plan.profile, diet: travelerDiet });
+        requestStage = "GET /plan";
+        const result = await fetchPlan(chat.plan_id);
+        const next = { ...course, ...result, session_id: chat.session_id };
+        setCourse(next);
+        save(courseKey, next);
+        setGuardian(null);
+        setMentionIds([]);
+        let answer = chat.answer;
+        if (chat.language !== language) {
+          try {
+            answer = await translateText(chat.answer, chat.language, language, AbortSignal.timeout(8000));
+          } catch {
+            answer = chat.plan_changes?.length ? plannerCopy.chatPlanUpdated : plannerCopy.chatPlanUnchanged;
+          }
+        }
+        setMessages((previous) => [...previous, { text: answer, sources: chat.sources, lang: language, role: "assistant" }]);
+        return;
+      }
       const activity = !editStop && activitySearch(message);
       if (activity) {
         let options = [];
@@ -1050,6 +1087,46 @@ export default function TravelPreview({ night = false, demoMode = false, travele
     return next.plan;
   }
 
+  // 지도 핀: 선택 모드에서는 체크 전환, 평소에는 일정 칸 선택
+  const selectPin = useCallback((id) => {
+    if (!selectMode) return setSelectedId(id);
+    setCheckedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  }, [selectMode]);
+
+  function toggleSelectMode() {
+    setSelectMode((value) => !value);
+    setCheckedIds([]);
+  }
+
+  function toggleChecked(index) {
+    const id = stops[index]?.stop_id;
+    if (!id) return;
+    setCheckedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  }
+
+  async function deleteChecked() {
+    const removable = checkedStops.filter((stop) => !stop.locked).map((stop) => stop.stop_id);
+    if (!removable.length) return;
+    const ok = await saveStops(stops.filter((stop) => !removable.includes(stop.stop_id)));
+    if (ok) {
+      setCheckedIds([]);
+      setMentionIds((current) => current.filter((id) => !removable.includes(id)));
+    }
+  }
+
+  function mentionChecked() {
+    if (!checkedStops.length) return;
+    // 고정되지 않은 한 곳: 기존 단일 장소 수정 흐름(데모 응답, 제안 카드 적용) 사용. 여러 곳·고정 장소: 멘션 요청
+    const single = checkedStops.length === 1 && !checkedStops[0].locked;
+    setEditId(single ? checkedStops[0].stop_id : null);
+    setMentionIds(single ? [] : checkedStops.map((stop) => stop.stop_id));
+    setSelectMode(false);
+    setCheckedIds([]);
+    setReviewStatus(null);
+    setPanel("chat");
+    setOpen(true);
+  }
+
   async function saveStops(nextStops) {
     if (requestInProgress.current) return false;
     requestInProgress.current = true;
@@ -1114,7 +1191,8 @@ export default function TravelPreview({ night = false, demoMode = false, travele
         <BusanMap plan={plan} places={places} onLandmarkSelect={setMapDetail}
           language={language} label={copy.map} locationCopy={copy.location}
           events={events} returnPaths={returnPaths}
-          selectedId={selectedId} nextStopId={nextStop?.stop_id} onSelect={setSelectedId} focusRequest={mapFocus} crowdLevels={crowdLevels}
+          selectedId={selectedId} nextStopId={nextStop?.stop_id}
+          onSelect={selectPin} focusRequest={mapFocus} crowdLevels={crowdLevels}
           regionPicker={regionDraft && {
             selected: regionDraft, onChange: setRegionDraft, copy: plannerCopy,
             onDone: () => finishRegions(true), onCancel: () => finishRegions(false),
@@ -1208,6 +1286,13 @@ export default function TravelPreview({ night = false, demoMode = false, travele
             </button>
           )}
           {sheetOpen && !showTranslation && !showChat && !showPreferences && !tripStarted && stops.length > 0 && (
+            <button type="button" className="itinerary-select-toggle" aria-pressed={selectMode}
+              aria-label={selectMode ? selectCopy.done : selectCopy.toggle} title={selectMode ? selectCopy.done : selectCopy.toggle}
+              disabled={Boolean(pending)} onClick={toggleSelectMode}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3" /><path d="m8 12 3 3 5-6" /></svg>
+            </button>
+          )}
+          {sheetOpen && !showTranslation && !showChat && !showPreferences && !tripStarted && stops.length > 0 && (
             <details className="itinerary-options"
               onBlur={(event) => {
                 if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
@@ -1297,12 +1382,13 @@ export default function TravelPreview({ night = false, demoMode = false, travele
           ) : (
             <section className="travel-panel" aria-label={copy.itinerary}>
               {stops.length ? <PlanList plan={plan} places={places} displayLanguage={language} events={events}
-                selected={selected} tripStopId={nextStop?.stop_id} onSelect={selectStop} lockedLabel={copy.locked} onEdit={openEdit} editLabel={plannerCopy.editStop}
+                selected={selected} tripStopId={nextStop?.stop_id} onSelect={selectMode ? toggleChecked : selectStop} lockedLabel={copy.locked}
+                checkedIds={selectMode ? checkedIds : undefined}
                 formatStopDate={(date) => formatDate(date, language)}
-                onSaveStops={saveStops} busy={Boolean(pending)}
+                onSaveStops={selectMode ? undefined : saveStops} busy={Boolean(pending)}
                 saveError={scheduleSaveFailed ? plannerCopy.requestFailed : undefined}
-                renderStopChecks={liveCourse ? renderStopChecks : undefined}
-                onToggleLock={toggleStopLock} lockCopy={copy.stopLock} /> : <EmptyState message={copy.empty} />}
+                renderStopChecks={liveCourse && !selectMode ? renderStopChecks : undefined}
+                onToggleLock={selectMode ? undefined : toggleStopLock} lockCopy={copy.stopLock} /> : <EmptyState message={copy.empty} />}
               {course?.lodging_unavailable && <p>{plannerCopy.lodgingUnavailable}</p>}
               {course?.limited_places && <p>{plannerCopy.limitedPlaces}</p>}
               {course?.unmatched_activities?.length > 0 && (
@@ -1363,11 +1449,21 @@ export default function TravelPreview({ night = false, demoMode = false, travele
             </section>
           ))}
         </div>
-        {!showTranslation && showChat && editStop && (
-          <div className="edit-target">
-            <strong>{editIndex + 1} · {resolvePlaceName(editStop, placesById, language).name}</strong>
-            <button type="button" aria-label={plannerCopy.clearTarget} onClick={() => { setEditId(null); setReviewStatus(null); }}>×</button>
-          </div>
+        {!showTranslation && showChat && chipStops.length > 0 && (
+          <ul className="mention-chips" aria-label={selectCopy.mentionLabel}>
+            {chipStops.map((stop) => {
+              const name = resolvePlaceName(stop, placesById, language).name;
+              return <li key={stop.stop_id}>
+                <span>@{name}</span>
+                <button type="button" aria-label={selectCopy.removeMention(name)} onClick={() => {
+                  if (stop === editStop) {
+                    setEditId(null);
+                    setReviewStatus(null);
+                  } else setMentionIds((current) => current.filter((id) => id !== stop.stop_id));
+                }}>×</button>
+              </li>;
+            })}
+          </ul>
         )}
         <form className="chat-compose" hidden={showTranslation || !showChat} onSubmit={submit}>
           <div className="chat-input-group">
@@ -1393,6 +1489,18 @@ export default function TravelPreview({ night = false, demoMode = false, travele
           </button>
         </form>
         {!showTranslation && !showChat && !showPreferences && (
+          selectMode && stops.length > 0 ? (
+          <div className="trip-actions select-actions" data-has-stops="true">
+            <p className="select-actions__count" role="status">{checkedStops.length ? selectCopy.count(checkedStops.length) : selectCopy.none}
+              {checkedStops.some((stop) => stop.locked) && <small>{selectCopy.lockedKept}</small>}</p>
+            <button type="button" disabled={Boolean(pending) || !checkedStops.some((stop) => !stop.locked)} onClick={deleteChecked}>
+              {selectCopy.remove}
+            </button>
+            <button type="button" disabled={Boolean(pending) || !checkedStops.length} onClick={mentionChecked}>
+              {selectCopy.mention}
+            </button>
+          </div>
+          ) : (
           <div className="trip-actions" data-has-stops={stops.length > 0}>
             <button type="button" disabled={Boolean(pending)} onClick={() => setShowPreferences(true)}>
               {stops.length ? plannerCopy.newCourse : plannerCopy.recommend}
@@ -1403,6 +1511,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
               </button>
             )}
           </div>
+          )
         )}
       </aside>
       {showReset && (
