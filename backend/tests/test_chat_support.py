@@ -290,7 +290,8 @@ def test_place_ids_in_ignores_errors_and_malformed_items():
 def test_tool_limit_is_five():
     assert MAX_TOOL_CALLS == 5
     assert json.dumps(sorted(t.tool_name for t in chat_tools.LOOKUP_TOOLS)) == json.dumps(
-        ["get_crowd", "get_events", "get_hours", "get_place_info", "get_travel_time", "get_weather", "search_places"]
+        ["get_crowd", "get_events", "get_hours", "get_place_info", "get_return_options", "get_travel_time", "get_weather",
+         "search_places"]
     )
 
 
@@ -320,3 +321,43 @@ def test_build_sources_counts_raw_text_hours_and_place_info():
     ]
     sources = chat_answer.build_sources(outputs, {"gamcheon-village"}, "en")
     assert [(s.tool, s.id) for s in sources] == [("get_hours", "busan-tower"), ("get_place_info", "gamcheon-village")]
+
+
+# ---- 귀가 분산 (get_return_options, B) ----
+
+RETURN_RESULT = {
+    "date": "2026-11-28",
+    "event": {"name": "해운대 빛축제", "start": "2026-11-28T18:00:00+09:00", "end": "2026-11-28T23:00:00+09:00",
+              "main_place_id": "sea-life-busan"},
+    "origin": {"place_id": "haeundae-beach", "station": "Haeundae"},
+    "destination": {"station": "Seomyeon", "place_id": None, "is_default": True},
+    "congested_station": {"station": "Haeundae", "main_place_id": "sea-life-busan"},
+    "baseline": {"station": "Haeundae", "congested": True, "minutes": 39, "mode": "subway"},
+    "options": [],
+}
+
+
+def test_main_place_id_counts_as_a_grounded_place():
+    assert "main_place_id" in chat_tools.PLACE_ID_KEYS
+    only_main = out("get_events", {"date": "2026-11-28", "events": [{"name": "x", "main_place_id": "sea-life-busan"}]})
+    assert chat_tools.grounded_place_ids([only_main]) == {"sea-life-busan"}
+    # destination.place_id 가 null 이어도 문제없고, 출발 장소와 대표 장소가 모두 근거가 된다
+    assert chat_tools.grounded_place_ids([out("get_return_options", RETURN_RESULT)]) == {"haeundae-beach", "sea-life-busan"}
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
+def test_return_options_become_a_source_with_the_route(language):
+    sources = chat_answer.build_sources([out("get_return_options", RETURN_RESULT)], set(), language)
+
+    assert [(s.tool, s.id) for s in sources] == [("get_return_options", "2026-11-28:Haeundae>Seomyeon")]
+    assert sources[0].title == message("source_return", language, origin="Haeundae", destination="Seomyeon")
+    assert "Haeundae" in sources[0].title and "Seomyeon" in sources[0].title
+
+
+def test_return_options_without_a_route_are_not_a_source():
+    broken = [
+        out("get_return_options", {"error": {"code": "event_not_found", "message": "x"}}),
+        out("get_return_options", {"date": "2026-11-28", "baseline": {}, "destination": {"station": "Seomyeon"}}),
+        out("get_return_options", ["not", "a", "dict"]),
+    ]
+    assert chat_answer.build_sources(broken, set(), "en") == []
