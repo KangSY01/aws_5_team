@@ -38,7 +38,16 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - 표는 `uv run python -m scripts.build_travel_times`로 `places.json` 좌표에서 만듭니다. `places.json`이 바뀌면 다시 만드십시오.
 - 추정 규칙: 경로 거리 = 직선거리 × 1.3. 경로 거리 1.2km 이하는 `walk`(시속 4.5km), 그보다 멀면 `subway`(평균 시속 25km + 대기·환승 10분). 분은 올림하고 양방향은 같은 값입니다.
 - 실제 경로 조회 값이 아닙니다. 답변에서는 "약 N분"으로 말하고 노선·환승을 단정하지 마십시오.
-- 카카오 경로 API는 지금 쓰지 않습니다. 쓰게 되더라도 결과를 저장하지 않습니다(아래 금지 사항).
+- `get_travel_time`·`build_plan`·Guardian은 이 추정을 그대로 씁니다. 카카오 경로는 부르지 않습니다(아래 「카카오 대중교통 경로」).
+
+## 카카오 대중교통 경로 (실시간 호출)
+- API: 카카오맵 대중교통 경로 조회 `https://dapi.kakao.com/v2/routing/publictraffic` (`backend/app/tools/kakao_route.py`의 `fetch_routes`).
+- 장면 7 귀가 경로(`get_return_options`)의 역 사이 시간에만 실시간으로 호출합니다. 도구 호출 한 번에 출발역마다 1회, 3초 제한이며 다시 시도하지 않습니다.
+- 결과를 저장·캐시하지 않습니다(파일·DynamoDB·메모리 캐시 모두). 오프라인 캐시 모드에도 넣지 않습니다(아래 금지 사항).
+- 호출이 실패하거나 `USE_MOCK=1`이거나 키가 없으면 역 좌표 추정으로 대체합니다. 항목마다 `time_source`(`"kakao"` / `"estimate"`)로 구분합니다.
+- `time_source`가 `"kakao"`인 항목에서만 노선·환승(`legs`, `transfers`)을 카카오 값으로 말하십시오. `"estimate"`인 항목은 "약 N분"으로 말하고 노선·환승을 단정하지 마십시오.
+- 키는 환경 변수 `KAKAO_REST_API_KEY`로만 읽습니다. 커밋하거나 로그에 남기지 마십시오.
+- 테스트는 `tests/conftest.py`의 `no_kakao`가 실제 호출을 막습니다. 카카오 성공은 `tests/test_return_options_kakao.py`에서 직접 만든 경로로만 확인합니다.
 
 ## 행사 (한국관광공사 행사정보)
 - API: 한국어·영어·일본어·중국어 간체·번체 TourAPI `searchFestival2` (`lDongRegnCd=26`, `eventStartDate`, `eventEndDate`). 서비스는 `KorService2`, `EngService2`, `JpnService2`, `ChsService2`, `ChtService2`입니다.
@@ -59,7 +68,7 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - 환승역 6곳(Seomyeon, Yeonsan, Dongnae, Suyeong, Deokcheon, Minam)은 한 항목으로 합치고 좌표는 행들의 평균입니다. `lines`는 참고용이며 노선·환승을 단정하지 마십시오.
 - 동해선·경전철 역은 없습니다. `nearest_station` 중 표에 없는 값은 `OSIRIA`(해동용궁사) 하나이고, 스크립트가 경고로 출력합니다.
 - CSV의 `name_en` 5개(교대, 부산대, 경성대부경대, 국제금융센터부산은행, 부산대양산캠퍼스)는 원본의 이중 이스케이프(`Nat''''''''l`)를 작은따옴표 1개로 복원했습니다(`Pusan Nat'l Univ.` 등). 다른 값은 원본 그대로입니다.
-- 도구: `get_return_options` (`backend/app/tools/return_options.py`). 역 사이 시간은 이 표의 좌표와 `travel_times.json`의 `rule`로 계산한 추정이며, 역 혼잡과 혼잡 시간대는 규칙 기반 가정입니다(실측·실시간 아님).
+- 도구: `get_return_options` (`backend/app/tools/return_options.py`). 역 사이 시간은 이 표의 좌표로 카카오 대중교통 경로를 실시간 호출해 쓰고(위 「카카오 대중교통 경로」), 실패·`USE_MOCK=1`·키 없음이면 이 표의 좌표와 `travel_times.json`의 `rule`로 계산한 추정으로 대체합니다(`time_source`로 구분). 역 혼잡과 혼잡 시간대는 규칙 기반 가정입니다(실측·실시간 아님).
 
 ## 막차 시각 (부산교통공사 표준 열차시각표)
 - API: [공공데이터포털 15000522 부산 도시철도 열차시각표 조회 서비스](https://www.data.go.kr/data/15000522/openapi.do), 서비스 URL `https://data.humetro.busan.kr/voc/api/open_api_process.tnn`.
@@ -118,7 +127,7 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - `backend/app/data/places.json`의 좌표, 다국어 이름, 가까운 역은 아직 검증하지 않은 값입니다. 공공데이터로 교체하기 전에는 사실처럼 단정하지 마십시오.
 
 ## 금지 사항
-- 카카오 대중교통 경로 API 결과를 저장·캐시하지 마십시오. 실시간 호출만 허용됩니다.
+- 카카오 대중교통 경로 API 결과를 저장·캐시하지 마십시오(파일·DynamoDB·메모리 캐시 모두, 오프라인 캐시 모드 포함). 실시간 호출만 허용되며, 호출하는 곳은 `get_return_options` 하나입니다.
 - 네이버 블로그·검색 결과를 수집하거나 AI로 가공하지 마십시오.
 - 공공데이터 원문을 화면에 표시할 때 출처를 함께 표기하십시오. 백엔드는 출처를 `sources`에 담습니다.
 
