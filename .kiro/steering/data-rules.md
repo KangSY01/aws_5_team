@@ -83,7 +83,7 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - 파라미터: `serviceKey`, `pageNo`, `numOfRows`, `scode`(CSV 역번호), `stime`·`etime`(시분 4자리), `enum`, `act=json`. 응답에는 `day`·`updown` 요청 값과 관계없이 모든 요일·방향이 섞여 오므로 두 값은 고정해 보내고, 역마다 시간 구간 두 개(22:00~23:59, 00:00~01:30)만 받아 코드에서 `scode`·`line`·`dayType`(`1` 평일 / `2` 토요일 / `3` 일요일·공휴일)·`updown`(`0` 상행 / `1` 하행)으로 거릅니다. 목적지 전에 끝나는 열차(`endcode`가 목적지에 못 미침)는 빼고, 남은 `arrtime` 중 가장 늦은 값을 막차로 씁니다(자정 뒤는 24시 이상으로 둠).
 - `uv run --env-file .env python -m scripts.fetch_last_trains --reuse-raw`가 Haeundae·Dongbaek·Jung-dong의 Seomyeon 방향과 Seomyeon의 Haeundae 방향을 요일 구분별로 받아 `backend/app/data/last_trains.json`에 막차만 저장합니다. 같은 raw는 다시 호출하지 않으며 `--offline`도 지원합니다.
 - 역번호는 `backend/scripts/busan_stations.csv`의 2호선 행(203·204·202·219)만 읽습니다. 방향은 2호선 역번호가 작아지는 상행(`0`, 해운대 방향)과 커지는 하행(`1`, 서면 방향)으로 정합니다.
-- `get_return_options`의 `shift_later`는 해당 역·방향·요일 데이터가 있으면 제안 출발 시각과 막차를 비교합니다. 막차 뒤면 `last_train_missed`, 막차 시각과 같거나 앞이면 막차 경고가 없습니다. 행이나 파일이 없으면 `last_train_unknown`입니다.
+- `get_return_options`는 `baseline`과 모든 안에 그 역에서 도착역 방향 막차 시각(`last_train`)을 붙이고, 해당 역·방향·요일 데이터가 있으면 역에 닿는 시각(출발 시각, 도보안은 걸어서 그 역에 도착하는 시각)과 막차를 비교합니다. 막차 뒤면 `last_train_missed`, 막차 시각과 같거나 앞이면 막차 경고가 없습니다. 행이나 파일이 없으면 `last_train_unknown`입니다.
 - 평일 공휴일을 식별할 휴일 달력은 저장하지 않았습니다. 코드는 월~금은 평일, 토요일은 토요일, 일요일은 일요일·공휴일 표를 고릅니다. 표준 도착시각이므로 실제 운행 시각과 다를 수 있습니다.
 
 ## 대중교통 (역 표와 좌표 기반 추정)
