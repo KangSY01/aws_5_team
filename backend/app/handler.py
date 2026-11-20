@@ -1,6 +1,7 @@
 """Lambda 진입점 (Function URL / API Gateway HTTP API, payload v2.0).
 
-뼈대 단계: 아래 TODO 가 남은 경로(/chat)는 app/data/ 의 샘플로 docs/api-contract.md 형식의 고정 응답을 돌려준다.
+POST /chat 은 app.agent.run_chat 을 부른다 (FAKE_LLM=1 이면 run_chat 이 고정 응답을 돌려준다). 스트리밍은 아직 없다.
+대화 처리 실패(ChatError: 시간 초과, 모델 오류, 답변 검증 실패)는 내부 사유를 숨기고 500 internal_error 로 바꾼다.
 GET·PUT /plan 은 app/storage 에서 읽고 쓴다 (USE_MOCK=1 이면 메모리, 아니면 DynamoDB).
 /plan/check, /plan/{plan_id}/delay 는 저장된 일정을 읽어 Guardian(app/guardian/service.py) 결과를 돌려준다.
 GET /alerts 는 예약 점검(app/scheduled_handler.py)이 저장한 마지막 결과를 읽기만 한다. 점검을 새로 하지 않는다.
@@ -17,7 +18,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from app import storage
+from app import agent, storage
 from app.guardian import service as guardian
 from app.guardian.context import WeatherPresetNotFound
 from app.models.api import (
@@ -46,7 +47,6 @@ def _load(name: str) -> str:
 PLACES = TypeAdapter(list[Place]).validate_json(_load("places.json"))
 PLACE_IDS = frozenset(place.place_id for place in PLACES)  # PUT /plan 이 받는 place_id 는 이 값뿐이다
 SAMPLE_PLAN = Plan.model_validate_json(_load("sample_plan.json"))
-CHAT_RESPONSE = ChatResponse.model_validate_json(_load("chat_response.json"))
 CHECK_RESPONSE = CheckResponse.model_validate_json(_load("check_response.json"))
 
 
@@ -137,9 +137,10 @@ def _route(event: dict) -> BaseModel:
 
     match method, parts:
         case "POST", ["chat"]:
-            _parse(event, ChatRequest)
-            # TODO(에이전트 담당): app.agent.run_chat(request) 결과로 교체
-            return CHAT_RESPONSE
+            response = agent.run_chat(_parse(event, ChatRequest))
+            if not isinstance(response, ChatResponse):  # ChatResponse 가 아닌 값은 응답으로 내보내지 않는다
+                raise TypeError(f"run_chat 이 ChatResponse 가 아닌 {type(response).__name__} 을 돌려주었습니다.")
+            return response
 
         case "POST", ["plan", "check"]:
             request = _parse(event, CheckRequest)
@@ -185,6 +186,11 @@ def handler(event: dict, context=None) -> dict:
         return _response(404, ErrorResponse(error=ErrorBody(code="plan_not_found", message=f"{e.plan_id} 을 찾을 수 없습니다.")))
     except InvalidDataError as e:
         return _response(422, ErrorResponse(error=ErrorBody(code="validation_error", message=str(e))))
+    except agent.ChatError as e:  # 내부 사유(code)는 로그에만 남긴다. 상세 내용은 agent.py 가 이미 남겼다
+        logger.error("대화 처리 실패: code=%s", e.code)
+        return _response(
+            500, ErrorResponse(error=ErrorBody(code="internal_error", message="서버 오류가 발생했습니다."))
+        )
     except StorageError:  # DynamoDB 오류 내용은 저장소가 로그에 남기고, 클라이언트에는 알리지 않는다
         logger.error("저장소 오류로 요청을 처리하지 못했습니다.")
         return _response(
