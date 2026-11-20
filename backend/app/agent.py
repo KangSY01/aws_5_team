@@ -203,6 +203,7 @@ class _Chat:
     recorder: ToolRecorder
     creator: PlanCreator | None  # create 모드에서만
     editor: PlanEditor | None  # edit 모드에서만
+    ranker: PlaceRanker | None = None  # search_places 순위 훅. _converse 가 만든다. 점수는 score_breakdown 으로 나간다
 
     @property
     def language(self) -> Language:
@@ -248,6 +249,7 @@ def _place_ranker(chat: _Chat) -> PlaceRanker:
 
 def _converse(chat: _Chat, model: BedrockModel | None) -> tuple[str, str]:
     """요청마다 새 Agent 로 모델을 부른다. (답변 문장, 종료 사유)를 돌려준다. 도구는 순서대로 실행한다."""
+    chat.ranker = _place_ranker(chat)
     agent = Agent(
         model=model,
         system_prompt=build_system_prompt(
@@ -260,7 +262,7 @@ def _converse(chat: _Chat, model: BedrockModel | None) -> tuple[str, str]:
         tools=[*LOOKUP_TOOLS, *(chat.creator or chat.editor).tools],
         # PlaceRanker 는 ToolRecorder 뒤에 등록한다. Strands 는 hooks 를 목록 순서로 등록하고 AfterToolCallEvent 를
         # 등록 역순으로 부르므로, 순위가 먼저 반영되고 ToolRecorder(기록·후보·출처)가 정렬된 결과를 본다
-        hooks=[chat.recorder, _place_ranker(chat)],
+        hooks=[chat.recorder, chat.ranker],
         tool_executor=SequentialToolExecutor(),  # 검색 결과가 나온 뒤에 교체·생성이 실행되게 한다
         callback_handler=None,
     )
@@ -362,6 +364,8 @@ def _finish(chat: _Chat, model_text: str) -> ChatResponse:
                 "language": language,
                 "sources": [s.model_dump() for s in chat_answer.build_sources(chat.recorder.outputs, referenced, language)],
                 "plan_changes": [c.model_dump() for c in changes],
+                # v0.3: PlaceRanker 가 이번 요청에서 매긴 점수 (다시 계산하지 않는다). 비면 ChatResponse 가 키를 뺀다
+                "score_breakdown": chat.ranker.score_breakdown() if chat.ranker else [],
             }
         )
     except ValueError as error:

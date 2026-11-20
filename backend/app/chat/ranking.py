@@ -104,6 +104,22 @@ class PlaceRanker(HookProvider):
     def __init__(self, profile: Profile, day: dt.date, demo_now: dt.datetime | None = None):
         self.profile, self.day, self.demo_now = profile, day, demo_now
         self.applied = 0  # 순위를 반영한 횟수 (로그·테스트용)
+        # 모델에 보여 준 점수 (place_id → {place_id, total, breakdown, notes}). ChatResponse.score_breakdown(v0.3) 이 쓴다.
+        # 같은 장소를 다시 검색하면 마지막 점수로 바꾼다. rank_places 를 다시 부르지 않고 이 값만 옮긴다
+        self.scores: dict[str, dict[str, Any]] = {}
+
+    def score_breakdown(self) -> list[dict[str, Any]]:
+        """이번 요청에서 매긴 점수를 높은 순으로 (동점은 place_id 순). 랭킹을 안 했거나 실패했으면 빈 목록."""
+        return sorted(self.scores.values(), key=lambda s: (-s["total"], s["place_id"]))
+
+    def _remember(self, ranked: list) -> None:
+        for item in ranked:
+            if isinstance(item, dict) and isinstance(item.get("ranking"), dict):
+                score = item["ranking"]
+                self.scores[item["place_id"]] = {
+                    "place_id": item["place_id"], "total": score["total"],
+                    "breakdown": dict(score["breakdown"]), "notes": list(score["notes"]),
+                }
 
     def register_hooks(self, registry: HookRegistry, **kwargs: Any) -> None:
         registry.add_callback(AfterToolCallEvent, self._after)
@@ -123,5 +139,6 @@ class PlaceRanker(HookProvider):
         if ranked is None:
             return
         event.result = _replace_payload(event.result, ranked)
+        self._remember(ranked)
         self.applied += 1
         logger.info("장소 순위 반영: 상위 %d곳", sum(1 for item in ranked if isinstance(item, dict) and "ranking" in item))

@@ -90,7 +90,8 @@ def test_chat_calls_the_real_run_chat_and_creates_a_plan(model, run_chat_calls, 
 
     assert status == 200 and len(run_chat_calls) == 1 and len(scripted.requests) == 3  # 스텁 모델이 실제로 불렸다
     assert run_chat_calls[0].message == SECRET and run_chat_calls[0].profile.language == "en"
-    assert set(body) == FIELDS and ChatResponse.model_validate(body).language == "en"
+    # search_places 결과에 순위를 매겼으니 v0.3 score_breakdown 이 함께 있다 (검색하지 않은 응답은 아래 테스트처럼 v0.2 키)
+    assert set(body) == FIELDS | {"score_breakdown"} and ChatResponse.model_validate(body).language == "en"
     assert "Gamcheon Culture Village" in body["answer"] and "[place:" not in body["answer"]
     assert body["plan_id"].startswith("plan-") and len(body["plan_changes"]) == 4
 

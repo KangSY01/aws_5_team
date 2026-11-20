@@ -23,7 +23,8 @@ from chat_stubs import ScriptedModel, text_turn, tool_turn
 PROFILE = Profile(language="ja", interests=["sea", "food"])
 DAY = dt.date(2026, 11, 28)  # 데모일 (해운대 빛축제 개막일)
 NOW_1128 = {"now": "2026-11-28T09:00:00+09:00"}
-FIELDS = set(ChatResponse.model_fields)
+FIELDS = set(ChatResponse.model_fields)  # v0.3: score_breakdown 포함
+V02_FIELDS = FIELDS - {"score_breakdown"}  # 랭킹을 쓰지 않은 응답 (FAKE_LLM·데모 캐시) 은 v0.2 와 같은 키
 
 
 @pytest.fixture
@@ -212,4 +213,4 @@ def test_fake_llm_is_unchanged(monkeypatch):
     monkeypatch.setattr(config, "FAKE_LLM", True)
     monkeypatch.setattr(ranking, "rank_search_results", lambda *a, **k: pytest.fail("FAKE_LLM 은 순위를 거치지 않는다"))
     response = agent.run_chat(ChatRequest(message="hi", profile={"language": "en"}))
-    assert set(response.model_dump()) == FIELDS
+    assert set(response.model_dump()) == V02_FIELDS  # 고정 응답에는 score_breakdown 이 없다 (계약 v0.3)
