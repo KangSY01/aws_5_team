@@ -433,6 +433,7 @@ def test_stations_json은_CSV로_다시_만든_값과_같고_환승역은_한_�
     with build_stations.CSV_PATH.open(encoding="utf-8-sig", newline="") as f:
         rows = list(csv.DictReader(f))
     stations = build_stations.build_stations(rows)
+    unmatched = build_stations.add_names(stations, build_stations.read_name_rows())
     assert build_stations.dump_stations(stations) == (REAL_DATA / "stations.json").read_text(encoding="utf-8")
     names = [s["station"] for s in stations]
     assert (len(rows), len(names), len(set(names))) == (114, 108, 108)  # 환승역 6곳을 합친다
@@ -440,7 +441,19 @@ def test_stations_json은_CSV로_다시_만든_값과_같고_환승역은_한_�
     assert {n for n, s in by_name.items() if len(s["lines"]) > 1} == {
         "Seomyeon", "Yeonsan", "Dongnae", "Suyeong", "Deokcheon", "Minam"}
     assert by_name["Seomyeon"] == {"station": "Seomyeon", "name_ko": "서면역", "lines": ["1", "2"],
-                                   "lat": 35.158011, "lng": 129.05932}  # 1·2호선 두 행의 평균 좌표
+                                   "lat": 35.158011, "lng": 129.05932,  # 1·2호선 두 행의 평균 좌표
+                                   "names": {"ja": "西面", "zh-Hans": "西面", "zh-Hant": "西面"}}
+    # 일본어·중국어 역명은 2호선 역명 파일에 있는 값만 넣는다. 2호선 밖 역과 빈 칸은 넣지 않는다
+    assert by_name["Haeundae"]["names"] == {"ja": "海雲台", "zh-Hans": "海云台", "zh-Hant": "海雲台"}
+    assert by_name["Dongbaek"]["names"] == {"ja": "冬柏", "zh-Hans": "冬柏", "zh-Hant": "冬柏"}
+    assert by_name["Jung-dong"]["names"] == {"ja": "中洞", "zh-Hans": "中洞", "zh-Hant": "中洞"}
+    assert by_name["Centum City"]["names"] == {"ja": "センタムシティ"}  # 출처의 중국어 칸이 비어 있다
+    assert not [n for n, s in by_name.items() if "2" not in s["lines"] and "names" in s]
+    assert by_name["Busan Station"].keys() == {"station", "name_ko", "lines", "lat", "lng"}
+    assert all(s["names"] and set(s["names"]) <= set(build_stations.NAME_LANGS) and all(s["names"].values())
+               for s in stations if "names" in s)
+    assert unmatched == ["Busan Museum of Art", "Kyungsung Univ. Pukyong Nat'l Univ.",
+                         "Busan Int'l Finance Center Busan Bank"]  # 역명 표기가 달라 맞지 않는 2호선 역
     assert by_name[ro.DEFAULT_DESTINATION_STATION] and by_name["Haeundae"]["name_ko"] == "해운대역"
     # places.json 의 nearest_station 중 표에 없는 값은 동해선 OSIRIA 하나뿐이다
     assert {p["nearest_station"] for p in load("places.json")} - set(names) - {None} == {"OSIRIA"}
