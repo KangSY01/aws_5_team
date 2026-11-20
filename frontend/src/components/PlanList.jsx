@@ -1,3 +1,4 @@
+import { eventName, findStopEvent } from "../lib/stopEvent.js";
 // 일정 목록: 날짜 제목과 stops 순서 그대로의 <ol>
 import { useMemo, useRef, useState } from 'react';
 import StopItem from './StopItem.jsx';
@@ -26,7 +27,7 @@ function buildKeys(stops) {
   });
 }
 
-export default function PlanList({ plan, places, displayLanguage, selected, tripStopId, onSelect, lockedLabel, onEdit, editLabel, formatStopDate, onSaveStops, busy, saveError, renderStopChecks, onToggleLock, lockCopy }) {
+export default function PlanList({ plan, places, displayLanguage, selected, tripStopId, onSelect, lockedLabel, onEdit, editLabel, formatStopDate, onSaveStops, busy, saveError, renderStopChecks, onToggleLock, lockCopy, events }) {
   const stops = Array.isArray(plan?.stops) ? plan.stops : [];
   const placesById = buildPlacesById(places);
   const language = displayLanguage ?? plan?.profile?.language;
@@ -63,6 +64,7 @@ export default function PlanList({ plan, places, displayLanguage, selected, trip
             key={keys[index]}
             stop={stop}
             place={placesById.get(stop?.place_id)}
+            eventName={eventName(findStopEvent(stop, events), language)}
             language={language}
             number={onSelect ? index + 1 : undefined}
             active={selected === index}
