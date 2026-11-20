@@ -414,9 +414,11 @@ def test_외국어_이름_일치_규칙과_cuisine_표():
 def test_실제_파일은_시드의_기준을_모두_담고_형식이_맞다():
     path = REAL_DATA / "restaurants.json"
     raw = path.read_bytes()
-    assert not raw.startswith(b"\xef\xbb\xbf") and b"\r" not in raw  # UTF-8, BOM 없음, LF
+    # 줄바꿈은 보지 않는다: 저장소에는 LF 지만 Windows 작업 폴더에는 git autocrlf 로 CRLF 로 꺼내진다
+    assert not raw.startswith(b"\xef\xbb\xbf")  # UTF-8, BOM 없음
     table = RestaurantTable.model_validate_json(raw)
-    assert dump_restaurants(table) == raw.decode("utf-8")  # 스크립트가 쓴 형식 그대로 (ID 오름차순)
+    # 스크립트가 쓴 형식 그대로 (ID 오름차순). read_text 는 CRLF 를 LF 로 읽는다
+    assert dump_restaurants(table) == path.read_text(encoding="utf-8")
     seeds = json.loads(fr.SEEDS_PATH.read_text(encoding="utf-8"))
     assert seeds == {"radius_m": 500, "place_ids": ["haeundae-beach", "jagalchi-market", "gamcheon-village"],
                      "stations": ["Seomyeon"]}
