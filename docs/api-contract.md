@@ -10,8 +10,7 @@
 - `POST /chat` 만 스트리밍한다(SSE, 아래 「스트리밍」). 나머지 경로는 응답이 한 번에 온다.
 - 기존 경로(`/chat`, `/plan`, `/plan/check`)의 예시는 `backend/app/data/` 의 샘플과 같은 내용이다. 실제 응답 전체는
   `uv run python -m scripts.local_invoke` 로 볼 수 있다.
-- 「v0.2 추가 경로」의 경로는 아직 `handler.py` 에 없다. 각 담당자가 구현할 때 고정 응답 샘플과 함께 `handler.py` 연결 PR을 올린다.
-  그 전까지 예시는 `backend/tests/test_contract.py` 가 모델과 맞는지만 확인한다.
+- 「v0.2 추가 경로」의 경로는 모두 `handler.py` 에 연결되어 있다. 예시는 `backend/tests/test_contract.py` 가 모델과 맞는지 확인한다.
 
 ## 데모 스위치
 
@@ -318,7 +317,7 @@ Schedule Guardian 으로 일정을 점검한다. LLM 을 호출하지 않는다.
 
 ## v0.2 추가 경로
 
-11/20 결정. 담당은 `CONTRIBUTING.md` 「담당 영역」을 따른다. 아직 `handler.py` 에 연결되지 않았다.
+11/20 결정. 담당은 `CONTRIBUTING.md` 「담당 영역」을 따른다. 아래 경로는 모두 `handler.py` 에 연결되어 있다.
 
 | 경로 | 용도 | 담당 |
 |---|---|---|
@@ -505,5 +504,9 @@ Schedule Guardian 으로 일정을 점검한다. LLM 을 호출하지 않는다.
 }
 ```
 
-- `language` 를 Transcribe 언어 코드로 바꾸는 일은 서버가 한다.
-- 프론트엔드는 `sample_rate`, `media_encoding` 에 맞춰 마이크 오디오를 보낸다.
+- `language` 를 Transcribe 언어 코드로 바꾸는 일은 서버가 한다 (`backend/app/voice/languages.py`):
+  `en` → `en-US`, `ja` → `ja-JP`, `zh-Hans` → `zh-CN`(간체로 인식), `zh-Hant` → `zh-TW`(번체로 인식).
+- 프론트엔드는 `sample_rate`, `media_encoding` 에 맞춰 마이크 오디오를 보낸다 (16비트 PCM 리틀 엔디언, 모노).
+- `url` 은 `expires_in`(최대 300초) 안에 연결을 시작해야 하고, 녹음할 때마다 새로 받는다. 서버는 서명만 하고 오디오를 받지 않는다.
+- 오류: 지원하지 않는 `language` 는 `422 validation_error`, 서버 설정·자격 증명 문제는 `500 internal_error`.
+- 브라우저 연결 방법(이벤트 스트림 인코딩, 인식 결과 처리)은 `docs/voice-input.md` 를 따른다.
