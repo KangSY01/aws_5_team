@@ -2,8 +2,8 @@ import L from "leaflet";
 import { mapLandmarks } from "../constants/mapLandmarks.js";
 
 const height = 44;
-const detailOffsets = [[0, 0], [0, -26], [0, 26], [24, 0], [-24, 0],
-  [0, 48], [0, -48], [34, 32], [-34, 32], [34, -32], [-34, -32]];
+// 명소 아이콘은 제자리에만 표시 (확대 수준마다 위치가 바뀌지 않도록). 핀·이름표·지명과 겹치면 숨김
+const detailOffsets = [[0, 0]];
 const labelLayers = ["busan-coastal-districts", "regional-places", "beach-names", "local-places", "stations"];
 
 function overlaps(a, b) {
@@ -44,7 +44,7 @@ export function addLandmarkLayer(map, language, onSelect) {
   function layout(vectorMap, selectingRegions) {
     const bounds = container.getBoundingClientRect();
     const occupied = [
-      ...container.querySelectorAll(".busan-map-pin, .busan-location-pin, .leaflet-control-zoom"),
+      ...container.querySelectorAll(".busan-map-pin, .busan-map-pin:not([data-label-hidden]) .busan-map-pin__label, .busan-location-pin, .leaflet-control-zoom"),
       ...container.parentElement.querySelectorAll(".travel-map-tools > button"),
     ]
       .map((element) => element.getBoundingClientRect())
@@ -63,7 +63,7 @@ export function addLandmarkLayer(map, language, onSelect) {
         anchor.x >= 0 && anchor.x <= bounds.width && anchor.y >= 0 && anchor.y <= bounds.height;
       let placement;
       if (eligible) {
-        const insetX = Math.max(halfWidth + 4, Math.min(bounds.width - halfWidth - 4, anchor.x)) - anchor.x;
+        const insetX = 0;
         for (const [x, y] of detailOffsets) {
           const dx = insetX + x;
           const rect = { left: centerX + dx - halfWidth, right: centerX + dx + halfWidth,

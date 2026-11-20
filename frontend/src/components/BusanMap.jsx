@@ -18,7 +18,12 @@ const pinSize = 44;
 const pinAnchor = [22, 42];
 // 일정 마커는 둥근 사각 타일이라 가운데가 장소 위치다 (디자인 실험)
 const stopPinAnchor = [22, 22];
-const pinGap = pinSize + 4;
+const pinBox = 30; // 핀 사각형(28px)이 실제로 차지하는 크기
+const pinStep = 32; // 겹친 핀을 옆으로 붙일 때 간격
+
+function overlapsRect(a, b) {
+  return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+}
 
 // 마커 이름표에 넣는 장소 이름을 HTML 로 안전하게 만든다 (디자인 실험)
 function escapeHtml(text) {
@@ -27,6 +32,7 @@ function escapeHtml(text) {
 
 export default function BusanMap({ plan, places, events, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, onRoutes, focusRequest, regionPicker, crowdLevels = null, returnPaths }) {
   const container = useRef(null);
+  const placeLabelsRef = useRef(null); // 선택·다음 목적지가 바뀌면 이름표 다시 배치
   const mapRef = useRef(null);
   const [locationControl, setLocationControl] = useState(null);
   const [locationStatus, setLocationStatus] = useState("");
@@ -245,19 +251,20 @@ export default function BusanMap({ plan, places, events, onLandmarkSelect, langu
       const occupied = [];
       for (const marker of markers.values()) {
         const point = map.project(marker.getLatLng());
-        const shifts = [[0, 0], [0, -pinGap], [0, pinGap], [-pinGap, 0], [pinGap, 0]];
-        for (let step = 2; step <= occupied.length; step += 1) {
-          shifts.push([0, -step * pinGap], [0, step * pinGap]);
+        // 겹치면 제자리 바로 옆(오른쪽 → 왼쪽 → 위·아래)에 나란히 붙인다. 멀리 밀어내지 않음
+        const shifts = [[0, 0]];
+        for (let step = 1; step <= occupied.length; step += 1) {
+          shifts.push([step * pinStep, 0], [-step * pinStep, 0], [0, -step * pinStep], [0, step * pinStep]);
         }
         const [x, y] = shifts.find(([dx, dy]) =>
           occupied.every((other) =>
-            Math.abs(other.x - point.x - dx) >= pinSize || Math.abs(other.y - point.y - dy) >= pinSize
+            Math.abs(other.x - point.x - dx) >= pinBox || Math.abs(other.y - point.y - dy) >= pinBox
           )
         ) ?? shifts[0];
         occupied.push(point.add([x, y]));
         const element = marker.getElement();
         element.style.translate = `${x}px ${y}px`;
-        element.toggleAttribute("data-displaced", Boolean(x || y));
+        element.toggleAttribute("data-displaced", Math.hypot(x, y) > pinStep * 1.5); // 바로 옆이면 연결선 생략
         element.style.setProperty("--pin-tether-length", `${Math.hypot(x, y)}px`);
         element.style.setProperty("--pin-tether-angle", `${Math.atan2(-y, -x)}rad`);
         element.style.setProperty("--pin-origin-x", `${stopPinAnchor[0] - x}px`);
@@ -271,18 +278,42 @@ export default function BusanMap({ plan, places, events, onLandmarkSelect, langu
       });
       fittedPlan.current = plan;
     }
-    // 이름표가 지도 오른쪽 끝을 넘으면 핀 왼쪽에 붙인다 (디자인 실험, 모바일에서 잘리지 않게)
+    // 이름표 배치: 핀 오른쪽 → 왼쪽 순서로 지도 안이면서 다른 핀·이름표와 겹치지 않는 자리 선택
+    // - 둘 다 겹치면 숨김. 선택한 핀과 다음 목적지 핀은 숨기지 않고 먼저 배치
     function placeLabels() {
-      const width = map.getSize().x;
-      for (const marker of markers.values()) {
+      if (!container.current) return;
+      const bounds = container.current.getBoundingClientRect();
+      const entries = [...markers.values()].map((marker) => {
         const element = marker.getElement();
-        const label = element?.querySelector(".busan-map-pin__label");
-        if (!label) continue;
-        const [x] = (element.style.translate || "0px").split(" ").map(parseFloat);
-        const right = map.latLngToContainerPoint(marker.getLatLng()).x + (x || 0) + pinSize / 2 + label.offsetWidth;
-        element.toggleAttribute("data-label-left", right > width - 8);
+        const pin = element?.getBoundingClientRect();
+        // 겹침 판정은 44px 터치 영역이 아니라 실제 사각형(가운데 28px) 기준
+        const box = pin && { left: pin.left + 8, right: pin.right - 8, top: pin.top + 8, bottom: pin.bottom - 8 };
+        return { element, label: element?.querySelector(".busan-map-pin__label"), pin, box };
+      }).filter(({ label, pin }) => label && pin?.width);
+      const priority = ({ element }) => element.hasAttribute("data-next-stop") || element.getAttribute("aria-pressed") === "true";
+      entries.sort((a, b) => Number(priority(b)) - Number(priority(a)));
+      const placed = [];
+      const hits = (rect, self) => rect.left < bounds.left + 4 || rect.right > bounds.right - 4
+        || entries.some(({ pin, box }) => pin !== self && overlapsRect(rect, box))
+        || placed.some((other) => overlapsRect(rect, other));
+      for (const entry of entries) {
+        const { element, label, pin } = entry;
+        const width = label.offsetWidth;
+        const height = label.offsetHeight;
+        const top = pin.top + 9;
+        const right = { left: pin.right - 6, right: pin.right - 6 + width, top, bottom: top + height };
+        const left = { left: pin.left + 6 - width, right: pin.left + 6, top, bottom: top + height };
+        // 바로 옆 핀(같은 장소 재방문)이 같은 이름표를 이미 보이면 생략
+        const duplicate = !priority(entry) && placed.some((other) => other.text === label.textContent
+          && Math.abs(other.pin.left - pin.left) <= pinStep * 2 && Math.abs(other.pin.top - pin.top) <= pinStep * 2);
+        const side = duplicate ? null : !hits(right, pin) ? "right" : !hits(left, pin) ? "left"
+          : priority(entry) ? (right.right > bounds.right - 4 ? "left" : "right") : null;
+        element.toggleAttribute("data-label-left", side === "left");
+        element.toggleAttribute("data-label-hidden", !side);
+        if (side) placed.push({ ...(side === "left" ? left : right), text: label.textContent, pin });
       }
     }
+    placeLabelsRef.current = placeLabels;
 
     separatePins();
     placeLabels();
@@ -291,6 +322,7 @@ export default function BusanMap({ plan, places, events, onLandmarkSelect, langu
     return () => {
       map.off("zoomend", separatePins);
       map.off("moveend zoomend resize", placeLabels);
+      placeLabelsRef.current = null;
       layer.remove();
     };
   }, [plan, places, mappedStops, language, onSelect, events]);
@@ -325,6 +357,7 @@ export default function BusanMap({ plan, places, events, onLandmarkSelect, langu
       if (element && crowdLevels?.[id]) element.dataset.crowd = crowdLevels[id];
       else element?.removeAttribute("data-crowd");
     }
+    placeLabelsRef.current?.();
   }, [selectedId, nextStopId, plan, places, language, onSelect, crowdLevels]);
 
   useEffect(() => {
