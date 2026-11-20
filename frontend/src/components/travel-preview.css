@@ -2029,15 +2029,25 @@
 .travel-preview .mention-chips button { width: 26px; height: 26px; padding: 0; }
 
 /* 일정 칸 사이 이동 안내 (도보·버스·지하철 구간, 노선, 승하차 정류장) */
+/* 이동 안내가 있는 칸은 세로선을 칸(li) 기준으로 그려 안내 영역까지 같은 x 위치로 이어지게 한다 */
+.plan-list__stops > .stop-item:has(> .transit-leg) { position: relative; --stop-number-inset: 8px; --stop-number-size: 24px; }
+.plan-list__stops > .stop-item:has(> .transit-leg) .stop-track::before { display: none; }
+.plan-list__stops > .stop-item:has(> .transit-leg)::before {
+  content: "";
+  position: absolute;
+  inset-block: 25px -17px;
+  inset-inline-start: calc(var(--stop-number-inset) + var(--stop-number-size) / 2 - 1px);
+  width: 2px;
+  background: var(--color-border);
+  pointer-events: none;
+}
 .transit-leg {
-  margin: 4px 0 0 calc(var(--stop-number-size, 24px) + 12px);
-  padding: 6px 10px;
-  border-inline-start: 2px dashed var(--color-border);
+  margin: 2px 0 0;
+  padding: 6px 10px 6px calc(var(--stop-number-inset, 8px) + var(--stop-number-size, 24px) + 8px);
   color: var(--color-muted);
   font-size: .78rem;
   line-height: 1.4;
 }
-.transit-leg[data-mode="transit"] { border-inline-start-style: solid; border-inline-start-color: var(--color-text); }
 .transit-leg p { margin: 0; }
 .transit-leg__summary { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .transit-leg__part { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
@@ -2045,3 +2055,17 @@
 .transit-leg__part[data-mode="BUS"], .transit-leg__part[data-mode="SUBWAY"] { color: var(--color-text); }
 .transit-leg__total { margin-inline-start: auto; font-weight: 650; color: var(--color-text); }
 .transit-leg__ride { margin-top: 2px; }
+
+/* 여행 진행도 (여행 시작 후 일정 목록 위) */
+.trip-progress { display: grid; gap: 6px; margin: 0 0 12px; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-bg); }
+.trip-progress p { margin: 0; }
+.trip-progress__count { font-size: .85rem; font-weight: 700; }
+.trip-progress__bar { height: 6px; overflow: hidden; border-radius: 999px; background: var(--color-surface); }
+.trip-progress__bar > span { display: block; height: 100%; border-radius: inherit; background: var(--trip-green); transition: width .3s; }
+.trip-progress__next { color: var(--color-muted); font-size: .8rem; }
+.trip-progress__next strong { color: var(--color-text); }
+/* 끝난 일정: 번호 초록, 이름 흐리게, 세로선 초록 */
+.stop-item[data-done] .stop-number { background: var(--trip-green); }
+.stop-item[data-done] :is(.stop-item__name, .stop-item__time, .stop-time) { opacity: .6; }
+.stop-item[data-done] .stop-track::before,
+.plan-list__stops > .stop-item[data-done]:has(> .transit-leg)::before { background: var(--trip-green); }

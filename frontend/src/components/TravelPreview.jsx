@@ -27,6 +27,7 @@ import EmergencyHelp from "./EmergencyHelp.jsx";
 import "./emergency-help.css";
 import PlanList from "./PlanList.jsx";
 import TransitLeg from "./TransitLeg.jsx";
+import TripProgress from "./TripProgress.jsx";
 import ChatPlaceCards from "./ChatPlaceCards.jsx";
 import GuardianAlternatives from "./GuardianAlternatives.jsx";
 import TravelActionDialog from "./TravelActionDialog.jsx";
@@ -418,6 +419,13 @@ export default function TravelPreview({ night = false, demoMode = false, travele
     return () => request.abort();
   }, [demoMode, liveApi, courseKey]);
 
+  // 서버 예약 점검(EventBridge 10분 주기) 결과 조회. 일정 탭을 열 때와 여행 중 10분마다 다시 읽는다
+  const [alertsTick, setAlertsTick] = useState(0);
+  useEffect(() => {
+    if (!liveCourse || demoMode || !tripStarted) return;
+    const timer = setInterval(() => setAlertsTick((count) => count + 1), 10 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [liveCourse, demoMode, tripStarted]);
   useEffect(() => {
     if (!liveCourse || demoMode || baseTab !== "itinerary") return;
     const request = new AbortController();
@@ -425,7 +433,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
       if (!request.signal.aborted) setSavedAlerts({ ...alerts, plan });
     }).catch(() => {});
     return () => request.abort();
-  }, [liveCourse, demoMode, baseTab, plan, guardianRefresh]);
+  }, [liveCourse, demoMode, baseTab, plan, guardianRefresh, alertsTick]);
 
   useEffect(() => {
     setAlternative(null);
@@ -1194,7 +1202,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
           language={language} label={copy.map} locationCopy={copy.location}
           events={events} returnPaths={returnPaths}
           selectedId={selectedId} nextStopId={nextStop?.stop_id}
-          onSelect={selectPin} onRoutes={setLegs} focusRequest={mapFocus} crowdLevels={crowdLevels}
+          onSelect={selectPin} onRoutes={setLegs} leftInset={sidebar ? 380 : 0} focusRequest={mapFocus} crowdLevels={crowdLevels}
           regionPicker={regionDraft && {
             selected: regionDraft, onChange: setRegionDraft, copy: plannerCopy,
             onDone: () => finishRegions(true), onCancel: () => finishRegions(false),
@@ -1383,9 +1391,12 @@ export default function TravelPreview({ night = false, demoMode = false, travele
               busy={Boolean(pending)} error={planError} backLabel={copy.itinerary} onBack={() => setShowPreferences(false)} />
           ) : (
             <section className="travel-panel" aria-label={copy.itinerary}>
+              {tripStarted && stops.length > 0 && <TripProgress stops={stops} now={travelTime} current={nextStop}
+                currentName={nextStop && resolvePlaceName(nextStop, placesById, language).name} language={language} formatTime={formatTime} />}
               {stops.length ? <PlanList plan={plan} places={places} displayLanguage={language} events={events}
                 selected={selected} tripStopId={nextStop?.stop_id} onSelect={selectMode ? toggleChecked : selectStop} lockedLabel={copy.locked}
                 checkedIds={selectMode ? checkedIds : undefined}
+                doneBefore={tripStarted ? travelTime : undefined}
                 legs={legs} renderLeg={(route) => <TransitLeg route={route} language={language} />}
                 formatStopDate={(date) => formatDate(date, language)}
                 onSaveStops={selectMode ? undefined : saveStops} busy={Boolean(pending)}
@@ -1402,14 +1413,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
               )}
               {liveCourse && (
                 <section className="guardian-review" aria-label={copy.guardian.check}>
-                  <button type="button" disabled={Boolean(pending) || guardianLoading}
-                    onClick={() => {
-                      manualGuardianCheck.current = { plan, demo };
-                      setGuardianActionError(false);
-                      setGuardianRefresh((count) => count + 1);
-                    }}>
-                    {guardianLoading ? copy.loading : copy.guardian.check}
-                  </button>
+                  {/* 수동 일정 점검 버튼 제거: 일정이 바뀔 때 POST /plan/check 자동 실행, 서버 예약 점검(10분 주기) 결과는 GET /alerts 로 표시 */}
                   {undoRepair?.applied === plan && <button type="button" disabled={Boolean(pending)} onClick={undoGuardianRepair}>{copy.guardian.undo}</button>}
                   {(guardian?.error || (guardianActionError && !alternative && !showDelay)) && <p role="alert">{plannerCopy.requestFailed}</p>}
                   {guardian?.issues?.length === 0 && <p role="status">{copy.guardian.clear}</p>}
