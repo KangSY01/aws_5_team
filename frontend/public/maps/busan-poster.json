@@ -2,26 +2,11 @@
   "version": 8,
   "name": "Busan tourism poster",
   "glyphs": "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
-  "sprite": "./gwangan-sprite",
   "sources": {
     "openmaptiles": {
       "type": "vector",
       "url": "https://tiles.openfreemap.org/planet",
       "attribution": "© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors · © <a href=\"https://openmaptiles.org/\">OpenMapTiles</a>"
-    },
-    "gwangan": {
-      "type": "geojson",
-      "data": {
-        "type": "Feature",
-        "properties": {},
-        "geometry": {
-          "type": "Point",
-          "coordinates": [
-            129.128385,
-            35.14569
-          ]
-        }
-      }
     }
   },
   "layers": [
@@ -437,32 +422,6 @@
         "text-color": "#203A48",
         "text-halo-color": "#F5F4EF",
         "text-halo-width": 1.45
-      }
-    },
-    {
-      "id": "gwangan-bridge",
-      "type": "symbol",
-      "source": "gwangan",
-      "minzoom": 9.5,
-      "maxzoom": 16,
-      "layout": {
-        "icon-image": "gwangan-bridge",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          10,
-          0.66,
-          12,
-          0.8,
-          15,
-          0.94
-        ],
-        "icon-padding": 6
       }
     },
     {

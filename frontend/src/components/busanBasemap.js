@@ -15,9 +15,7 @@ export async function loadBusanStyle(signal) {
   const url = new URL(import.meta.env.BASE_URL + "maps/busan-poster.json", window.location.href);
   const response = await fetch(url, { signal });
   if (!response.ok) throw new Error("Unable to load the Busan map style");
-  const style = await response.json();
-  style.sprite = new URL(style.sprite, url).href;
-  return style;
+  return response.json();
 }
 
 export function createBusanBasemap(style, getLanguage) {

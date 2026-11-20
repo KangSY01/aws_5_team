@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getTravelCopy, languages } from "../constants/travelCopy.js";
+import { closeLandmark } from "../constants/mapLandmarks.js";
 import { getPlannerCopy, transportPreferenceIds, durationIds, areaIds } from "../constants/plannerCopy.js";
 import { checkTravelPlan, fetchPlan, hasConfiguredPlanApi, PlanClientError, saveTravelPlan, sendTravelMessage } from "../api/planClient.js";
 import { translateText } from "../api/translationClient.js";
@@ -178,7 +179,7 @@ export default function TravelPreview({ night = false } = {}) {
   });
   const [preferences, setPreferences] = useState(loadPreferences);
   const [showPreferences, setShowPreferences] = useState(false);
-  const [event, setEvent] = useState(null);
+  const [mapDetail, setMapDetail] = useState(null);
   const [regionDraft, setRegionDraft] = useState(null);
   const regionSession = useRef(null);
   const restorePreferencesScroll = useRef(null);
@@ -292,7 +293,7 @@ export default function TravelPreview({ night = false } = {}) {
     regionSession.current = { scroll: log.current?.scrollTop ?? 0, expanded };
     window.history.pushState({ ...window.history.state, busanRegionPicker: true }, "");
     setRegionDraft([...preferences.regions]);
-    setEvent(null);
+    setMapDetail(null);
     setExpanded(false);
     setOpen(false);
   }
@@ -625,7 +626,7 @@ export default function TravelPreview({ night = false } = {}) {
     <main ref={root} className="travel-preview" data-night={night} data-page={page} data-sheet={sheetOpen ? "open" : "closed"} data-expanded={sheetExpanded}
       data-compact-itinerary={!showTranslation && !showChat && !showPreferences && !stops.length} data-region-picker={regionDraft !== null} lang={language}>
       <div className="travel-shell" inert={!isMap} aria-hidden={!isMap}>
-        <BusanMap plan={plan} places={places} events={sampleEvents} onEventSelect={setEvent}
+        <BusanMap plan={plan} places={places} events={sampleEvents} onEventSelect={setMapDetail} onLandmarkSelect={setMapDetail}
           language={language} label={copy.map} locationCopy={copy.location}
           selectedId={selectedId} nextStopId={nextStop?.stop_id} onSelect={setSelectedId} focusRequest={mapFocus}
           regionPicker={regionDraft && {
@@ -647,13 +648,17 @@ export default function TravelPreview({ night = false } = {}) {
             }} />
           </div>
         </header>
-        {tab === "home" && event && (
-          <section className="map-event-card" aria-label={event.names[language]}>
-            <button type="button" aria-label={plannerCopy.closeEvent} onClick={() => setEvent(null)}>×</button>
-            <small>{plannerCopy.sampleEvent}</small>
-            <h2>{event.names[language]}</h2>
-            <p>{formatDate(event.from, language)}{event.from !== event.to && " – " + formatDate(event.to, language)}</p>
-            <p>{event.place.names[language] ?? event.place.names.en}</p>
+        {tab === "home" && mapDetail && (
+          <section id="busan-map-detail" className="map-event-card" data-landmark={Boolean(mapDetail.description)} aria-label={mapDetail.names[language]}>
+            <button type="button" aria-label={mapDetail.description ? closeLandmark[language] : plannerCopy.closeEvent} onClick={() => setMapDetail(null)}>×</button>
+            {!mapDetail.description && <small>{plannerCopy.sampleEvent}</small>}
+            <h2>{mapDetail.names[language]}</h2>
+            {mapDetail.description ? <p>{mapDetail.description[language]}</p> : (
+              <>
+                <p>{formatDate(mapDetail.from, language)}{mapDetail.from !== mapDetail.to && " – " + formatDate(mapDetail.to, language)}</p>
+                <p>{mapDetail.place.names[language] ?? mapDetail.place.names.en}</p>
+              </>
+            )}
           </section>
         )}
       </div>
@@ -813,7 +818,7 @@ export default function TravelPreview({ night = false } = {}) {
               }
               setTranslationMenu(false);
               setTranslationMode(null);
-              if (name !== "home") setEvent(null);
+              if (name !== "home") setMapDetail(null);
               if (name === "profile") {
                 setOpen(false);
                 setExpanded(false);

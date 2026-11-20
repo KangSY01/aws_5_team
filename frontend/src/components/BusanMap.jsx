@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 import { buildPlacesById, resolvePlaceName } from "../lib/resolvePlaceName.js";
 import { stopDate } from "../lib/itineraryTiming.js";
 import RegionMap from "./RegionMap.jsx";
+import { addLandmarkLayer } from "./mapLandmarkLayer.js";
 
 const tileOverride = import.meta.env.VITE_MAP_TILE_URL;
 const osmTileUrl = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -20,7 +21,7 @@ const eventIcons = {
   market: "M4 10h16l-2-5H6zm2 0v9h12v-9m-7 9v-5h4",
 };
 
-export default function BusanMap({ plan, places, events, onEventSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, focusRequest, regionPicker }) {
+export default function BusanMap({ plan, places, events, onEventSelect, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, focusRequest, regionPicker }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const [locationControl, setLocationControl] = useState(null);
@@ -32,13 +33,13 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
   const markersRef = useRef(new Map());
   const languageRef = useRef(language);
   const updateMapLanguage = useRef(null);
-  const updateBridge = useRef(null);
+  const updateLandmarks = useRef(null);
+  const vectorMapRef = useRef(null);
   const selectingRegions = Boolean(regionPicker);
   const selectingRegionsRef = useRef(selectingRegions);
 
   useEffect(() => {
     selectingRegionsRef.current = selectingRegions;
-    updateBridge.current?.();
   }, [selectingRegions]);
   const mappedStops = useMemo(() => {
     const placesById = buildPlacesById(places);
@@ -109,15 +110,10 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
         }
         updateMapLanguage.current = updateLanguage;
         const vectorMap = layer.getMaplibreMap();
-        const syncBridge = () => {
-          if (vectorMap.getLayer("gwangan-bridge")) {
-            vectorMap.setLayoutProperty("gwangan-bridge", "visibility", selectingRegionsRef.current ? "none" : "visible");
-          }
-        };
-        updateBridge.current = syncBridge;
+        vectorMapRef.current = vectorMap;
+        vectorMap.on("idle", () => updateLandmarks.current?.());
         vectorMap.once("style.load", () => {
           updateLanguage();
-          syncBridge();
         });
       }).catch(() => {
         if (!disposed) addRaster();
@@ -133,7 +129,7 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
       disposed = true;
       styleRequest.abort();
       updateMapLanguage.current = null;
-      updateBridge.current = null;
+      vectorMapRef.current = null;
       observer?.disconnect();
       cancelLocationMove.current?.();
       cancelLocationMove.current = null;
@@ -283,6 +279,24 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
   }, [events, language, mappedStops, onEventSelect, onSelect]);
 
   useEffect(() => {
+    if (!onLandmarkSelect) return;
+    const map = mapRef.current;
+    const landmarks = addLandmarkLayer(map, language, onLandmarkSelect);
+    const layout = () => landmarks.layout(vectorMapRef.current, selectingRegionsRef.current);
+    updateLandmarks.current = layout;
+    map.on("moveend resize", layout);
+    return () => {
+      map.off("moveend resize", layout);
+      updateLandmarks.current = null;
+      landmarks.remove();
+    };
+  }, [language, onLandmarkSelect]);
+
+  useEffect(() => {
+    updateLandmarks.current?.();
+  }, [language, onLandmarkSelect, selectingRegions, mappedStops, events, onEventSelect, onSelect]);
+
+  useEffect(() => {
     for (const [id, marker] of markersRef.current) {
       const active = id === selectedId;
       const element = marker.getElement();
@@ -347,6 +361,7 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
       } else {
         locationMarker.current.setLatLng(position);
       }
+      updateLandmarks.current?.();
 
       const pin = locationMarker.current.getElement();
       pin.setAttribute("aria-hidden", "true");

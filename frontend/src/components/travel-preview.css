@@ -811,6 +811,27 @@
 }
 .busan-event-pin { display: grid; place-items: center; color: #244a61; }
 .busan-event-pin[hidden] { display: none; }
+.busan-landmark[hidden] { display: none; }
+.busan-landmark img {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.busan-landmark[data-offset]::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--landmark-tether);
+  border-top: 1px dotted #517686;
+  transform: rotate(var(--landmark-angle));
+  transform-origin: left;
+  pointer-events: none;
+}
+.busan-landmark:focus-visible { outline: 2px solid #203a48; outline-offset: 2px; border-radius: 6px; }
 .busan-event-pin svg {
   width: 28px; height: 28px; padding: 5px; border-radius: 50%; background: white;
   border: 1px solid currentColor; box-shadow: 0 1px 3px #203a4833;
@@ -829,6 +850,7 @@
 .map-event-card button { position: absolute; top: 2px; right: 2px; background: transparent; color: inherit; border: 0; font-size: 1.25rem; pointer-events: auto; }
 .map-event-card :is(h2, p) { margin: 4px 0 0; font-size: .88rem; }
 .map-event-card small { color: var(--color-muted); }
+.map-event-card[data-landmark="true"] { pointer-events: auto; }
 
 .main-region-picker {
   position: absolute;
