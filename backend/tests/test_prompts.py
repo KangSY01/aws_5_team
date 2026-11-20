@@ -79,6 +79,7 @@ def test_values_filled_by_code():
         "If the user gives no date, the plan is for TODAY",  # 요구사항 2.4
         "Restaurants are not places",  # restaurant_id 는 표식만, 일정에는 넣지 않음 (평가 14번)
         "Call move_stop for all of those stops together in one response",  # 출력 길이 (평가 11·20번 max_tokens)
+        "use get_return_options only",  # 귀가 시간: get_transit_info(추정 49분)와 카카오(33분) 숫자 엇갈림 방지
         "indoor true\n  when the reason is rain",  # 교체 후보 좁히기 (평가 3번 처리 시간)
         "leave query empty and pass category",  # 빈 검색어 (평가 29번)
     ],

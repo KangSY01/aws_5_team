@@ -27,6 +27,48 @@ def test_결과_표는_성공과_실패를_모두_표시한다(capsys):
     assert "도구" in output and "경로" in output
 
 
+def test_장면7_점검은_막차_ranked_time_source가_다르면_실패한다():
+    from app.tools.return_options import get_return_options
+
+    def result() -> dict:  # conftest 의 no_kakao 로 전부 estimate 다
+        return get_return_options(date=check.DEMO_DATE, event_name=check.FESTIVAL,
+                                  planned_departure=check.RETURN_DEPARTURE)
+
+    check.check_return_options(result())  # 실제 데이터는 통과한다
+
+    def option(value: dict, kind: str, station: str) -> dict:
+        return next(o for o in value["options"] if (o["type"], o["station"]) == (kind, station))
+
+    def wrong_baseline(value):
+        value["baseline"]["last_train"] = "23:30"
+
+    def wrong_walk(value):
+        option(value, "walk_to_station", "Jung-dong")["last_train"] = None
+
+    def later_not_missed(value):
+        option(value, "shift_later", "Haeundae")["warnings"] = []
+
+    def later_ranked(value):
+        value["ranked"].append({"option": option(value, "shift_later", "Haeundae"), "labels": []})
+
+    def no_best(value):
+        value["ranked"][0]["labels"] = []
+
+    def kakao_source(value):
+        value["options"][0]["time_source"] = "kakao"
+
+    def no_options(value):
+        value["options"] = []
+
+    for tamper in (wrong_baseline, wrong_walk, later_not_missed, later_ranked, no_best, kakao_source, no_options):
+        value = result()
+        tamper(value)
+        with pytest.raises(AssertionError):
+            check.check_return_options(value)
+    with pytest.raises(AssertionError):
+        check.check_return_options({"error": {"code": "event_not_found", "message": "x"}})
+
+
 def test_스크립트는_요청한_handler_경로와_오프라인_스위치를_포함한다():
     source = Path(check.__file__).read_text(encoding="utf-8")
     for path in ('"/plan/check"', 'f"/plan/{plan.plan_id}/delay"', '"/speak"', '"/events"'):

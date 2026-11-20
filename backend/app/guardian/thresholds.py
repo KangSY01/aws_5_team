@@ -49,3 +49,14 @@ MAX_REPAIRS = 3  # Issue 하나당 돌려줄 해결안 수
 # 대형 명소에 몰린 방문객을 근처 중소 상권으로 분산하는 목적 (데모 장면 2: 해운대해수욕장 → 해운대시장 도보 6분).
 LOCAL_COMMERCE_CATEGORIES = frozenset({"market", "street"})
 LOCAL_COMMERCE_MAX_MIN = 15
+
+# 대형 상업시설: replace 후보로 쓰지 않는다 (비·혼잡 모두). 대형 시설로 몰린 소비를 중소 상권으로 옮기는 목적과 반대.
+# 랭킹 분산 보너스 제외(app/ranking/weights.py)도 이 목록을 쓴다. place_id 는 places.json 기준.
+LARGE_COMMERCIAL = frozenset({
+    "shinsegae-centum-city",
+    "lotte-outlet-dongbusan",
+    "lotte-world-busan",
+    "the-bay-101",
+    "busan-x-the-sky",
+    "sea-life-busan",
+})

@@ -6,7 +6,7 @@
 - 역 혼잡은 규칙으로 추정한 값이다. 실측·실시간이 아니고, 혼잡 시간대도 근거 데이터 없이 정한 가정이다.
   집중률(congestion.json)은 쓰지 않는다. 역별 혼잡 숫자·등급을 만들지 않는다.
 - 이동 시간은 카카오 실시간 대중교통 경로를 우선하고, 실패하면 역 좌표와 travel_times.json 규칙의 추정값을 쓴다.
-  카카오 응답은 파일·DB·메모리 캐시에 저장하지 않는다. 막차 경고만 부산교통공사 표준 시간표(last_trains.json)를 쓴다.
+  카카오 응답은 파일·DB·메모리 캐시에 저장하지 않는다. 막차 시각·경고만 부산교통공사 표준 시간표(last_trains.json)를 쓴다.
 - 현재 시각을 쓰지 않는다. 일정 시각은 입력(date, planned_departure)으로 정하고, 이동 시간만 실시간 경로를 우선한다.
 - 출처(sources)는 도구가 돌려주지 않는다. 다른 조회 도구처럼 app/chat/answer.py 가 도구 이름으로 조립한다.
 """
@@ -62,8 +62,11 @@ def _service_day_code(day: dt.date) -> str:
     return "2" if day.weekday() == 5 else "3" if day.weekday() == 6 else "1"
 
 
-def _last_train_at(day: dt.date, station: str, toward: str) -> dt.datetime | None:
-    """저장된 표에서 해당 역·방향·요일의 막차 시각. 파일·행·값이 없거나 이상하면 None."""
+def _last_train(day: dt.date, station: str, toward: str) -> tuple[str, dt.datetime] | None:
+    """저장된 표에서 해당 역·방향·요일의 막차 ("HH:MM", 그 시각). 파일·행·값이 없거나 이상하면 None.
+
+    자정 뒤 막차는 "24:05"처럼 24시 이상 그대로 두고, 시각은 운행일(day) 00:00 에 더한 값이다.
+    """
     try:
         row = _load_json("last_trains.json")["stations"][station]
         if row["toward"] != toward:
@@ -74,15 +77,22 @@ def _last_train_at(day: dt.date, station: str, toward: str) -> dt.datetime | Non
             return None
     except (LookupFailure, AttributeError, KeyError, TypeError, ValueError):
         return None
-    return dt.datetime.combine(day, dt.time(), lookup.KST) + dt.timedelta(hours=hour, minutes=minute)
+    at = dt.datetime.combine(day, dt.time(), lookup.KST) + dt.timedelta(hours=hour, minutes=minute)
+    return f"{hour:02d}:{minute:02d}", at
+
+
+def last_train_text(day: dt.date, station: str, toward: str) -> str | None:
+    """응답의 last_train 값: 막차 시각 "HH:MM" (자정 뒤는 24시 이상). 표에 없으면 None."""
+    found = _last_train(day, station, toward)
+    return found[0] if found else None
 
 
 def last_train_warnings(day: dt.date, station: str, toward: str, departure: dt.datetime) -> list[str]:
     """막차 표가 없으면 unknown, 막차 뒤면 missed, 탈 수 있는 시각이면 빈 목록."""
-    last_train = _last_train_at(day, station, toward)
-    if last_train is None:
+    found = _last_train(day, station, toward)
+    if found is None:
         return ["last_train_unknown"]
-    return ["last_train_missed"] if departure > last_train else []
+    return ["last_train_missed"] if departure > found[1] else []
 
 
 def find_station(stations: dict[str, dict], name: str) -> str | None:
@@ -163,7 +173,9 @@ def _kakao_routes_by_station(origins: list[dict], destination: dict) -> dict[str
 
 
 def _stop_names(name: object, mode: object, stations: dict[str, dict]) -> dict[str, str]:
-    """카카오 승하차 이름의 언어별 이름. 장소의 names 처럼 있는 언어만 넣는다 (역 표에는 한국어·영어만 있다).
+    """카카오 승하차 이름의 언어별 이름. 장소의 names 처럼 있는 언어만 넣는다.
+
+    en 은 역 표의 station, ja·zh-Hans·zh-Hant 는 역 표의 names 에 있을 때만 넣는다 (지금은 2호선 역 일부).
 
     지하철 구간의 이름만 '역'을 떼고 역 표의 name_ko 와 비교한다. 카카오는 "서면"처럼 '역' 없이 준다.
     버스 정류장과 역 표에 없는 역은 한국어 원문만 넣고, 이름이 없으면(도보 구간) 빈 dict 다.
@@ -172,10 +184,10 @@ def _stop_names(name: object, mode: object, stations: dict[str, dict]) -> dict[s
         return {}
     names = {"ko": name}
     if mode == "SUBWAY":
-        by_ko = {station["name_ko"].removesuffix("역"): station["station"] for station in stations.values()}
-        english = by_ko.get(name.strip().removesuffix("역"))
-        if english:
-            names["en"] = english
+        by_ko = {station["name_ko"].removesuffix("역"): station for station in stations.values()}
+        station = by_ko.get(name.strip().removesuffix("역"))
+        if station:
+            names = {**names, "en": station["station"], **station.get("names", {})}
     return names
 
 
@@ -280,21 +292,14 @@ def return_options(date: str, place_id: str | None = None, event_name: str | Non
     baseline_estimate = subway_minutes(origin, dest, rule)
     options = []
     if congested:
-        def shift(kind: str, at: dt.datetime, warning: str) -> dict:
+        def shift(kind: str, at: dt.datetime, warnings: list[str]) -> dict:
             return {"type": kind, "depart_at": at.isoformat(), "station": crowded["station"], "walk_min": 0,
-                    "extra_min": 0, "avoids_congestion": not in_window(at), "warnings": [warning]}
+                    "extra_min": 0, "avoids_congestion": not in_window(at), "warnings": warnings}
 
         earlier = end - dt.timedelta(minutes=EARLY_LEAVE_BEFORE_END_MIN)
         if earlier > start:  # 행사가 시작하기도 전에 떠나라는 제안은 하지 않는다
-            options.append(shift("shift_earlier", earlier, "leaves_before_event_end"))
-        options.append(shift(
-            "shift_later",
-            window_to,
-            "last_train_unknown",  # 아래에서 저장된 시간표가 있으면 실제 비교 결과로 교체하거나 없앤다
-        ))
-        options[-1]["warnings"] = last_train_warnings(
-            day, crowded["station"], destination["station"], window_to
-        )
+            options.append(shift("shift_earlier", earlier, ["leaves_before_event_end"]))
+        options.append(shift("shift_later", window_to, []))
         walks = sorted(
             (straight_km(crowded, s), s["station"]) for s in stations.values() if s["station"] != crowded["station"]
         )
@@ -307,6 +312,19 @@ def return_options(date: str, place_id: str | None = None, event_name: str | Non
                 "extra_min": walk_min + subway_minutes(stations[name], dest, rule) - baseline_estimate,
                 "avoids_congestion": name != crowded["station"], "warnings": [],
             })
+
+    def last_train_fields(station: str, boards_at: dt.datetime) -> dict:
+        """그 역에서 도착역 방향 막차 시각과, 역에 닿는 시각(boards_at)을 막차와 비교한 경고."""
+        if station == destination["station"]:  # 걸어서 도착역까지 가는 안은 열차를 타지 않는다
+            return {"last_train": None, "warnings": []}
+        return {"last_train": last_train_text(day, station, destination["station"]),
+                "warnings": last_train_warnings(day, station, destination["station"], boards_at)}
+
+    for option in options:  # 도보안은 걸어서 그 역에 도착하는 시각으로 비교한다
+        boards_at = dt.datetime.fromisoformat(option["depart_at"]) + dt.timedelta(minutes=option["walk_min"])
+        fields = last_train_fields(option["station"], boards_at)
+        option["last_train"] = fields["last_train"]
+        option["warnings"] = option["warnings"] + fields["warnings"]
 
     # 기준역과 후보 출발역을 한 번씩만, 서로 다른 역은 병렬로 조회한다. 이 지역 변수는 함수 밖에 보관하지 않는다.
     departure_stations = [origin, *(stations[option["station"]] for option in options)]
@@ -327,7 +345,8 @@ def return_options(date: str, place_id: str | None = None, event_name: str | Non
     options = sorted(options, key=lambda o: (o["extra_min"], o["type"] == "walk_to_station"))[:MAX_OPTIONS]
     baseline = {
         "depart_at": depart.isoformat(), "station": origin["station"], "congested": congested,
-        "minutes": baseline_min, "mode": "subway", **_time_source_fields(baseline_route, stations),
+        "minutes": baseline_min, "mode": "subway", **last_train_fields(origin["station"], depart),
+        **_time_source_fields(baseline_route, stations),
     }
     result = {
         "date": day.isoformat(),
@@ -365,10 +384,12 @@ def get_return_options(date: str, place_id: str | None = None, event_name: str |
     walk between a place and its station. Kakao route results are never stored or cached. When time_source is
     "kakao", route_type, transfers, fare, walk_meters, and legs come from Kakao; for "estimate", do not invent lines
     or transfers. Last-train warnings use a stored standard timetable only for the available station and direction.
-    Actual train times can differ. A shift_later option has last_train_missed when its departure is after that
-    timetable, no last-train warning when it is not after the last train, or last_train_unknown when no matching
-    timetable is stored. Tell the user to check the live timetable for either warning. Say "expected to be crowded"
-    and "about N minutes".
+    Actual train times can differ. The baseline and every option carry last_train, the last train from that
+    station toward the destination, and are compared with it at the time the user reaches the station (departure
+    plus walking minutes): last_train_missed when that is after the last train, no last-train warning when it is
+    not, or last_train_unknown when no matching timetable is stored. State the last_train time when it is present
+    and tell the user to check the live timetable for either warning. Say "expected to be crowded" and
+    "about N minutes".
     The destination defaults to Seomyeon station (the demo hotel area). If destination.is_default is true, tell the
     user the result is based on Seomyeon. If the user names another destination, pass it as destination_station or
     destination_place_id.
@@ -393,12 +414,17 @@ def get_return_options(date: str, place_id: str | None = None, event_name: str |
         "destination": {"station", "place_id": set only when destination_place_id was used, "is_default"},
         "congested_station": {"station", "main_place_id", "from", "to"} (window start included, end excluded),
         "baseline": {"depart_at", "station", "congested", "minutes": travel minutes from the origin station
-            to the destination station, "mode": "subway", "time_source": "kakao" | "estimate"},
+            to the destination station, "mode": "subway", "last_train", "warnings": "last_train_unknown" |
+            "last_train_missed", "time_source": "kakao" | "estimate"},
         "options": up to 5 unranked suggestions sorted by extra_min, each {"type": "shift_earlier" | "shift_later" |
             "walk_to_station", "depart_at", "station": station to board at, "walk_min": walking minutes to that
             station, "extra_min": extra minutes versus the baseline (can be negative),
-            "avoids_congestion", "warnings": "leaves_before_event_end" | "last_train_unknown" |
+            "avoids_congestion", "last_train", "warnings": "leaves_before_event_end" | "last_train_unknown" |
             "last_train_missed", "time_source": "kakao" | "estimate"},
+        last_train is the last train time "HH:MM" from that item's station toward the destination, from the
+            Busan Transportation Corporation train timetable. Times after midnight stay at 24 or above ("24:05"
+            means 00:05 the next day). null means the timetable has no entry (or the option walks all the way to
+            the destination station). Actual service can differ.
         "ranked": rank_routes output in score order, with last_train_missed removed. Each item has {"option": the
             original option, "score", "travel_min", "arrive_at", "breakdown", "labels", "excluded"}. Labels are
             "best", "earliest_arrival", and "least_walking".
@@ -406,7 +432,8 @@ def get_return_options(date: str, place_id: str | None = None, event_name: str |
             "walk_meters", "legs": [{"mode", "minutes", "distance_m", "lines", "from_name", "to_name",
             "from_names", "to_names"}]}. from_name and to_name are Kakao's Korean stop names. from_names and to_names
             map a language to the same stop's name and hold only the languages in the data: "ko" always, plus "en"
-            when a SUBWAY leg's stop is in the station table. Use the user's language when it is present, otherwise
+            when a SUBWAY leg's stop is in the station table, plus "ja", "zh-Hans", "zh-Hant" where the station
+            table has them (line 2 stations only). Use the user's language when it is present, otherwise
             the Korean name as it is; never translate or invent a stop name. Bus stops have only "ko"; legs without
             a stop name (walking) have {}.
         Times are ISO strings (+09:00). options and ranked are empty and baseline.congested is false when the planned

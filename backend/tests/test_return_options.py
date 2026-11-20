@@ -98,22 +98,25 @@ def test_장면7_행사_이름만_주면_대표_장소에서_서면역까지_제
         "congested_station": {"station": "Haeundae", "main_place_id": "sea-life-busan",
                               "from": "2026-11-28T22:30:00+09:00", "to": "2026-11-29T00:00:00+09:00"},
         "baseline": {"depart_at": "2026-11-28T23:00:00+09:00", "station": "Haeundae", "congested": True,
-                     "minutes": 39, "mode": "subway", "time_source": "estimate"},
+                     "minutes": 39, "mode": "subway", "time_source": "estimate",
+                     "last_train": "23:29", "warnings": []},
         "options": [
             {"type": "shift_earlier", "depart_at": "2026-11-28T22:20:00+09:00", "station": "Haeundae", "walk_min": 0,
              "extra_min": 0, "avoids_congestion": True, "warnings": ["leaves_before_event_end"],
-             "time_source": "estimate"},
+             "time_source": "estimate", "last_train": "23:29"},
             {"type": "shift_later", "depart_at": "2026-11-29T00:00:00+09:00", "station": "Haeundae", "walk_min": 0,
              "extra_min": 0, "avoids_congestion": True,
              "warnings": ro.last_train_warnings(
                  dt.date.fromisoformat(DAY), "Haeundae", "Seomyeon",
                  dt.datetime.fromisoformat("2026-11-29T00:00:00+09:00"),
-             ), "time_source": "estimate"},
+             ), "time_source": "estimate", "last_train": "23:29"},
             # 설계 「장면 7 어림값」: 동백 도보 18 + 지하철 36 − 39 = +15, 중동 17 + 42 − 39 = +20
             {"type": "walk_to_station", "depart_at": "2026-11-28T23:00:00+09:00", "station": "Dongbaek",
-             "walk_min": 18, "extra_min": 15, "avoids_congestion": True, "warnings": [], "time_source": "estimate"},
+             "walk_min": 18, "extra_min": 15, "avoids_congestion": True, "warnings": [], "time_source": "estimate",
+             "last_train": "23:31"},
             {"type": "walk_to_station", "depart_at": "2026-11-28T23:00:00+09:00", "station": "Jung-dong",
-             "walk_min": 17, "extra_min": 20, "avoids_congestion": True, "warnings": [], "time_source": "estimate"},
+             "walk_min": 17, "extra_min": 20, "avoids_congestion": True, "warnings": [], "time_source": "estimate",
+             "last_train": "23:28"},
         ],
     }
     # ranked 는 손으로 적은 위 기대값을 rank_routes 에 넣은 결과와 같다 (카카오가 없으면 추정값 그대로 채점한다)
@@ -152,6 +155,55 @@ def test_막차_시간표가_있으면_출발_시각과_비교하고_없으면_u
     assert next(o for o in unavailable["options"] if o["type"] == "shift_later")["warnings"] == ["last_train_unknown"]
 
 
+def last_trains(result) -> dict[tuple[str, str], tuple]:
+    rows = [{"type": "baseline", **result["baseline"]}, *result["options"]]
+    return {(row["type"], row["station"]): (row["last_train"], row["warnings"]) for row in rows}
+
+
+def test_막차_전_출발이면_모든_항목에_막차_시각이_있고_경고가_없다():
+    result = get_return_options(date=DAY, event_name=FESTIVAL, planned_departure="22:40")
+    assert last_trains(result) == {
+        ("baseline", "Haeundae"): ("23:29", []),
+        ("shift_earlier", "Haeundae"): ("23:29", ["leaves_before_event_end"]),
+        ("shift_later", "Haeundae"): ("23:29", ["last_train_missed"]),  # 11/29 00:00 출발
+        ("walk_to_station", "Dongbaek"): ("23:31", []),
+        ("walk_to_station", "Jung-dong"): ("23:28", []),
+    }
+    assert all(row["option"]["last_train"] for row in result["ranked"])  # ranked 의 option 에도 그대로 있다
+
+
+def test_막차_뒤에_역에_닿는_항목은_모두_missed이고_ranked에서_빠진다():
+    # 23:15 출발: 해운대(23:29)는 탈 수 있고, 동백은 23:33 도착(막차 23:31), 중동은 23:32 도착(막차 23:28)
+    result = get_return_options(date=DAY, event_name=FESTIVAL, planned_departure="23:15")
+    assert last_trains(result) == {
+        ("baseline", "Haeundae"): ("23:29", []),
+        ("shift_earlier", "Haeundae"): ("23:29", ["leaves_before_event_end"]),
+        ("shift_later", "Haeundae"): ("23:29", ["last_train_missed"]),
+        ("walk_to_station", "Dongbaek"): ("23:31", ["last_train_missed"]),  # 걸어서 역에 닿는 시각으로 비교한다
+        ("walk_to_station", "Jung-dong"): ("23:28", ["last_train_missed"]),
+    }
+    assert [row["option"]["type"] for row in result["ranked"]] == ["shift_earlier"]
+    late = get_return_options(date=DAY, event_name=FESTIVAL, planned_departure="23:30")
+    assert late["baseline"]["warnings"] == ["last_train_missed"]
+
+
+def test_막차_표가_없으면_last_train은_null이고_unknown(data_dir, tmp_path):
+    (tmp_path / "last_trains.json").unlink()
+    result = get_return_options(date=DAY, event_name=FESTIVAL, planned_departure="22:40")
+    assert last_trains(result) == {
+        ("baseline", "Haeundae"): (None, ["last_train_unknown"]),
+        ("shift_earlier", "Haeundae"): (None, ["leaves_before_event_end", "last_train_unknown"]),
+        ("shift_later", "Haeundae"): (None, ["last_train_unknown"]),
+        ("walk_to_station", "Dongbaek"): (None, ["last_train_unknown"]),
+        ("walk_to_station", "Jung-dong"): (None, ["last_train_unknown"]),
+    }
+    # 자정 뒤 막차는 24시 이상 그대로 돌려준다. 걸어서 도착역까지 가는 안은 열차를 타지 않는다
+    data_dir("last_trains.json", {"stations": {"Haeundae": {"toward": "Seomyeon", "last_train": {"2": "24:05"}}}})
+    assert get_return_options(date=DAY, event_name=FESTIVAL)["baseline"]["last_train"] == "24:05"
+    walk = walks(get_return_options(date=DAY, event_name=FESTIVAL, destination_station="Dongbaek"))["Dongbaek"]
+    assert (walk["last_train"], walk["warnings"]) == (None, [])
+
+
 def test_막차_요일_코드는_평일_토요일_일요일을_구분한다():
     assert ro._service_day_code(dt.date(2026, 11, 27)) == "1"
     assert ro._service_day_code(dt.date(2026, 11, 28)) == "2"
@@ -173,8 +225,8 @@ def test_혼잡_역은_대표_장소의_역_하나뿐이고_다른_역에서_출
     assert result["congested_station"]["station"] == "Haeundae"
     assert result["origin"] == {"place_id": "the-bay-101", "station": "Dongbaek"}
     assert result["baseline"] == {"depart_at": "2026-11-28T23:00:00+09:00", "station": "Dongbaek", "congested": False,
-                                  "minutes": 36, "mode": "subway",
-                                  "time_source": "estimate"}  # 제안이 없어도 기준 이동 시간은 준다
+                                  "minutes": 36, "mode": "subway", "last_train": "23:31", "warnings": [],
+                                  "time_source": "estimate"}  # 제안이 없어도 기준 이동 시간과 막차는 준다
     assert result["options"] == [] and result["ranked"] == []
 
 
@@ -264,7 +316,8 @@ def test_혼잡_시간대가_자정을_넘는다(data_dir):
     assert (result["congested_station"]["from"], result["congested_station"]["to"]) == (
         "2026-11-28T23:00:00+09:00", "2026-11-29T00:30:00+09:00")
     assert result["baseline"] == {"depart_at": "2026-11-29T00:10:00+09:00", "station": "Haeundae", "congested": True,
-                                  "minutes": 39, "mode": "subway", "time_source": "estimate"}
+                                  "minutes": 39, "mode": "subway", "time_source": "estimate",
+                                  "last_train": "23:29", "warnings": ["last_train_missed"]}  # 00:10 은 막차 뒤
     assert [(o["type"], o["depart_at"]) for o in result["options"][:2]] == [
         ("shift_earlier", "2026-11-28T22:50:00+09:00"), ("shift_later", "2026-11-29T00:30:00+09:00")]
     assert error_code(get_return_options(date=DAY, event_name="심야", planned_departure="11pm")) == "invalid_time"
@@ -380,6 +433,7 @@ def test_stations_json은_CSV로_다시_만든_값과_같고_환승역은_한_�
     with build_stations.CSV_PATH.open(encoding="utf-8-sig", newline="") as f:
         rows = list(csv.DictReader(f))
     stations = build_stations.build_stations(rows)
+    unmatched = build_stations.add_names(stations, build_stations.read_name_rows())
     assert build_stations.dump_stations(stations) == (REAL_DATA / "stations.json").read_text(encoding="utf-8")
     names = [s["station"] for s in stations]
     assert (len(rows), len(names), len(set(names))) == (114, 108, 108)  # 환승역 6곳을 합친다
@@ -387,7 +441,19 @@ def test_stations_json은_CSV로_다시_만든_값과_같고_환승역은_한_�
     assert {n for n, s in by_name.items() if len(s["lines"]) > 1} == {
         "Seomyeon", "Yeonsan", "Dongnae", "Suyeong", "Deokcheon", "Minam"}
     assert by_name["Seomyeon"] == {"station": "Seomyeon", "name_ko": "서면역", "lines": ["1", "2"],
-                                   "lat": 35.158011, "lng": 129.05932}  # 1·2호선 두 행의 평균 좌표
+                                   "lat": 35.158011, "lng": 129.05932,  # 1·2호선 두 행의 평균 좌표
+                                   "names": {"ja": "西面", "zh-Hans": "西面", "zh-Hant": "西面"}}
+    # 일본어·중국어 역명은 2호선 역명 파일에 있는 값만 넣는다. 2호선 밖 역과 빈 칸은 넣지 않는다
+    assert by_name["Haeundae"]["names"] == {"ja": "海雲台", "zh-Hans": "海云台", "zh-Hant": "海雲台"}
+    assert by_name["Dongbaek"]["names"] == {"ja": "冬柏", "zh-Hans": "冬柏", "zh-Hant": "冬柏"}
+    assert by_name["Jung-dong"]["names"] == {"ja": "中洞", "zh-Hans": "中洞", "zh-Hant": "中洞"}
+    assert by_name["Centum City"]["names"] == {"ja": "センタムシティ"}  # 출처의 중국어 칸이 비어 있다
+    assert not [n for n, s in by_name.items() if "2" not in s["lines"] and "names" in s]
+    assert by_name["Busan Station"].keys() == {"station", "name_ko", "lines", "lat", "lng"}
+    assert all(s["names"] and set(s["names"]) <= set(build_stations.NAME_LANGS) and all(s["names"].values())
+               for s in stations if "names" in s)
+    assert unmatched == ["Busan Museum of Art", "Kyungsung Univ. Pukyong Nat'l Univ.",
+                         "Busan Int'l Finance Center Busan Bank"]  # 역명 표기가 달라 맞지 않는 2호선 역
     assert by_name[ro.DEFAULT_DESTINATION_STATION] and by_name["Haeundae"]["name_ko"] == "해운대역"
     # places.json 의 nearest_station 중 표에 없는 값은 동해선 OSIRIA 하나뿐이다
     assert {p["nearest_station"] for p in load("places.json")} - set(names) - {None} == {"OSIRIA"}

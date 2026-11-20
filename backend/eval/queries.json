@@ -129,7 +129,7 @@
     "profile": { "language": "zh-Hans", "interests": ["indoor"], "companions": null, "diet": [], "budget": null },
     "expect": {
       "tools": ["search_places"],
-      "places_any": ["jagalchi-market", "busan-tower", "shinsegae-centum-city"],
+      "places_any": ["jagalchi-market", "busan-tower", "shinsegae-centum-city", "busan-x-the-sky", "sea-life-busan", "busan-museum-of-art", "busan-cinema-center", "national-maritime-museum", "busan-modern-history-museum", "busan-museum"],
       "checks": ["간체 답변", "실내(indoor: true) 장소만 추천"]
     }
   },

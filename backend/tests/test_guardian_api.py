@@ -35,7 +35,7 @@ TRAVEL = {
     ("gamcheon-village", "jagalchi-market"): 15,
     ("jagalchi-market", "busan-tower"): 10,
     ("busan-tower", "haeundae-beach"): 40,
-    ("busan-tower", "shinsegae-centum-city"): 45,
+    ("busan-tower", "busan-museum-of-art"): 45,
 }
 
 
@@ -89,8 +89,8 @@ def test_build_context_maps_tool_results():
     assert ctx.hours["busan-tower"].opens == dt.time(10)
     assert [e.name for e in ctx.events] == ["테스트 행사"]
     assert ctx.travel("busan-tower", "haeundae-beach") == 40
-    assert "shinsegae-centum-city" not in {p for pair in ctx.travel_min for p in pair}  # 교체 후보는 아직
-    assert set(ctx.places) >= {"haeundae-beach", "shinsegae-centum-city"}
+    assert "busan-museum-of-art" not in {p for pair in ctx.travel_min for p in pair}  # 교체 후보는 아직
+    assert set(ctx.places) >= {"haeundae-beach", "busan-museum-of-art"}
 
 
 def test_build_context_skips_missing_or_failing_tools():
@@ -127,7 +127,7 @@ def test_with_repair_travel_adds_candidates_for_issue_stops_only():
     calls.clear()
     ctx = with_repair_travel(ctx, PLAN, ["s4", "s2"], lookups=lookups)  # s2 는 고정이라 무시
 
-    assert ctx.travel("busan-tower", "shinsegae-centum-city") == 45
+    assert ctx.travel("busan-tower", "busan-museum-of-art") == 45
     asked = {c[1:] for c in calls if c[0] == "get_travel_time"}
     assert ("busan-tower", "gwangalli-beach") in asked  # 같은 beach
     # s4 의 이웃(부산타워)에서, 또는 s4 장소(해운대)에서 시장·거리까지 (도보권 상권 판정)
@@ -141,14 +141,14 @@ def test_with_repair_travel_adds_candidate_crowd_and_hours():
     # 후보의 집중률·운영시간을 모르면 붐비거나 휴무인 장소가 "문제없음"으로 대안에 나온다
     lookups = fake_lookups(
         crowd={"haeundae-beach": 70, "songjeong-beach": 99},
-        hours={"shinsegae-centum-city": {"opens": "10:30", "closes": "20:00", "closed_weekdays": [], "closed_dates": []}},
+        hours={"busan-museum-of-art": {"opens": "10:30", "closes": "20:00", "closed_weekdays": [], "closed_dates": []}},
     )
     ctx = build_context(PLAN, demo_now=at(9), lookups=lookups)
     assert "songjeong-beach" not in ctx.crowd
     ctx = with_repair_travel(ctx, PLAN, ["s4"], lookups=lookups)
     assert ctx.crowd["songjeong-beach"] == 99.0  # 같은 beach 후보
     assert ctx.crowd["haeundae-beach"] == 70.0  # 일정 장소 값은 그대로
-    assert ctx.hours["shinsegae-centum-city"].opens == dt.time(10, 30)  # 실내 후보
+    assert ctx.hours["busan-museum-of-art"].opens == dt.time(10, 30)  # 실내 후보
 
 
 def test_run_check_skips_equally_crowded_candidate():
@@ -193,9 +193,9 @@ def test_run_check_rain_gives_indoor_replace_and_places():
     assert set(response.repairs) == {"s4-rain", "s1-crowded", "s3-crowded"}
     first = response.repairs["s4-rain"][0]
     assert first.action == "replace"
-    assert next(c.after.place_id for c in first.changes) == "shinsegae-centum-city"
+    assert next(c.after.place_id for c in first.changes) == "busan-museum-of-art"
     assert (first.metrics.changed, first.metrics.extra_travel_min) == (1, 5)
-    assert [p.place_id for p in response.places] == ["shinsegae-centum-city"]
+    assert [p.place_id for p in response.places] == ["busan-museum-of-art"]
 
 
 def test_run_check_no_issue_gives_empty_repairs():
