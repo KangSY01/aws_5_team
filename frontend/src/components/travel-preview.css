@@ -1,9 +1,22 @@
 .travel-preview {
   --trip-green: #145440;
   --mobile-nav-height: 48px;
-  --capsule-surface: rgba(255, 255, 255, 0.78);
-  --capsule-border: rgba(23, 23, 23, 0.10);
-  --capsule-shadow: rgba(23, 23, 23, 0.10);
+  --color-bg: #fffdf8;
+  --color-surface: #f8f2e8;
+  --color-text: #102e48;
+  --color-muted: #526778;
+  --color-border: #e3d9ca;
+  --color-selected: #e3f3f7;
+  --color-selected-text: #103e55;
+  --color-action: #173e59;
+  --color-shadow: #16384b22;
+  --coast-coral: #a63822;
+  --coast-coral-surface: #fcebe3;
+  --coast-focus: #1c6a86;
+  --coast-card-shadow: 0 8px 28px var(--color-shadow);
+  --capsule-surface: rgb(255 253 248 / 94%);
+  --capsule-border: var(--color-border);
+  --capsule-shadow: var(--color-shadow);
   --nav-bottom: calc(12px + env(safe-area-inset-bottom));
   position: relative;
   display: grid;
@@ -14,17 +27,18 @@
 }
 .travel-preview[data-night="true"] {
   color-scheme: dark;
-  --capsule-surface: rgba(23, 23, 23, 0.78);
-  --capsule-border: rgba(255, 255, 255, 0.16);
-  --capsule-shadow: rgba(0, 0, 0, 0.22);
-  --color-bg: #171717;
-  --color-surface: #222223;
-  --color-text: #F5F5F6;
-  --color-muted: #C4C4C8;
-  --color-border: #414144;
-  --color-selected: #3A3A3D;
-  --color-selected-text: #FFFFFF;
-  --color-action: #414144;
+  --color-bg: #172b3d;
+  --color-surface: #23394c;
+  --color-text: #f2f6fa;
+  --color-muted: #bbcbd7;
+  --color-border: #536577;
+  --color-selected: #29495d;
+  --color-selected-text: #eefaff;
+  --color-action: #30647d;
+  --coast-coral: #ffb7a0;
+  --coast-coral-surface: #493237;
+  --coast-focus: #a9deed;
+  --capsule-surface: rgb(23 43 61 / 94%);
   --color-shadow: #00000045;
 }
 .travel-shell { position: relative; display: grid; min-width: 0; min-height: 0; overflow: hidden; }
@@ -1586,4 +1600,112 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .busan-location-pin[data-pulse] .busan-location-ring { animation: none; }
+}
+
+.travel-preview :is(button, select, textarea, input):focus-visible {
+  outline-color: var(--coast-focus);
+}
+
+.travel-brand {
+  display: inline-block;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: var(--coast-card-shadow);
+  font-size: clamp(1.25rem, 3vw, 1.65rem);
+  line-height: 1.25;
+}
+.travel-brand span { color: var(--coast-coral); }
+
+.travel-preview :is(.trip-next, .map-event-card, .region-preview, .travel-language-menu) {
+  border-radius: 18px;
+  box-shadow: var(--coast-card-shadow);
+}
+
+.travel-preview .travel-language-trigger {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.chat-heading {
+  padding-inline: 16px;
+  border-block-end: 1px solid var(--color-border);
+}
+.chat-heading h1 { font-size: 1.2rem; font-weight: 800; line-height: 1.25; }
+.chat-content { padding-inline: 16px; scrollbar-color: var(--color-border) transparent; }
+.chat-content:has(> .travel-panel) { padding-block-start: 10px; }
+.chat-messages { gap: 12px; }
+.chat-bubble { padding: 10px 13px; border-radius: 16px 16px 16px 5px; }
+.chat-bubble[data-role="user"] { border-radius: 16px 16px 5px 16px; }
+.chat-bubble[role="alert"] {
+  background: var(--coast-coral-surface);
+  color: var(--coast-coral);
+}
+.chat-pending {
+  margin: 0;
+  padding: 10px 13px;
+  border-inline-start: 3px solid var(--coast-focus);
+  border-radius: 8px;
+  background: var(--color-selected);
+  color: var(--color-selected-text);
+}
+.chat-compose { border-block-start: 1px solid var(--color-border); }
+.chat-compose textarea { border-radius: 16px; }
+
+.travel-panel .empty-state {
+  margin-block: 6px;
+  border: 1px dashed var(--color-border);
+  border-radius: 18px;
+  background: var(--color-surface);
+  padding: 20px 14px;
+}
+.stop-day { font-weight: 650; }
+.stop-select .stop-item__name { line-height: 1.3; }
+.travel-preview .trip-actions[data-has-stops="true"] button:first-child {
+  border-color: var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+.travel-preview .guardian-stop-controls .guardian-badge {
+  background: var(--coast-coral-surface);
+  color: var(--coast-coral);
+  border-color: transparent;
+  border-radius: 999px;
+}
+.guardian-dot { background: currentColor; }
+.guardian-review { padding: 10px; background: var(--color-surface); border-radius: 14px; }
+.guardian-alternatives:not([data-delay="true"]) article { padding-block: 14px; }
+.guardian-alternatives:not([data-delay="true"]) .guardian-repair-description p {
+  margin: 5px 0 10px;
+  color: var(--color-muted);
+}
+.guardian-alternatives:not([data-delay="true"]) .guardian-repair-description strong {
+  color: var(--color-text);
+}
+
+.travel-preview :is(.stop-time-dialog, .travel-action-dialog) {
+  border-radius: 22px;
+  box-shadow: var(--coast-card-shadow);
+}
+.travel-preview :is(.stop-time-dialog, .travel-action-dialog)::backdrop {
+  background: rgb(12 35 53 / 46%);
+}
+.travel-preview :is(.planner-options label, .planner-options button, .translation-select, .translation-voice-input, .translation-photo-inputs label) {
+  border-radius: 14px;
+}
+.travel-preview :is(.profile-settings, .chat-place-card) { border-radius: 18px; }
+
+@media (min-width: 900px) {
+  .travel-preview { --desktop-panel-width: clamp(340px, 30vw, 430px); }
+  .travel-preview[data-sheet] .travel-chat {
+    width: var(--desktop-panel-width);
+    height: calc(100% - 32px);
+    margin: 16px 16px 16px 0;
+    border-radius: 22px;
+    box-shadow: var(--coast-card-shadow);
+  }
+  .travel-preview:not([data-sheet="closed"]) .travel-tabs {
+    left: calc((100% - var(--desktop-panel-width) - 16px) / 2);
+  }
+  .travel-chat .chat-heading { padding-block: 8px; }
 }

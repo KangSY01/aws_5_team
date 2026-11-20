@@ -1033,8 +1033,8 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
                 </article>
               );
             })}
-            {pending === "edit" && <p role="status">{plannerCopy.editing}</p>}
-            {pending === "chat" && <p role="status">{copy.loading}</p>}
+            {pending === "edit" && <p className="chat-pending" role="status">{plannerCopy.editing}</p>}
+            {pending === "chat" && <p className="chat-pending" role="status">{copy.loading}</p>}
             {reviewStatus && <p role={reviewStatus === "applied" ? "status" : "alert"}>{plannerCopy[reviewStatus]}</p>}
           </div>
 
