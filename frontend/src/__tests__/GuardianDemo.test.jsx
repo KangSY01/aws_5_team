@@ -228,3 +228,27 @@ it("opens travel phrases independently of emergency help and sends Korean text t
   expect(url).toMatch(/\/speak$/);
   expect(JSON.parse(request.body)).toEqual({ text: "덜 맵게 해 주실 수 있나요?", language: "ko" });
 });
+
+it("refreshes a previously saved demo itinerary when the demo is opened again", async () => {
+  vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+  const date = "2026-11-28";
+  const stop = { stop_id: "beach", place_id: "beach", start: date + "T14:30:00+09:00", end: date + "T16:00:00+09:00", locked: false };
+  const places = [{ place_id: "beach", names: { en: "Updated demo beach" }, lat: 35.16, lng: 129.16 }];
+  const plan = { plan_id: "fresh-demo", date, profile: { language: "ja" }, stops: [stop] };
+  localStorage.setItem("busannow.course.demo", JSON.stringify({ plan: { ...plan, plan_id: "old-demo" },
+    places: [{ ...places[0], names: { en: "Old demo beach" } }], session_id: "old-session" }));
+  const requests = vi.fn(async (url, request) => {
+    if (url.endsWith("/chat")) return Response.json({ plan_id: plan.plan_id, session_id: "new-session", language: "ja", answer: "旅程です。" });
+    if (url.endsWith("/plan/check")) {
+      return Response.json({ plan_id: JSON.parse(request.body).plan_id, places: [], issues: [], repairs: {} });
+    }
+    return Response.json({ plan, places });
+  });
+  vi.stubGlobal("fetch", requests);
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: /^DEMO/ }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "데모 스위치 켜기" }));
+  await screen.findByRole("button", { name: "1. Updated demo beach" });
+  expect(JSON.parse(localStorage.getItem("busannow.course.demo")).plan.plan_id).toBe("fresh-demo");
+  expect(requests.mock.calls.filter(([url]) => url.endsWith("/chat"))).toHaveLength(1);
+});

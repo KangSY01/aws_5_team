@@ -338,8 +338,11 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const voiceAvailable = liveApi && language !== "ko";
   const voice = useChatVoice(voiceAvailable && sheetOpen && showChat && !showTranslation, language, setDraft);
 
+  const initialDemoCourse = useRef({ course, tripStarted });
+
   useEffect(() => {
-    if (!demoMode || course) return;
+    const { course: cached, tripStarted: active } = initialDemoCourse.current;
+    if (!demoMode || (cached && (!liveApi || active || !cached.plan.stops.length))) return;
     const request = new AbortController();
     requestInProgress.current = true;
     setPending("recommend");
@@ -355,7 +358,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
         if (request.signal.aborted) return;
       }
       if (request.signal.aborted) return;
-      next = { ...(next ?? makeLocalDemoCourse()), preferences: defaultPreferences };
+      next = { ...(next ?? cached ?? makeLocalDemoCourse()), preferences: cached?.preferences ?? defaultPreferences };
       setCourse(next);
       save(courseKey, next);
       setSelectedId(next.plan.stops[0].stop_id);
@@ -364,7 +367,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
     }
     void initializeDemo();
     return () => request.abort();
-  }, [demoMode, liveApi, course, courseKey]);
+  }, [demoMode, liveApi, courseKey]);
 
   useEffect(() => {
     setAlternative(null);

@@ -12,6 +12,13 @@ const text = {
 };
 
 const photoCopy = { ko: "사진", en: "Photos", ja: "写真", "zh-Hans": "照片", "zh-Hant": "照片" };
+const shareFallbackCopy = {
+  ko: "내려받은 PNG를 인스타그램에서 선택해 공유하세요.",
+  en: "Select the downloaded PNG in Instagram to share it.",
+  ja: "ダウンロードしたPNGをInstagramで選んで共有してください。",
+  "zh-Hans": "在 Instagram 中选择下载的 PNG 即可分享。",
+  "zh-Hant": "在 Instagram 中選取下載的 PNG 即可分享。",
+};
 
 function useImageUrl(blob) {
   const [url, setUrl] = useState("");
@@ -65,6 +72,7 @@ function PosterDialog({ entry, language, labels, onClose, onSaved }) {
   const [revision, setRevision] = useState(0);
   const [renderError, setRenderError] = useState(false);
   const [actionError, setActionError] = useState(false);
+  const [downloadedForSharing, setDownloadedForSharing] = useState(false);
   const [busy, setBusy] = useState(false);
   const alive = useRef(false);
   const mapCache = useRef(new Map());
@@ -121,12 +129,19 @@ function PosterDialog({ entry, language, labels, onClose, onSaved }) {
     }
   }
 
-  const shareFile = entry.png && typeof File === "function" ? new File([entry.png], "BusanNow-" + entry.date + ".png", { type: "image/png" }) : null;
-  const canShare = shareFile && navigator.share && navigator.canShare?.({ files: [shareFile] });
-
   async function sharePoster() {
+    if (!png || busy || (!entry.png && photos.length !== 4)) return;
+    setActionError(false);
+    setDownloadedForSharing(false);
     try {
-      await navigator.share({ files: [shareFile], title: "부산네컷" });
+      const file = new File([png], "BusanNow-" + entry.date + ".png", { type: "image/png" });
+      const data = { files: [file] };
+      if (navigator.share && navigator.canShare?.(data)) {
+        await navigator.share(data);
+      } else {
+        download(png, entry.date);
+        setDownloadedForSharing(true);
+      }
     } catch (failure) {
       if (failure.name !== "AbortError") setActionError(true);
     }
@@ -157,18 +172,19 @@ function PosterDialog({ entry, language, labels, onClose, onSaved }) {
       </div>
       <footer className="trip-poster-actions">
         {actionError && <p role="alert">{error}</p>}
-        {!entry.png ? (
-          <button className="trip-poster-primary" type="button" disabled={photos.length !== 4 || !png || busy} onClick={savePoster}>{save}</button>
-        ) : <div className="trip-poster-secondary">
-          <button type="button" disabled={!png} onClick={() => download(png, entry.date)}>
+        {downloadedForSharing && <p role="status">{shareFallbackCopy[language]}</p>}
+        <div className="trip-poster-secondary">
+          {!entry.png ? (
+            <button className="trip-poster-primary" type="button" disabled={photos.length !== 4 || !png || busy} onClick={savePoster}>{save}</button>
+          ) : <button type="button" disabled={!png} onClick={() => download(png, entry.date)}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v5h14v-5" /></svg>
             {pngLabel}
-          </button>
-          <button type="button" disabled={!canShare} onClick={sharePoster}>
+          </button>}
+          <button type="button" disabled={!png || busy || (!entry.png && photos.length !== 4)} onClick={sharePoster}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M8 11H5v10h14V11h-3" /></svg>
             {share}
           </button>
-        </div>}
+        </div>
       </footer>
     </TravelActionDialog>
   );
