@@ -4,7 +4,7 @@ import datetime as dt
 
 from app.guardian.check import check_plan
 from app.guardian.context import Event, OpeningHours
-from app.guardian.repair import try_move_time, try_reorder, try_replace
+from app.guardian.repair import try_move_time, try_remove, try_reorder, try_replace
 from app.models.plan import Plan, RepairOption
 from guardian_fixtures import BASE_TRAVEL_MIN, at, hourly_weather, load_sample_plan, make_context
 
@@ -272,3 +272,32 @@ def test_replace_skips_locked_target_and_no_candidate():
     # 감천은 places.json 에서 유일한 village 라 같은 분류 후보가 없다
     ctx = make_context()
     assert try_replace(PLAN, issue_of(PLAN, ctx, "s1-crowded"), ctx) == []
+
+
+# ---------- 5.5 try_remove ----------
+
+def test_remove_first_stop_like_contract_example():
+    # 계약 예시 s1-crowded: 감천을 빼면 이동 65 → 50분 (-15), 변경 1곳 · 3곳 유지
+    ctx = make_context()
+    options = try_remove(PLAN, issue_of(PLAN, ctx, "s1-crowded"), ctx)
+
+    assert len(options) == 1
+    opt = options[0]
+    assert opt.action == "remove"
+    assert [(c.stop_id, c.before, c.after) for c in opt.changes] == [("s1", PLAN.stops[0], None)]
+    m = opt.metrics
+    assert (m.changed, m.kept, m.extra_travel_min, m.locked_kept) == (1, 3, -15, True)
+    assert_locked_untouched(opt)
+
+
+def test_remove_middle_stop_keeps_other_times():
+    # 부산타워(s3)를 빼면 자갈치→해운대 20분: 15+20=35분 (-30). 다른 Stop 시각은 그대로
+    ctx = make_context(hours={"busan-tower": OpeningHours(opens=dt.time(14))}, travel_min=REORDER_TRAVEL)
+    opt = try_remove(PLAN, issue_of(PLAN, ctx, "s3-closed"), ctx)[0]
+    assert [c.stop_id for c in opt.changes] == ["s3"]
+    assert opt.metrics.extra_travel_min == -30
+
+
+def test_remove_skips_locked_target():
+    ctx = make_context(hours={"jagalchi-market": OpeningHours(closed_weekdays=[5])})
+    assert try_remove(PLAN, issue_of(PLAN, ctx, "s2-closed"), ctx) == []

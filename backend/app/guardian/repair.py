@@ -295,6 +295,26 @@ def try_replace(plan: Plan, issue: Issue, ctx: CheckContext) -> list[RepairOptio
     return [option for _, option in found]
 
 
+# ---------- 4단계: 제외 ----------
+
+def try_remove(plan: Plan, issue: Issue, ctx: CheckContext) -> list[RepairOption]:
+    """대상 Stop 을 일정에서 빼는 해결안 (최대 1개).
+
+    - 다른 Stop 의 시각은 바꾸지 않는다. changes 에는 대상 Stop 하나가 after=None 으로 들어간다.
+    - 다른 단계 해결안이 없을 때만 쓰는지는 propose_repairs 가 정한다 (요구사항 4.9).
+    - 빼고 나서 원래 없던 high Issue 가 생기면 만들지 않는다.
+    - 앞뒤 Stop 사이 이동 시간을 모르면 extra_travel_min 은 0 으로 둔다 (compute_metrics 규칙, 경고 로그).
+    - metrics.changed 는 1 이다.
+    """
+    idx = _find(plan.stops, issue.stop_id)
+    if idx is None or plan.stops[idx].locked:
+        return []
+    after = [s for s in plan.stops if s.stop_id != issue.stop_id]
+    if _improvement(plan, after, issue, ctx) is None:
+        return []
+    return [_option("remove", plan, after, ctx)]
+
+
 def _shrink(stop: Stop, *, start: dt.datetime | None = None, end: dt.datetime | None = None) -> Stop | None:
     """비고정 Stop 의 체류 시간을 줄인다. 고정 일정이거나 MIN_DWELL_MIN 미만이 되면 None."""
     if stop.locked:
