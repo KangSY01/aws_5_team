@@ -230,10 +230,26 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
       });
       fittedPlan.current = plan;
     }
+    // 이름표가 지도 오른쪽 끝을 넘으면 핀 왼쪽에 붙인다 (디자인 실험, 모바일에서 잘리지 않게)
+    function placeLabels() {
+      const width = map.getSize().x;
+      for (const marker of markers.values()) {
+        const element = marker.getElement();
+        const label = element?.querySelector(".busan-map-pin__label");
+        if (!label) continue;
+        const [x] = (element.style.translate || "0px").split(" ").map(parseFloat);
+        const right = map.latLngToContainerPoint(marker.getLatLng()).x + (x || 0) + pinSize / 2 + label.offsetWidth;
+        element.toggleAttribute("data-label-left", right > width - 8);
+      }
+    }
+
     separatePins();
+    placeLabels();
     map.on("zoomend", separatePins);
+    map.on("moveend zoomend resize", placeLabels);
     return () => {
       map.off("zoomend", separatePins);
+      map.off("moveend zoomend resize", placeLabels);
       layer.remove();
     };
   }, [plan, places, mappedStops, language, onSelect]);

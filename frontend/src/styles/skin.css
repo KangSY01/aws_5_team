@@ -356,3 +356,61 @@
 @media (min-width: 900px) {
   .travel-preview[data-sidebar="true"] .travel-profile { left: 380px; }
 }
+
+/* 이름표를 핀 왼쪽에 붙이는 경우 (지도 오른쪽 끝) */
+.busan-map-pin[data-label-left] .busan-map-pin__label { left: auto; right: calc(100% - 6px); }
+
+/* ---------- 모바일 상단 정리 (레퍼런스 모바일 화면) ---------- */
+@media (max-width: 899px) {
+  .travel-preview .travel-header { align-items: center; row-gap: 10px; }
+  .travel-preview .travel-ask { order: -2; flex: 1 1 0; min-width: 0; }
+  /* 알약 오른쪽 언어 버튼: 잉크색 원 */
+  .travel-preview .travel-header .travel-language-trigger {
+    order: -1;
+    display: grid;
+    flex: none;
+    width: 50px;
+    height: 50px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--skin-ink);
+    color: var(--skin-paper);
+  }
+  .travel-preview .travel-brand-column { order: 0; flex: 1 1 auto; min-width: 0; }
+  .travel-preview .travel-map-tools { order: 1; flex: none; flex-basis: auto; gap: 8px; }
+  /* 비상 도움·여행 문구: 아이콘만 있는 원형 버튼, 글자는 스크린리더용으로 남긴다 */
+  .travel-preview .travel-map-tools :is(.emergency-help, .travel-phrases) {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .travel-preview .travel-map-tools :is(.emergency-help, .travel-phrases) > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  /* 범례: 한 줄로 줄이고 DEMO 버튼 위로 */
+  .crowd-legend { bottom: calc(var(--nav-bottom, 12px) + 132px); padding: 7px 12px; }
+  .crowd-legend p { display: none; }
+}
+
+/* 모바일 상단을 2줄 그리드로: 1줄 = 검색 알약 + 언어, 2줄 = 지도 카드 + 아이콘 버튼 */
+@media (max-width: 899px) {
+  .travel-preview .travel-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: 10px;
+  }
+  .travel-preview .travel-ask { grid-column: 1; grid-row: 1; }
+  .travel-preview .travel-header .travel-language-trigger { grid-column: 2; grid-row: 1; }
+  .travel-preview .travel-brand-column { grid-column: 1; grid-row: 2; }
+  .travel-preview .travel-map-tools { grid-column: 2; grid-row: 2; display: flex; flex-direction: row; }
+  .travel-preview .travel-brand-group:not(:has(.trip-status)) { display: none; }
+}
