@@ -74,6 +74,11 @@ aws iam list-attached-role-policies --role-name <위에서 나온 역할 이름>
 ```
 실제 DynamoDB 저장소 테스트(매번 새 ID `plan-itest-*` 를 쓰고 끝나면 지운다): `backend/tests/test_storage_aws.py` 머리말 참고.
 
+## HTTPS API (infra/api)
+프론트엔드가 부르는 API 는 별도 스택 `busan-guide-api` 다. Lambda 하나(`app.handler.handler`)가 모든 경로를 처리하고 Function URL 로 공개한다.
+`/chat` 은 같은 Lambda 안에서 `run_chat()` 이 Bedrock 을 부르며, JSON 을 한 번에 돌려준다(스트리밍 없음). 위 AgentCore 스택은 Hello 그대로 둔다.
+- 배포: `.\scripts\deploy_api.ps1 -ReviewOnly` 로 변경 세트를 확인한 뒤 `.\scripts\deploy_api.ps1`. 자세한 내용은 `infra/api/README.md`.
+
 ## 예약 점검 (infra/alerts)
 Guardian 예약 점검(EventBridge Scheduler → Lambda → DynamoDB sk=ALERTS → `GET /alerts`)은 별도 스택 `busan-guide-alerts` 다. 템플릿·배포 순서·수동 호출 확인은 `infra/alerts/README.md` 를 본다.
 - AgentCore 스택, 공용 스택과 따로 배포하므로 서로 영향을 주지 않는다. 스케줄은 기본 DISABLED 다.

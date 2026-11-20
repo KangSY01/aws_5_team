@@ -220,29 +220,33 @@ def _mock_storage(seed: bool) -> Storage:
     return storage
 
 
-def _build_storage() -> Storage:
-    if config.USE_MOCK:
+def _build_storage(memory: bool) -> Storage:
+    if memory:
         return _mock_storage(seed=True)
-    from app.storage.dynamodb import DynamoBackend  # 목 모드에서는 boto3 를 불러오지 않는다
+    from app.storage.dynamodb import DynamoBackend  # 메모리 저장소에서는 boto3 를 불러오지 않는다
 
     return Storage(DynamoBackend.from_config())
 
 
 def get_storage() -> Storage:
-    """컨테이너(프로세스)당 하나. USE_MOCK 값이 바뀌면 새로 만든다."""
+    """컨테이너(프로세스)당 하나. 저장소 종류(config.use_memory_storage)가 바뀌면 새로 만든다.
+
+    STORAGE_BACKEND 를 비워 두면 예전처럼 USE_MOCK=1 은 메모리, 아니면 DynamoDB 다.
+    """
     global _storage, _storage_is_mock
+    memory = config.use_memory_storage()
     with _lock:
-        if _storage is None or _storage_is_mock != config.USE_MOCK:
-            _storage = _build_storage()
-            _storage_is_mock = config.USE_MOCK
+        if _storage is None or _storage_is_mock != memory:
+            _storage = _build_storage(memory)
+            _storage_is_mock = memory
         return _storage
 
 
 def reset_mock_store(seed: bool = True) -> None:
     """목 저장소를 처음 상태로 되돌린다 (테스트용). seed=True 면 sample_plan.json 의 일정이 들어 있다."""
     global _storage, _storage_is_mock
-    if not config.USE_MOCK:
-        raise RuntimeError("reset_mock_store 는 USE_MOCK=1 에서만 쓸 수 있습니다.")
+    if not config.use_memory_storage():
+        raise RuntimeError("reset_mock_store 는 메모리 저장소(USE_MOCK=1 또는 STORAGE_BACKEND=memory)에서만 쓸 수 있습니다.")
     with _lock:
         _storage = _mock_storage(seed)
         _storage_is_mock = True
