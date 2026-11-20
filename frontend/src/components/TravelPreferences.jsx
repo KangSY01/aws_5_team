@@ -1,6 +1,7 @@
-import { activityIds, areaIds, durationIds } from "../constants/plannerCopy.js";
+import { activityIds, durationIds } from "../constants/plannerCopy.js";
+import { RegionChoices } from "./RegionMap.jsx";
 
-export default function TravelPreferences({ value, onChange, onSubmit, onBack, busy, error, copy, backLabel }) {
+export default function TravelPreferences({ value, onChange, onSubmit, onBack, busy, error, copy, backLabel, onShowRegions }) {
   function toggle(field, id) {
     const selected = value[field];
     onChange({ ...value, [field]: selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id] });
@@ -24,14 +25,8 @@ export default function TravelPreferences({ value, onChange, onSubmit, onBack, b
       </fieldset>
       <fieldset disabled={busy}>
         <legend>{copy.areas}</legend>
-        <div className="planner-options">
-          <button type="button" aria-pressed={!value.regions.length} onClick={() => onChange({ ...value, regions: [] })}>{copy.automatic}</button>
-          {areaIds.map((id, index) => (
-            <label key={id}><input type="checkbox" checked={value.regions.includes(id)} onChange={() => toggle("regions", id)} />
-              <span>{copy.areasList[index]}<small>{copy.areaDetails[index]}</small></span>
-            </label>
-          ))}
-        </div>
+        <RegionChoices selected={value.regions} onChange={(regions) => onChange({ ...value, regions })} copy={copy} />
+        <button className="region-show-map" type="button" onClick={onShowRegions}>{copy.showAreas}</button>
       </fieldset>
       <fieldset disabled={busy}>
         <legend>{copy.interests}</legend>

@@ -1,18 +1,22 @@
 import places from "../mocks/places.json";
+import regionalPlaces from "../mocks/regionalPlaces.json";
 
 const areas = {
   east: ["haeundae-beach", "haedong-yonggungsa", "shinsegae-centum-city"],
   center: ["gwangalli-beach"],
   oldtown: ["gamcheon-village", "jagalchi-market", "busan-tower", "taejongdae", "gukje-market"],
   downtown: [],
+  songdo: ["gamcheon-village", "songdo-beach", "songdo-cable-car"],
+  estuary: ["dadaepo-beach", "eulsukdo-eco-park"],
+  geumjeong: ["geumjeong-east-gate", "geumgang-park", "beomeosa-temple"],
 };
 
 const categories = {
   sea: ["beach", "park"], market: ["market"], cafe: [],
-  culture: ["village", "temple"], active: ["park", "beach"], night: ["observatory", "beach"],
+  culture: ["village", "temple", "historic"], active: ["park", "beach", "cable_car"], night: ["observatory", "beach"],
 };
 
-const catalog = new Map(places.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng))
+const catalog = new Map([...places, ...regionalPlaces].filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng))
   .map((place) => [place.place_id, place]));
 const distance = (a, b) => Math.hypot((a.lat - b.lat) * 111, (a.lng - b.lng) * 91);
 const demoResponse = () => new Promise((resolve) => setTimeout(resolve, 180));
@@ -26,9 +30,8 @@ export async function recommendDemo(preferences, language) {
   await demoResponse();
   const areaIds = (preferences.regions.length ? preferences.regions : Object.keys(areas))
     .flatMap((key) => areas[key] ?? []);
-  if (!preferences.regions.length) areaIds.push("beomeosa-temple");
   const priorities = preferences.activities.flatMap((key) => categories[key] ?? []);
-  const candidates = areaIds.map((id) => catalog.get(id)).filter(Boolean);
+  const candidates = [...new Set(areaIds)].map((id) => catalog.get(id)).filter(Boolean);
   if (!candidates.length) throw new Error("noPlaces");
   candidates.sort((a, b) => Number(priorities.includes(b.category)) - Number(priorities.includes(a.category)));
   if (/seafood|해산물|海鮮|海鲜/i.test(preferences.food)) {
@@ -42,7 +45,15 @@ export async function recommendDemo(preferences, language) {
   }
   const days = { half: 1, day: 1, overnight: 2, long: 3 }[preferences.duration];
   const perDay = Math.max(1, Math.min(preferences.duration === "half" ? 3 : 4, Math.floor(candidates.length / days)));
-  const chosen = candidates.slice(0, days * perDay);
+  const capacity = days * perDay;
+  const reserved = new Set();
+  for (const region of preferences.regions) {
+    if (reserved.size === capacity) break;
+    const match = candidates.find((place) => areas[region]?.includes(place.place_id) && !reserved.has(place));
+    if (match) reserved.add(match);
+  }
+  const filled = new Set([...reserved, ...candidates.filter((place) => !reserved.has(place)).slice(0, capacity - reserved.size)]);
+  const chosen = candidates.filter((place) => filled.has(place));
   const seoulToday = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
   const start = new Date(seoulToday + "T00:00:00Z");
   const firstHour = preferences.activities.includes("night") ? (preferences.duration === "half" ? 17 : 13) : 10;
@@ -58,6 +69,7 @@ export async function recommendDemo(preferences, language) {
   return {
     plan: { plan_id: crypto.randomUUID(), date: seoulToday, profile: { language }, stops },
     places: chosen, demo: true, lodging_unavailable: Boolean(preferences.lodging),
+    limited_places: chosen.length < (preferences.duration === "half" ? 3 : 4) * days,
   };
 }
 
