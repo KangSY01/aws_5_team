@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import TravelerProfileForm, { travelerCopy } from "./TravelerProfile.jsx";
+import { useMapEvents } from "../hooks/useMapEvents.js";
+import TravelerProfileForm, { dietLabels, travelerCopy } from "./TravelerProfile.jsx";
 import { ChatSources, CrowdLegend, RainNotice } from "../features/data-notices";
 import { getTravelCopy, languages } from "../constants/travelCopy.js";
 import { closeLandmark, mapLandmarks } from "../constants/mapLandmarks.js";
@@ -198,7 +199,9 @@ function ProfilePage({ copy, language, onLanguageChange, demoMode, albumRevision
   const labels = travelerCopy(language);
   const { name, age, gender, country, photo } = traveler;
   const ageLabel = age ? new Intl.NumberFormat(language, { style: "unit", unit: "year", unitDisplay: "long" }).format(Number(age)) : "";
-  const details = [ageLabel, gender && labels.genderNames[gender], country].filter(Boolean);
+  const dietNames = dietLabels(language);
+  const diet = (Array.isArray(traveler.diet) ? traveler.diet : []).map((value) => dietNames[value]).filter(Boolean);
+  const details = [ageLabel, gender && labels.genderNames[gender], country, ...diet].filter(Boolean);
   const heading = useRef(null);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, []);
 
@@ -262,6 +265,8 @@ function formatDate(date, language) {
 }
 
 export default function TravelPreview({ night = false, demoMode = false, traveler = {}, onTravelerSave, demoSettings } = {}) {
+  // 여행자 프로필의 식사 제한. 모든 채팅·추천 요청의 profile.diet 로 보낸다
+  const travelerDiet = Array.isArray(traveler?.diet) ? traveler.diet : [];
   const suffix = demoMode ? ".demo" : "";
   const courseKey = courseStorageKey + suffix;
   const activeTripKey = activeTripStorageKey + suffix;
@@ -343,6 +348,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
     : null;
   const rainStop = rainIssue && stops.find((stop) => stop.stop_id === rainIssue.stop_id);
   const demoTime = demoMode ? Date.parse(demo.now ?? SCENES[0].now) : NaN;
+  const events = useMapEvents(liveApi && stops.length > 0, demoTime, placesById);
   const mapDetailName = mapDetail?.names[language] ?? mapDetail?.names.ko;
   const travelTime = Number.isFinite(demoTime) ? demoTime : tripTime;
   const nextStop = tripStarted ? getTripStop(stops, travelTime) : null;
@@ -719,7 +725,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
         ].filter(Boolean).join("\n");
         const chat = runDemo
           ? await sendTravelMessage(demoItineraryPrompt, "ja", null)
-          : await sendTravelMessage(message, language, null, { interests });
+          : await sendTravelMessage(message, language, null, { interests, diet: travelerDiet });
         stage = "lookup";
         const saved = await fetchPlan(chat.plan_id);
         if (!saved.plan.stops.length) {
@@ -842,7 +848,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
       }
       if (!editStop) {
         if (liveApi) {
-          const chat = await sendTravelMessage(draft, language, generalChatSession.current);
+          const chat = await sendTravelMessage(draft, language, generalChatSession.current, { diet: travelerDiet });
           generalChatSession.current = { session_id: chat.session_id, plan_id: chat.plan_id };
           let answer = chat.answer;
           let answerLanguage = chat.language ?? language;
@@ -877,7 +883,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
           "Stop: " + editStop.stop_id + " (" + resolvePlaceName(editStop, placesById, language).name + ")",
           "Traveler request: " + message,
         ].join("\n");
-        const chat = await sendTravelMessage(instruction, language, { session_id: course.session_id, plan_id: plan.plan_id }, plan.profile);
+        const chat = await sendTravelMessage(instruction, language, { session_id: course.session_id, plan_id: plan.plan_id }, { ...plan.profile, diet: travelerDiet });
         requestStage = "GET /plan";
         const result = await fetchPlan(chat.plan_id);
         const next = { ...course, ...result, session_id: chat.session_id };
@@ -1107,7 +1113,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
       <div className="travel-shell" inert={!isMap} aria-hidden={!isMap}>
         <BusanMap plan={plan} places={places} onLandmarkSelect={setMapDetail}
           language={language} label={copy.map} locationCopy={copy.location}
-          liveRoutes={liveCourse} returnPaths={returnPaths}
+          events={events} returnPaths={returnPaths}
           selectedId={selectedId} nextStopId={nextStop?.stop_id} onSelect={setSelectedId} focusRequest={mapFocus} crowdLevels={crowdLevels}
           regionPicker={regionDraft && {
             selected: regionDraft, onChange: setRegionDraft, copy: plannerCopy,
@@ -1290,7 +1296,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
               busy={Boolean(pending)} error={planError} backLabel={copy.itinerary} onBack={() => setShowPreferences(false)} />
           ) : (
             <section className="travel-panel" aria-label={copy.itinerary}>
-              {stops.length ? <PlanList plan={plan} places={places} displayLanguage={language}
+              {stops.length ? <PlanList plan={plan} places={places} displayLanguage={language} events={events}
                 selected={selected} tripStopId={nextStop?.stop_id} onSelect={selectStop} lockedLabel={copy.locked} onEdit={openEdit} editLabel={plannerCopy.editStop}
                 formatStopDate={(date) => formatDate(date, language)}
                 onSaveStops={saveStops} busy={Boolean(pending)}
@@ -1457,7 +1463,8 @@ export default function TravelPreview({ night = false, demoMode = false, travele
                 return;
               }
               navigatePage("map");
-              if (name !== "home") setSidebarCollapsed(false);
+              // 넓은 화면: 홈 = 사이드바 접고 지도 전체 보기, 다른 탭 = 사이드바 펼치기
+              setSidebarCollapsed(name === "home");
               if (name === "home") {
                 setOpen(false);
                 setExpanded(false);

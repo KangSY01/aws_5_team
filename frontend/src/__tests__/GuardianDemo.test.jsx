@@ -206,7 +206,7 @@ it("opens the offline demo course at a demo time and restores the normal course 
   expect(screen.getByRole("button", { name: "1. Ordinary stop" })).toBeInTheDocument();
   click(/^DEMO/);
   fireEvent.click(screen.getByRole("switch", { name: "데모 스위치 켜기" }));
-  await screen.findByRole("button", { name: "1. Huinnyeoul Culture Village" });
+  await screen.findByRole("button", { name: "1. Haeundae Dongbaekseom Island" });
   expect(screen.queryByRole("button", { name: "1. Ordinary stop" })).not.toBeInTheDocument();
   click("Itinerary");
   click("Start trip");
@@ -277,10 +277,10 @@ it("can regenerate a cleared demo itinerary from another scene without changing 
   fireEvent.click(screen.getByRole("button", { name: /^DEMO/ }));
   fireEvent.click(screen.getByRole("button", { name: "장면 5 오후 비" }));
   fireEvent.click(screen.getByRole("button", { name: "Itinerary", exact: true }));
-  expect(screen.queryByRole("button", { name: "1. Huinnyeoul Culture Village" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "1. Haeundae Dongbaekseom Island" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "장면 1·2 데모 일정 만들기" })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Get an AI itinerary" }));
   fireEvent.click(screen.getByRole("button", { name: "Create itinerary" }));
-  expect(await screen.findByRole("button", { name: "1. Huinnyeoul Culture Village" })).toBeInTheDocument();
+  expect(await screen.findByRole("button", { name: "1. Haeundae Dongbaekseom Island" })).toBeInTheDocument();
   expect(getDemoState().now).toBe("2026-11-28T13:00:00+09:00");
 });

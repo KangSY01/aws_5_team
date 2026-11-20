@@ -6,6 +6,7 @@ run_chat(A)이 LLM 이 고른 place_id 목록으로 build_plan 을 부른다. @t
 """
 
 import datetime as dt
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import uuid
 
@@ -15,6 +16,7 @@ from app.guardian.context import PLACES, CheckContext, HourlyWeather, OpeningHou
 from app.guardian.thresholds import TRANSFER_BUFFER_MIN  # Guardian 의 "빠듯한 이동" 기준. 그쪽이 바뀌면 같이 맞춰진다
 from app.models.plan import Plan, Profile, Stop
 from app.ranking.orders import rank_orders
+from app import config
 from app.tools.lookup import KST, LookupFailure, _load_places, get_hours, get_travel_time, get_weather
 
 logger = logging.getLogger(__name__)
@@ -136,6 +138,30 @@ def _ceil_to(t: dt.datetime, minutes: int) -> dt.datetime:
     return floor if floor == t else floor + dt.timedelta(minutes=minutes)
 
 
+def _realtime_legs(order: list[str], travel) -> dict[tuple[str, str], int]:
+    """정해진 방문 순서의 인접 구간 이동 분. USE_MOCK=0 이면 실시간 경로(도보 OSM·대중교통 카카오, app/tools/route_path.py)를
+    구간마다 동시에 조회해 max(실시간, 추정)을 쓴다. Guardian 은 추정값으로 이동 여유를 보므로, 더 짧은 실시간 값을 쓰면
+    방금 만든 일정에 tight_transfer 가 붙는다. 조회에 실패한 구간과 USE_MOCK=1 은 추정값 그대로다 (결과를 저장하지 않는다).
+    """
+    pairs = list(zip(order, order[1:]))
+    legs = {pair: travel(*pair) for pair in pairs}
+    if config.USE_MOCK or not pairs:
+        return legs
+    try:
+        coords = {p["place_id"]: (p["lat"], p["lng"]) for p in _load_places()}
+    except LookupFailure:
+        return legs
+    from app.tools import route_path  # 테스트·목 경로에서는 불러오지 않는다
+
+    with ThreadPoolExecutor(max_workers=min(6, len(pairs))) as pool:
+        live = list(pool.map(lambda pair: route_path.realtime_minutes(coords[pair[0]], coords[pair[1]]), pairs))
+    for pair, minutes in zip(pairs, live):
+        if minutes is not None:
+            legs[pair] = max(legs[pair], minutes)
+    logger.info("일정 생성: 인접 구간 %d개 중 %d개를 실시간 이동 시간으로 계산", len(pairs), sum(m is not None for m in live))
+    return legs
+
+
 def build_plan(
     place_ids: list[str],
     date: dt.date | str,
@@ -205,12 +231,14 @@ def build_plan(
         )
         order = _visit_order(valid, travel)
 
+    leg_minutes = _realtime_legs(order, travel)
+
     stops: list[Stop] = []
     begin = dt.datetime.combine(day, start_time.replace(tzinfo=None), KST)
     for n, place_id in enumerate(order, start=1):
         if stops:
             # 도착한 뒤 이동 여유까지 지난 시각. 여유가 이 값보다 작으면 Guardian 이 tight_transfer 를 붙인다
-            ready = stops[-1].end + dt.timedelta(minutes=travel(stops[-1].place_id, place_id) + TRANSFER_BUFFER_MIN)
+            ready = stops[-1].end + dt.timedelta(minutes=leg_minutes[(stops[-1].place_id, place_id)] + TRANSFER_BUFFER_MIN)
             begin = _ceil_to(ready, ROUND_MIN)
         end = begin + dt.timedelta(minutes=DWELL_MIN.get(category[place_id], DEFAULT_DWELL_MIN))
         stops.append(Stop(stop_id=f"s{n}", place_id=place_id, start=begin, end=end, locked=False))

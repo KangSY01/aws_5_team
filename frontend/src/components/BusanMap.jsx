@@ -1,3 +1,6 @@
+import { fetchRoute } from "../api/routeClient.js";
+import { hasConfiguredPlanApi } from "../api/planClient.js";
+import { eventName, findStopEvent } from "../lib/stopEvent.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import L from "leaflet";
@@ -6,7 +9,6 @@ import { buildPlacesById, resolvePlaceName } from "../lib/resolvePlaceName.js";
 import { stopDate } from "../lib/itineraryTiming.js";
 import RegionMap from "./RegionMap.jsx";
 import { addLandmarkLayer } from "./mapLandmarkLayer.js";
-import { fetchPedestrianPaths } from "../api/pedestrianClient.js";
 
 const tileOverride = import.meta.env.VITE_MAP_TILE_URL;
 const osmTileUrl = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -23,7 +25,7 @@ function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
 
-export default function BusanMap({ plan, places, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, focusRequest, regionPicker, crowdLevels = null, liveRoutes, returnPaths }) {
+export default function BusanMap({ plan, places, events, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, focusRequest, regionPicker, crowdLevels = null, returnPaths }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const [locationControl, setLocationControl] = useState(null);
@@ -143,32 +145,40 @@ export default function BusanMap({ plan, places, onLandmarkSelect, language, lab
     };
   }, []);
 
+  // 실제 이동 경로 (GET /route): 도보는 OSM 길, 대중교통은 카카오 노선. 받기 전·실패한 구간은 직선 점선
+  const [routes, setRoutes] = useState([]);
   useEffect(() => {
-    const group = L.layerGroup().addTo(mapRef.current);
+    setRoutes([]);
+    if (!visitSegments.length || !hasConfiguredPlanApi()) return;
     const request = new AbortController();
-    for (const segment of visitSegments) {
-      const line = L.polyline(segment, {
-        className: "busan-visit-line",
-        color: "#387687",
-        weight: 2.5,
-        opacity: 1,
-        dashArray: "2 6",
-        lineCap: "round",
-        interactive: false,
-      }).addTo(group);
-      const [origin, destination] = segment;
-      if (!liveRoutes || (origin[0] === destination[0] && origin[1] === destination[1])) continue;
-      fetchPedestrianPaths(origin, destination, request.signal).then((paths) => {
-        if (request.signal.aborted) return;
-        group.removeLayer(line);
-        L.polyline(paths, { ...line.options, dashArray: "5 5", weight: 3, attribution: "© TMAP" }).addTo(group);
-      }).catch(() => {});
-    }
-    return () => {
-      request.abort();
-      group.remove();
-    };
-  }, [visitSegments, liveRoutes]);
+    Promise.all(visitSegments.map(([from, to]) => fetchRoute(from, to, request.signal).catch(() => null)))
+      .then((result) => { if (!request.signal.aborted) setRoutes(result); });
+    return () => request.abort();
+  }, [visitSegments]);
+
+  useEffect(() => {
+    if (!visitSegments.length) return;
+    const layer = L.layerGroup().addTo(mapRef.current);
+    visitSegments.forEach((segment, index) => {
+      const route = routes[index];
+      const parts = route?.source !== "straight" && route?.segments?.length
+        ? route.segments.map((part) => ({ path: part.path, walking: part.mode === "WALKING" }))
+        : [{ path: segment, walking: true, straight: true }];
+      for (const part of parts) {
+        L.polyline(part.path, {
+          className: part.walking ? (part.straight ? "busan-visit-line" : "busan-walk-line") : "busan-transit-line",
+          color: part.walking ? "#387687" : "#1c2433",
+          weight: part.walking ? 3 : 5,
+          opacity: 1,
+          dashArray: part.walking ? "2 6" : undefined,
+          lineCap: "round",
+          lineJoin: "round",
+          interactive: false,
+        }).addTo(layer);
+      }
+    });
+    return () => layer.remove();
+  }, [visitSegments, routes]);
 
   useEffect(() => {
     if (!returnPaths?.length) return;
@@ -189,7 +199,8 @@ export default function BusanMap({ plan, places, onLandmarkSelect, language, lab
 
     mappedStops.forEach(({ stop, coordinates }, index) => {
       if (!coordinates) return;
-      const placeName = resolvePlaceName(stop, placesById, language).name;
+      const stopEvent = findStopEvent(stop, events);
+      const placeName = stopEvent ? eventName(stopEvent, language) : resolvePlaceName(stop, placesById, language).name;
       const title = `${index + 1}. ${placeName}`;
       const marker = L.marker(coordinates, {
         title,
@@ -269,7 +280,7 @@ export default function BusanMap({ plan, places, onLandmarkSelect, language, lab
       map.off("moveend zoomend resize", placeLabels);
       layer.remove();
     };
-  }, [plan, places, mappedStops, language, onSelect]);
+  }, [plan, places, mappedStops, language, onSelect, events]);
 
   useEffect(() => {
     if (!onLandmarkSelect) return;

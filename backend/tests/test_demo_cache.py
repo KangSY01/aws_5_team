@@ -26,8 +26,8 @@ from scripts.local_invoke import make_event
 TRIGGER = "11月28日(土)に釜山で一日過ごしたいです。海が見える所と、夜は光の祭りに行きたいです。辛いものは苦手です。"
 PROFILE = {"language": "ja", "interests": ["sea"], "companions": "couple", "diet": []}
 EXPECTED_STOPS = [
-    ("s1", "huinnyeoul-village", "2026-11-28T10:00:00+09:00", "2026-11-28T11:30:00+09:00"),
-    ("s2", "jagalchi-market", "2026-11-28T12:00:00+09:00", "2026-11-28T13:00:00+09:00"),
+    ("s1", "dongbaekseom", "2026-11-28T10:00:00+09:00", "2026-11-28T11:30:00+09:00"),
+    ("s2", "haeundae-rodeo-street", "2026-11-28T12:00:00+09:00", "2026-11-28T13:00:00+09:00"),
     ("s3", "haeundae-beach", "2026-11-28T14:30:00+09:00", "2026-11-28T16:00:00+09:00"),
     ("s4", "haeundae-beach", "2026-11-28T17:30:00+09:00", "2026-11-28T19:30:00+09:00"),
 ]
@@ -173,8 +173,8 @@ def test_guardian_badges_alternatives_apply_and_undo_on_the_demo_plan(demo_on):
     issues = {i.issue_id: i for i in check.issues}
     assert issues["s3-crowded"].severity == "high"  # 해운대 🔴 (집중률 + 행사일 가중)
     replaced = [c.after.place_id for o in check.repairs["s3-crowded"] if o.action == "replace" for c in o.changes if c.after]
-    # 해운대 혼잡 대안: 도보권 상권(시장·거리)이 먼저 오고, 그 뒤에 같은 분류(해변) 대안이 온다
-    assert "haeundae-market" in replaced and "gwangalli-beach" in replaced
+    # 해운대 혼잡 대안: 도보권 상권(시장·거리)이 먼저 오고, 첫 대안은 걸어서 6분 해운대시장 (장면 2)
+    assert replaced[0] == "haeundae-market"
     places = load_places()
     commerce = [places[place_id].category in ("market", "street") for place_id in replaced]
     assert commerce[0] and commerce == sorted(commerce, reverse=True)
@@ -187,16 +187,18 @@ def test_guardian_badges_alternatives_apply_and_undo_on_the_demo_plan(demo_on):
     s4 = next(i for i in after_lock.issues if i.issue_id == "s4-crowded")
     assert s4.severity != "high" and not after_lock.repairs.get("s4-crowded")
 
-    # 광안리 대안 적용 → 해운대 🔴 가 사라진다 → 되돌리기
+    # 해운대시장 대안 적용 → 해운대 🔴 가 낮아진다 → 되돌리기
     option = next(o for o in after_lock.repairs["s3-crowded"]
-                  if any(c.after and c.after.place_id == "gwangalli-beach" for c in o.changes))
+                  if any(c.after and c.after.place_id == "haeundae-market" for c in o.changes))
     applied = json.loads(json.dumps(locked))
     for change in option.changes:
         index = next(i for i, s in enumerate(applied["stops"]) if s["stop_id"] == change.stop_id)
         applied["stops"][index] = json.loads(change.after.model_dump_json())
     assert call("PUT", f"/plan/{plan_id}", applied)[0] == 200
     rechecked = CheckResponse.model_validate(call("POST", "/plan/check", {"plan_id": plan_id, "demo": DEMO_NOW})[1])
-    assert "s3-crowded" not in {i.issue_id for i in rechecked.issues}
+    # 해운대 🔴 high 가 해운대시장으로 바뀌면 low 로 내려간다 (빛축제 근처라 행사일 가중은 남는다)
+    after = {i.issue_id: i.severity for i in rechecked.issues}
+    assert after.get("s3-crowded") in (None, "low")
 
     assert call("PUT", f"/plan/{plan_id}", locked)[0] == 200  # 되돌리기
     assert PlanResponse.model_validate(call("GET", f"/plan/{plan_id}")[1]).plan == Plan.model_validate(locked)

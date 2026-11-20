@@ -26,6 +26,7 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from app import agent, config, storage
 from app.tools.activities import ACTIVITIES, AREAS, ActivitiesResponse, find_activities
+from app.tools import route_path
 from app.guardian import service as guardian
 from app.guardian.context import WeatherPresetNotFound
 from app.models.api import (
@@ -213,6 +214,14 @@ def _route(event: dict) -> BaseModel:
             except (OSError, ValueError, KeyError):
                 logger.warning("Kakao activity search failed", exc_info=False)
                 raise ApiError(502, "activities_unavailable", "장소 검색에 실패했습니다.")
+
+        case "GET", ["route"]:
+            # 지도용 실제 이동 경로 (도보 OSM, 대중교통 카카오). 저장·캐시하지 않는다
+            query = event.get("queryStringParameters") or {}
+            start, end = route_path.parse_point(query.get("from")), route_path.parse_point(query.get("to"))
+            if not start or not end:
+                raise ApiError(422, "validation_error", "from, to 는 부산 안의 \"위도,경도\" 좌표여야 합니다.")
+            return route_path.RouteResponse.model_validate(route_path.route_between(start, end))
 
         case "GET", ["events"]:
             date = ((event.get("queryStringParameters") or {}).get("date") or "").strip()

@@ -297,7 +297,6 @@
 
   .travel-preview[data-sidebar="true"] .travel-brand-group > .travel-brand { display: none; }
   .travel-preview[data-sidebar="true"] .travel-tabs { left: calc(380px + (100% - 380px) / 2); }
-  .travel-preview[data-sidebar="true"] .travel-tabs [data-tab="home"] { display: none; }
   body:has(.travel-preview[data-sidebar="true"]) .demo-panel { left: 396px; bottom: 120px; }
 
 }
@@ -519,4 +518,78 @@
 /* 모바일: 비 예보 배너는 지도 버튼 아래 전체 폭 */
 @media (max-width: 899px) {
   .travel-preview .travel-rain-notice .rain-notice { width: 100%; box-sizing: border-box; }
+}
+
+/* ---------- 여행자 프로필 (첫 화면 온보딩·편집 대화상자) ---------- */
+.traveler-onboarding,
+.traveler-profile-dialog {
+  --skin-paper: #f5f0e6;
+  --skin-card: #fffdf8;
+  --skin-ink: #1c2433;
+  --skin-line: #d8cfbe;
+  --skin-coral: #b83a26;
+  --skin-calm: #2f6f64;
+  --trip-green: #1c2433;
+  --panel-divider: #d8cfbe;
+  font-family: "IBM Plex Sans KR", "Pretendard Variable", "Noto Sans CJK JP", "Noto Sans CJK SC", system-ui, sans-serif;
+}
+.traveler-onboarding { background: var(--skin-paper); color: var(--skin-ink); }
+.traveler-onboarding > section {
+  margin-top: 24px;
+  padding: 28px 24px;
+  border: 1px solid var(--skin-line);
+  border-radius: 6px;
+  background: var(--skin-card);
+}
+.traveler-onboarding > section::before {
+  content: "";
+  display: block;
+  width: 180px;
+  height: 48px;
+  margin-bottom: 24px;
+  background: url("/brand/busannow-logo.svg") left center / contain no-repeat;
+}
+.traveler-onboarding h1 { font-family: "Gowun Batang", Georgia, serif; font-size: 1.75rem; font-weight: 700; color: var(--skin-ink); }
+.traveler-onboarding .traveler-profile-form,
+.traveler-profile-dialog .traveler-profile-form { color: var(--skin-ink); }
+:is(.traveler-onboarding, .traveler-profile-dialog) .traveler-profile-form :is(input, select, textarea) {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 6px;
+  background: var(--skin-card);
+}
+:is(.traveler-onboarding, .traveler-profile-dialog) .traveler-profile-form button {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--skin-ink);
+  font-weight: 600;
+}
+:is(.traveler-onboarding, .traveler-profile-dialog) .traveler-profile-form footer button[type="submit"] {
+  background: var(--skin-ink);
+  color: var(--skin-paper);
+}
+:is(.traveler-onboarding, .traveler-profile-dialog) .traveler-diet-chip span {
+  border: 1.5px solid var(--skin-ink);
+  background: transparent;
+  color: var(--skin-ink);
+}
+:is(.traveler-onboarding, .traveler-profile-dialog) .traveler-diet-chip input:checked + span {
+  background: var(--skin-ink);
+  color: var(--skin-paper);
+}
+:is(.traveler-onboarding, .traveler-profile-dialog) .traveler-profile-optional { color: #5a6170; }
+
+/* 실제 이동 경로 (GET /route): 도보 = 코랄 점선(OSM 길), 대중교통 = 잉크 실선(카카오 노선) */
+.busan-walk-line {
+  stroke: #b83a26;
+  stroke-width: 3px;
+  stroke-dasharray: 2 7;
+  stroke-linecap: round;
+  stroke-opacity: .9;
+}
+.busan-transit-line {
+  stroke: #1c2433;
+  stroke-width: 5px;
+  stroke-linecap: round;
+  stroke-opacity: .85;
 }
