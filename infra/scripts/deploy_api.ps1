@@ -39,6 +39,7 @@ function Get-BaseOutput($key) {
     return $value.Trim()
 }
 $TableName = Get-BaseOutput "SessionsTableName"
+$UploadsBucket = Get-BaseOutput "UploadsBucketName"   # 사진 인식이 쓰는 업로드 버킷 (공용 스택이 만든다. 새로 만들지 않는다)
 if (-not $AllowedOrigins) { $AllowedOrigins = "https://" + (Get-BaseOutput "CloudFrontDomain") }
 $Origins = @($AllowedOrigins -split "," | ForEach-Object { $_.Trim().TrimEnd("/") } | Where-Object { $_ })
 if ($AllowLocalhost) { $Origins += "http://localhost:5173", "http://127.0.0.1:5173" }
@@ -49,6 +50,7 @@ foreach ($origin in $Origins) {
 $OriginList = ($Origins | Select-Object -Unique) -join ","
 
 Write-Host "DynamoDB 테이블: $TableName"
+Write-Host "사진 업로드 버킷: $UploadsBucket"
 Write-Host "CORS 허용 오리진: $OriginList"
 Write-Host "모델: $ModelId / FAKE_LLM=$FakeLlm / USE_MOCK=$UseMock (저장소는 DynamoDB) / 예약 동시성: $ReservedConcurrency (0=제한 없음)"
 if ($UseMock -eq "0" -and -not $DataGoKrKey) { Write-Warning "DATA_GO_KR_KEY_DECODING 이 비어 있어 날씨 도구가 missing_key 오류를 돌려줍니다 (대화는 계속됩니다)." }
@@ -77,7 +79,7 @@ Assert-Ok "zip 업로드"
 
 # 3) 배포
 $Overrides = @(
-    "CodeBucket=$Bucket", "CodeKey=$Key", "DynamoDbTable=$TableName", "BedrockModelId=$ModelId",
+    "CodeBucket=$Bucket", "CodeKey=$Key", "DynamoDbTable=$TableName", "UploadsBucket=$UploadsBucket", "BedrockModelId=$ModelId",
     "FakeLlm=$FakeLlm", "UseMock=$UseMock", "AllowedOrigins=$OriginList", "ReservedConcurrency=$ReservedConcurrency"
 )
 if ($DataGoKrKey) { $Overrides += "DataGoKrKey=$DataGoKrKey" }

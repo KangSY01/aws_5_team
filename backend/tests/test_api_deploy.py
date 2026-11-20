@@ -224,7 +224,7 @@ def test_template_env_vars_are_the_ones_config_reads(function):
     read_by_config = set(re.findall(r'os\.environ\.get\("([A-Z_]+)"', Path(config.__file__).read_text(encoding="utf-8")))
     read_by_config |= set(re.findall(r'_flag\("([A-Z_]+)"\)', Path(config.__file__).read_text(encoding="utf-8")))
     assert set(env) <= read_by_config
-    assert {"BEDROCK_MODEL_ID", "FAKE_LLM", "USE_MOCK", "STORAGE_BACKEND", "DYNAMODB_TABLE"} <= set(env)
+    assert {"BEDROCK_MODEL_ID", "FAKE_LLM", "USE_MOCK", "STORAGE_BACKEND", "DYNAMODB_TABLE", "UPLOADS_BUCKET"} <= set(env)
     assert "AWS_REGION" not in env  # Lambda 예약 변수. 스택 리전(ap-northeast-2)이 들어간다
     assert env["STORAGE_BACKEND"] == "dynamodb"
 
@@ -308,6 +308,39 @@ def test_deployed_storage_is_dynamodb_even_with_sample_data(monkeypatch):
     store = storage_service.get_storage()
 
     assert built == [True] and store._backend is sentinel
+
+
+# ---- 사진 인식 (D 의 app/photo) ----
+
+
+def test_photo_uses_the_existing_uploads_bucket(template, function):
+    param = template["Parameters"]["UploadsBucket"]
+    assert "Default" not in param  # 배포할 때 공용 스택 출력값을 반드시 넘긴다
+    assert function["Environment"]["Variables"]["UPLOADS_BUCKET"] == {"Ref": "UploadsBucket"}
+    assert not any(r["Type"] == "AWS::S3::Bucket" for r in template["Resources"].values())  # 버킷을 새로 만들지 않는다
+    base_outputs = load_template(BASE_TEMPLATE)["Outputs"]
+    assert base_outputs["UploadsBucketName"]["Value"] == {"Ref": "UploadsBucket"}
+    script = DEPLOY_SCRIPT.read_text(encoding="utf-8-sig")
+    assert 'Get-BaseOutput "UploadsBucketName"' in script and '"UploadsBucket=$UploadsBucket"' in script
+
+
+def test_photo_permissions_cover_presign_textract_and_only_photo_keys(template):
+    found = statements(template)
+    s3 = found["PhotoUploads"]
+    assert set(s3["Action"]) == {"s3:PutObject", "s3:GetObject"}  # presigned PUT 서명, Textract 의 S3 읽기
+    assert s3["Resource"] == {"Fn::Sub": "arn:${AWS::Partition}:s3:::${UploadsBucket}/photos/*"}
+    from app.photo import upload
+
+    assert upload.KEY_PREFIX == "photos/"  # 권한 범위가 D 가 발급하는 키 접두사와 같다
+    assert found["PhotoTextract"]["Action"] == "textract:DetectDocumentText"
+    assert "BedrockModelOrProfile" in found and "BedrockModelsBehindProfile" in found  # 사진 번역도 같은 Bedrock 권한을 쓴다
+
+
+def test_photo_service_reads_the_bucket_from_config(monkeypatch):
+    from app.photo import service
+
+    monkeypatch.setattr(config, "UPLOADS_BUCKET", "busan-guide-uploads-123456789012")
+    assert service._bucket() == "busan-guide-uploads-123456789012"
 
 
 # ---- IAM: Bedrock·로그 ----

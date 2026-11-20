@@ -31,6 +31,10 @@ Parameters:
     Default: "0"
     AllowedValues: ["0", "1"]
     Description: 1이면 날씨·음성을 외부 API 대신 app/data 샘플로 쓴다 (통제 테스트). 저장소는 이 값과 무관하게 항상 DynamoDB 다
+  UploadsBucket:
+    Type: String
+    AllowedPattern: "[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]"
+    Description: 사진 업로드 S3 버킷 이름. 공용 스택(busan-guide-base)의 UploadsBucketName 출력값 (deploy_api.ps1 이 조회해서 넘긴다). 이 스택은 버킷을 만들지 않는다
   DataGoKrKey:
     Type: String
     NoEcho: true
@@ -113,6 +117,17 @@ Resources:
                 Condition:
                   StringEquals:
                     bedrock:InferenceProfileArn: !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${BedrockModelId}
+              # 사진 인식 (D 의 app/photo). presigned PUT URL 은 서명한 역할의 권한으로 올라가므로 PutObject 가 필요하고,
+              # Textract 는 호출한 역할의 권한으로 S3 사진을 읽으므로 GetObject 가 필요하다. 서버가 발급하는 키(photos/)만 허용한다
+              - Sid: PhotoUploads
+                Effect: Allow
+                Action: [s3:PutObject, s3:GetObject]
+                Resource: !Sub arn:${AWS::Partition}:s3:::${UploadsBucket}/photos/*
+              # Textract 동기 API 는 리소스 단위 권한을 지원하지 않는다
+              - Sid: PhotoTextract
+                Effect: Allow
+                Action: textract:DetectDocumentText
+                Resource: "*"
               # POST /speak (B 의 음성 출력). Polly 는 리소스 단위 권한을 지원하지 않는다
               - Sid: PollySpeak
                 Effect: Allow
@@ -147,6 +162,7 @@ Resources:
           USE_MOCK: !Ref UseMock
           STORAGE_BACKEND: dynamodb
           DYNAMODB_TABLE: !Ref DynamoDbTable
+          UPLOADS_BUCKET: !Ref UploadsBucket
           DATA_GO_KR_KEY_DECODING: !Ref DataGoKrKey
           DEMO_NOW: !Ref DemoNow
       FunctionUrlConfig:
