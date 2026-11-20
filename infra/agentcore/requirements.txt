@@ -1,0 +1,5 @@
+# AgentCore Runtime zip 에 넣을 의존성 (arm64 wheel 로 설치한다. scripts/build_zip.py)
+# 최소 버전은 backend/pyproject.toml 과 맞춘다.
+bedrock-agentcore
+strands-agents>=1.65.0
+pydantic>=2.14.3
