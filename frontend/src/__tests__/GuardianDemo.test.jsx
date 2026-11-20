@@ -1,7 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import App from "../App.jsx";
 import { resetDemo } from "../features/demo-panel/demoStore.js";
+
+beforeEach(() => localStorage.setItem("busannow.traveler-profile", "{}"));
 
 if (!HTMLDialogElement.prototype.showModal) {
   HTMLDialogElement.prototype.showModal = function () { this.open = true; };
@@ -52,6 +54,11 @@ it("runs the demo script, refreshes issue badges, locks a stop, applies a repair
       if (beach?.place_id === "haeundae") {
         issues.unshift({ issue_id: "beach", stop_id: "beach", type: "crowded", severity: "high", detail: "Beach crowds" });
         repairs.beach = [{ action: "replace", changes: [{ stop_id: "beach", before: beach, after: { ...beach, place_id: "gwangalli" } }] }];
+        if (checkBodies.at(-1).demo?.weather_preset === "rain-afternoon") {
+          repairs.weather = [{ action: "move_time", changes: [{ stop_id: "beach", before: beach, after: {
+            ...beach, start: "2026-11-28T15:00:00+09:00", end: "2026-11-28T16:00:00+09:00",
+          } }] }];
+        }
       }
       return Response.json({ plan_id: plan.plan_id, issues, repairs, places });
     }
@@ -129,7 +136,17 @@ it("runs the demo script, refreshes issue badges, locks a stop, applies a repair
   expect(saves.at(-1)).toEqual({ ...original, stops: [original.stops[0], { ...original.stops[1], locked: true }] });
   click(/장면 5 오후 비/);
   await waitFor(() => expect(checkBodies.at(-1).demo).toEqual({ now: "2026-11-28T13:00:00+09:00", weather_preset: "rain-afternoon" }));
+  click("Home");
+  const rainButton = await screen.findByRole("button", { name: "See options", exact: true });
+  expect(rainButton.closest(".rain-notice")).toHaveTextContent("Haeundae");
+  fireEvent.click(rainButton);
+  const rainDialog = within(screen.getByRole("dialog"));
+  expect(rainDialog.getByText("Afternoon rain")).toBeVisible();
+  expect(rainDialog.getByText("03:00 PM–04:00 PM")).toBeVisible();
+  fireEvent.click(rainDialog.getByRole("button", { name: "Close alternatives" }));
   click(/장면 6 늦었어요/);
+  expect(screen.queryByRole("button", { name: "See options", exact: true })).not.toBeInTheDocument();
+  click("Itinerary");
   expect(screen.queryByRole("button", { name: "I’m running late" })).not.toBeInTheDocument();
   click("Start trip");
   expect(screen.queryByRole("button", { name: "I’m running late" })).not.toBeInTheDocument();
@@ -227,4 +244,28 @@ it("opens travel phrases independently of emergency help and sends Korean text t
   const [[url, request]] = fetchMock.mock.calls;
   expect(url).toMatch(/\/speak$/);
   expect(JSON.parse(request.body)).toEqual({ text: "덜 맵게 해 주실 수 있나요?", language: "ko" });
+});
+
+it("refreshes a previously saved demo itinerary when the demo is opened again", async () => {
+  vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+  const date = "2026-11-28";
+  const stop = { stop_id: "beach", place_id: "beach", start: date + "T14:30:00+09:00", end: date + "T16:00:00+09:00", locked: false };
+  const places = [{ place_id: "beach", names: { en: "Updated demo beach" }, lat: 35.16, lng: 129.16 }];
+  const plan = { plan_id: "fresh-demo", date, profile: { language: "ja" }, stops: [stop] };
+  localStorage.setItem("busannow.course.demo", JSON.stringify({ plan: { ...plan, plan_id: "old-demo" },
+    places: [{ ...places[0], names: { en: "Old demo beach" } }], session_id: "old-session" }));
+  const requests = vi.fn(async (url, request) => {
+    if (url.endsWith("/chat")) return Response.json({ plan_id: plan.plan_id, session_id: "new-session", language: "ja", answer: "旅程です。" });
+    if (url.endsWith("/plan/check")) {
+      return Response.json({ plan_id: JSON.parse(request.body).plan_id, places: [], issues: [], repairs: {} });
+    }
+    return Response.json({ plan, places });
+  });
+  vi.stubGlobal("fetch", requests);
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: /^DEMO/ }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "데모 스위치 켜기" }));
+  await screen.findByRole("button", { name: "1. Updated demo beach" });
+  expect(JSON.parse(localStorage.getItem("busannow.course.demo")).plan.plan_id).toBe("fresh-demo");
+  expect(requests.mock.calls.filter(([url]) => url.endsWith("/chat"))).toHaveLength(1);
 });

@@ -5,7 +5,10 @@ import App from "../App.jsx";
 import { resolvePlaceName } from "../lib/resolvePlaceName.js";
 import { recommendDemo } from "../lib/demoPlanner.js";
 
-beforeEach(() => vi.stubEnv("VITE_API_BASE_URL", ""));
+beforeEach(() => {
+  vi.stubEnv("VITE_API_BASE_URL", "");
+  localStorage.setItem("busannow.traveler-profile", "{}");
+});
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -16,7 +19,8 @@ afterEach(() => {
 it("opens general AI chat without an itinerary and continues the same conversation", async () => {
   vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
   const fetchMock = vi.fn()
-    .mockResolvedValueOnce(new Response(JSON.stringify({ session_id: "general", plan_id: "chat-plan", language: "en", answer: "Try Gwangalli Beach." })))
+    .mockResolvedValueOnce(Response.json({ session_id: "general", plan_id: "chat-plan", language: "en",
+      answer: "Try Gwangalli Beach.", sources: [{ tool: "get_weather", id: "forecast", title: "Busan forecast" }] }))
     .mockResolvedValueOnce(new Response(JSON.stringify({ session_id: "general", plan_id: "chat-plan", language: "en", answer: "An evening walk is an option." })))
     .mockResolvedValueOnce(Response.json({ error: { code: "internal_error", message: "Server error" } }, { status: 500 }));
   vi.stubGlobal("fetch", (url, request) => String(url).includes("/events?")
@@ -37,6 +41,7 @@ it("opens general AI chat without an itinerary and continues the same conversati
   expect(loading).toHaveClass("chat-course-status");
   expect(loading).toHaveTextContent("Finding your route…");
   expect(await screen.findByText("Try Gwangalli Beach.")).toBeVisible();
+  expect(screen.getByText(/Korea Meteorological Administration/)).toBeVisible();
   expect(screen.queryByText("Finding your route…")).not.toBeInTheDocument();
   send("What about the evening?");
   expect(await screen.findByText("An evening walk is an option.")).toBeVisible();
@@ -449,4 +454,72 @@ it("shows live activity details without itinerary controls even when a course ex
   expect(card.queryByLabelText("Start time")).not.toBeInTheDocument();
   expect(card.queryByRole("button", { name: /add to itinerary/i })).not.toBeInTheDocument();
   expect(activityCalls.map((params) => Object.fromEntries(params))).toEqual([{ area: "해운대", kind: "escape_room" }]);
+});
+
+it("opens only the translation menu on the map from other travel tabs", () => {
+  render(<App />);
+  const click = (name) => fireEvent.click(screen.getByRole("button", { name, exact: true }));
+  for (const name of ["Chat", "Itinerary", "Profile"]) {
+    click(name);
+    click("Translate");
+    const app = document.querySelector(".travel-preview");
+    expect(app).toHaveAttribute("data-page", "map");
+    expect(app).toHaveAttribute("data-sheet", "closed");
+    expect(screen.getByRole("group", { name: "Translate" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Translate", exact: true })).toHaveAttribute("aria-current", "page");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("group", { name: "Translate" })).not.toBeInTheDocument();
+  }
+});
+
+it("keeps a saved traveler profile across reloads and sends only its notes with itinerary requests", async () => {
+  localStorage.removeItem("busannow.traveler-profile");
+  vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+  const chat = vi.fn(() => Response.json({}, { status: 500 }));
+  vi.stubGlobal("fetch", async (url, request) => String(url).endsWith("/chat")
+    ? chat(JSON.parse(request.body)) : Response.json({ events: [] }));
+  const first = render(<App />);
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText("Name or nickname"), "Private nickname");
+  await user.type(screen.getByLabelText("Age"), "28");
+  await user.selectOptions(screen.getByLabelText("Gender"), "woman");
+  await user.type(screen.getByLabelText("Nationality"), "Japan");
+  await user.type(screen.getByLabelText("Travel notes"), "Please keep walking distances short.");
+  await user.click(screen.getByRole("button", { name: "Save and start" }));
+  expect(screen.getByRole("button", { name: "Home", exact: true })).toBeInTheDocument();
+  first.unmount();
+  render(<App />);
+  await user.click(screen.getByRole("button", { name: "Profile", exact: true }));
+  expect(screen.getByText("Private nickname")).toBeVisible();
+  expect(screen.getByText("28 years · Woman · Japan")).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "Itinerary", exact: true }));
+  await user.click(screen.getByRole("button", { name: "Get an AI itinerary" }));
+  await user.click(screen.getByRole("button", { name: "Create itinerary" }));
+  await waitFor(() => expect(chat).toHaveBeenCalledTimes(1));
+  const request = chat.mock.calls[0][0];
+  expect(request.message).toContain("Please keep walking distances short.");
+  expect(JSON.stringify(request)).not.toMatch(/Private nickname|Japan|woman|\b28\b/);
+});
+
+it("remembers skipping traveler setup and lets the traveler edit their optional profile later", async () => {
+  if (!HTMLDialogElement.prototype.showModal) {
+    HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+    HTMLDialogElement.prototype.close = function () { this.open = false; };
+  }
+  localStorage.removeItem("busannow.traveler-profile");
+  const first = render(<App />);
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText("Name or nickname"), "Discarded nickname");
+  await user.click(screen.getByRole("button", { name: "Later", exact: true }));
+  first.unmount();
+  render(<App />);
+  expect(screen.queryByRole("heading", { name: "Traveler profile" })).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Profile", exact: true }));
+  await user.click(screen.getByRole("button", { name: "Edit profile", exact: true }));
+  expect(screen.getByLabelText("Name or nickname")).toHaveValue("");
+  await user.type(screen.getByLabelText("Name or nickname"), "New nickname");
+  await user.click(screen.getByRole("button", { name: "Save", exact: true }));
+  expect(screen.getByText("New nickname")).toBeVisible();
+  expect(screen.queryByText("Prefer not to answer")).not.toBeInTheDocument();
+  expect(JSON.parse(localStorage.getItem("busannow.traveler-profile")).name).toBe("New nickname");
 });
