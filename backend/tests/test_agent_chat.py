@@ -517,6 +517,35 @@ def test_when_the_limit_stops_the_model_after_a_plan_was_made_the_plan_is_still_
     assert len(response.plan_changes) == 4
 
 
+@pytest.mark.parametrize("language", ["ja", "zh-Hans", "zh-Hant"])
+def test_fallback_plan_created_lists_places_with_the_enumeration_comma(chat, api_storage, language):
+    model = ScriptedModel([*create_script(IDS, "unused", date="2026-11-28")[:2], tool_turn(("search_places", {"query": "z"}))],
+                          repeat_last=True)
+
+    response = chat(model, language=language)
+
+    stored = api_storage.get_plan(response.plan_id)
+    names = [place_name(load_places()[s.place_id], language) for s in stored.stops]
+    assert response.answer == message("plan_created", language, count=4, date="2026-11-28", places="、".join(names))
+    assert ", " not in response.answer
+    if language == "ja":
+        assert response.answer == f"2026-11-28の旅程（4か所）を作りました：{'、'.join(names)}。"
+    # ChatResponse 구조는 그대로다
+    assert set(response.model_dump(mode="json")) == {"session_id", "plan_id", "answer", "language", "sources", "plan_changes"}
+    assert response.language == language and len(response.plan_changes) == 4
+
+
+def test_fallback_plan_changed_after_an_edit_uses_the_reviewed_text(chat, api_storage):
+    session = linked_session(api_storage, "zh-Hant")
+    move = ("move_stop", {"stop_id": "s4", "start": "2026-11-21T16:00:00+09:00", "end": "2026-11-21T17:30:00+09:00"})
+    model = ScriptedModel([tool_turn(move), tool_turn(("search_places", {"query": "z"}))], repeat_last=True)
+
+    response = chat(model, language="zh-Hant", session_id=session, plan_id=PLAN_ID)
+
+    assert [c.stop_id for c in response.plan_changes] == ["s4"]  # 도구 한도에서 멈춰도 바꾼 일정은 남는다
+    assert response.answer == "已更新行程中的 1 個地點。固定地點未更改。"
+
+
 # ---- 도구 실패 ----
 
 

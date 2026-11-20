@@ -27,7 +27,7 @@ from strands.tools.executors import SequentialToolExecutor
 
 from app import config, storage
 from app.chat import answer as chat_answer
-from app.chat.messages import message
+from app.chat.messages import LIST_SEPARATORS, message
 from app.chat.plan_rules import load_places, place_name, validate_plan
 from app.chat.tools import (
     LOOKUP_TOOLS,
@@ -265,7 +265,7 @@ def _fallback_text(plan: Plan | None, changes: list[StopChange], language: Langu
     if plan is None:
         return message("incomplete", language)
     if changes and changes[0].before is None and len(changes) == len(plan.stops):
-        names = ", ".join(place_name(load_places()[s.place_id], language) for s in plan.stops)
+        names = LIST_SEPARATORS[language].join(place_name(load_places()[s.place_id], language) for s in plan.stops)
         return message("plan_created", language, count=len(plan.stops), date=plan.date.isoformat(), places=names)
     return message("plan_changed", language, count=len(changes))
 

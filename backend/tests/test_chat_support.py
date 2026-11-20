@@ -44,6 +44,39 @@ def test_build_error_keys_all_have_messages():
     assert BUILD_ERROR_KEYS <= set(MESSAGES)
 
 
+# D 가 검수한 문장 (원문 그대로). 바뀌지 않아야 하는 기존 문장도 함께 고정한다
+REVIEWED = {
+    ("plan_invalid", "en"): "I couldn't save that because the schedule would not work (for example, stops would overlap). Nothing was changed.",
+    ("plan_invalid", "ja"): "時間が重なるなどスケジュールが成り立たないため、保存できませんでした。何も変更していません。",
+    ("plan_invalid", "zh-Hans"): "该安排无法成立（例如时间重叠），因此未保存，没有任何更改。",
+    ("plan_invalid", "zh-Hant"): "該安排無法成立（例如時間重疊），因此未儲存，沒有任何變更。",
+    ("plan_changed", "en"): "I updated {count} stop(s) in your itinerary. Locked stops were not changed.",
+    ("plan_changed", "ja"): "旅程の{count}か所を更新しました。固定された訪問先は変更していません。",
+    ("plan_changed", "zh-Hans"): "已更新行程中的 {count} 个地点。固定地点未更改。",
+    ("plan_changed", "zh-Hant"): "已更新行程中的 {count} 個地點。固定地點未更改。",
+    ("plan_created", "en"): "I made a {count}-stop plan for {date}: {places}.",
+    ("plan_created", "ja"): "{date}の旅程（{count}か所）を作りました：{places}。",
+    ("plan_created", "zh-Hans"): "已为 {date} 安排了 {count} 个地点的行程：{places}。",
+    ("plan_created", "zh-Hant"): "已為 {date} 安排了 {count} 個地點的行程：{places}。",
+    ("no_valid_places", "en"): "I couldn't find suitable places to build an itinerary. Tell me what you enjoy (for example food, the sea or culture) and I'll try again.",
+    ("no_valid_places", "ja"): "旅程に合う場所が見つかりませんでした。興味のあること（グルメ、海、文化など）を教えてください。もう一度探します。",
+    ("no_valid_places", "zh-Hans"): "没有找到适合安排行程的地点。请告诉我您的兴趣（例如美食、海边或文化），我会再试一次。",
+    ("no_valid_places", "zh-Hant"): "沒有找到適合安排行程的地點。請告訴我您的興趣（例如美食、海邊或文化），我會再試一次。",
+}
+
+
+@pytest.mark.parametrize("key, language", sorted(REVIEWED))
+def test_reviewed_messages_match_exactly(key, language):
+    assert MESSAGES[key][language] == REVIEWED[(key, language)]
+
+
+def test_plan_changed_formats_count_in_every_language():
+    assert message("plan_changed", "ja", count=2) == "旅程の2か所を更新しました。固定された訪問先は変更していません。"
+    assert message("plan_changed", "zh-Hans", count=2) == "已更新行程中的 2 个地点。固定地点未更改。"
+    assert message("plan_changed", "zh-Hant", count=2) == "已更新行程中的 2 個地點。固定地點未更改。"
+    assert message("plan_changed", "en", count=2) == "I updated 2 stop(s) in your itinerary. Locked stops were not changed."
+
+
 # ---- 장소 이름 ----
 
 

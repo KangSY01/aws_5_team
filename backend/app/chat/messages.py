@@ -1,17 +1,20 @@
 """사용자에게 직접 보여 주는 고정 문장. 모델이 쓰지 않는 안내문(일정을 만들지 못했을 때 등)과 출처 제목.
 
-번역은 초안이다. 다국어 검수는 D 담당이 한다 (docs/prompt-review.md).
+다국어 검수는 D 담당이 한다 (docs/prompt-review.md). plan_invalid·plan_changed·plan_created·no_valid_places 는 D 가 검수한 문장이다.
 """
 
 from app.models.plan import Language
 
 LANGUAGES: tuple[Language, ...] = ("en", "ja", "zh-Hans", "zh-Hant")
 
+# 장소 이름을 나열할 때의 구분자. 일본어·중국어는 나열 쉼표(、)를 쓴다
+LIST_SEPARATORS: dict[Language, str] = {"en": ", ", "ja": "、", "zh-Hans": "、", "zh-Hant": "、"}
+
 MESSAGES: dict[str, dict[Language, str]] = {
     # build_plan 이 PlanBuildError 로 알려 주는 사유 (app/tools/schedule.py)
     "no_valid_places": {
         "en": "I couldn't find suitable places to build an itinerary. Tell me what you enjoy (for example food, the sea or culture) and I'll try again.",
-        "ja": "旅程を作れる場所が見つかりませんでした。興味のあること（グルメ、海、文化など）を教えてください。もう一度探します。",
+        "ja": "旅程に合う場所が見つかりませんでした。興味のあること（グルメ、海、文化など）を教えてください。もう一度探します。",
         "zh-Hans": "没有找到适合安排行程的地点。请告诉我您的兴趣（例如美食、海边或文化），我会再试一次。",
         "zh-Hant": "沒有找到適合安排行程的地點。請告訴我您的興趣（例如美食、海邊或文化），我會再試一次。",
     },
@@ -35,10 +38,10 @@ MESSAGES: dict[str, dict[Language, str]] = {
     },
     # 만든 일정·바꾼 일정이 검증(시간 겹침 등)을 통과하지 못해 저장하지 않았을 때
     "plan_invalid": {
-        "en": "I couldn't apply that because the new schedule would not work (for example, stops would overlap). Your itinerary was not changed.",
-        "ja": "新しいスケジュールが成り立たない（例：時間が重なる）ため、変更できませんでした。旅程はそのままです。",
-        "zh-Hans": "新的安排无法成立（例如时间重叠），因此没有修改。您的行程保持不变。",
-        "zh-Hant": "新的安排無法成立（例如時間重疊），因此沒有修改。您的行程維持不變。",
+        "en": "I couldn't save that because the schedule would not work (for example, stops would overlap). Nothing was changed.",
+        "ja": "時間が重なるなどスケジュールが成り立たないため、保存できませんでした。何も変更していません。",
+        "zh-Hans": "该安排无法成立（例如时间重叠），因此未保存，没有任何更改。",
+        "zh-Hant": "該安排無法成立（例如時間重疊），因此未儲存，沒有任何變更。",
     },
     # 모델이 답변을 만들지 못했고 적용할 변경도 없을 때
     "incomplete": {
@@ -50,15 +53,15 @@ MESSAGES: dict[str, dict[Language, str]] = {
     # 모델이 답변 문장을 만들지 못했지만 일정은 만들어졌거나 바뀌었을 때 (도구 호출 한도 등)
     "plan_created": {
         "en": "I made a {count}-stop plan for {date}: {places}.",
-        "ja": "{date}の旅程を{count}か所で作りました：{places}。",
+        "ja": "{date}の旅程（{count}か所）を作りました：{places}。",
         "zh-Hans": "已为 {date} 安排了 {count} 个地点的行程：{places}。",
         "zh-Hant": "已為 {date} 安排了 {count} 個地點的行程：{places}。",
     },
     "plan_changed": {
         "en": "I updated {count} stop(s) in your itinerary. Locked stops were not changed.",
-        "ja": "旅程の{count}か所を更新しました。固定した予定は変更していません。",
-        "zh-Hans": "已更新行程中的 {count} 个地点。已固定的行程未作更改。",
-        "zh-Hant": "已更新行程中的 {count} 個地點。已固定的行程未作更改。",
+        "ja": "旅程の{count}か所を更新しました。固定された訪問先は変更していません。",
+        "zh-Hans": "已更新行程中的 {count} 个地点。固定地点未更改。",
+        "zh-Hant": "已更新行程中的 {count} 個地點。固定地點未更改。",
     },
     # sources 의 title (장소 이름이 title 인 출처는 장소 이름을 쓴다)
     "source_weather": {
