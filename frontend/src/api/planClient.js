@@ -1,4 +1,5 @@
 // Plan_API(GET /plan/{plan_id}) 호출 클라이언트.
+import { withDemo } from "../features/demo-panel/demoStore.js";
 
 
 const DEFAULT_BASE_URL = "http://127.0.0.1:8000";
@@ -60,7 +61,7 @@ function parseErrorBody(body) {
  * 성공 시 { plan, places } 를 반환하고, 실패 시 PlanClientError 를 던진다.
  * 호출자 signal 로 취소하면 AbortError 를 그대로 던진다.
  */
-async function requestJson(
+export async function requestJson(
   path,
   { baseUrl, signal, timeoutMs = DEFAULT_TIMEOUT_MS, request = {} } = {},
 ) {
@@ -145,15 +146,16 @@ function jsonRequest(method, body) {
   return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
 }
 
-export async function sendTravelMessage(message, language, session, profile = {}) {
+export async function sendTravelMessage(message, language, session, profile = {}, signal) {
   const chat = await requestJson("/chat", {
+    signal,
     timeoutMs: 60000,
-    request: jsonRequest("POST", {
+    request: jsonRequest("POST", withDemo({
       message,
       profile: { ...profile, language: language === "ko" ? "en" : language },
       session_id: session?.session_id ?? null,
       plan_id: session?.plan_id ?? null,
-    }),
+    })),
   });
   if (!chat?.plan_id || !chat.session_id || typeof chat.answer !== "string") {
     throw new PlanClientError("invalid_response");
@@ -162,9 +164,20 @@ export async function sendTravelMessage(message, language, session, profile = {}
   return chat;
 }
 
-export async function checkTravelPlan(planId) {
-  const body = await requestJson("/plan/check", { request: jsonRequest("POST", { plan_id: planId }) });
+export async function checkTravelPlan(planId, signal) {
+  const body = await requestJson("/plan/check", { signal, request: jsonRequest("POST", withDemo({ plan_id: planId })) });
   if (body?.plan_id !== planId || !Array.isArray(body.issues) || !body.repairs || !Array.isArray(body.places)) {
+    throw new PlanClientError("invalid_response");
+  }
+  return body;
+}
+
+export async function delayTravelPlan(planId, delayMinutes, signal) {
+  const body = await requestJson(`/plan/${encodeURIComponent(planId)}/delay`, {
+    signal,
+    request: jsonRequest("POST", withDemo({ plan_id: planId, delay_min: delayMinutes })),
+  });
+  if (body?.plan_id !== planId || !Array.isArray(body.repairs) || !Array.isArray(body.places)) {
     throw new PlanClientError("invalid_response");
   }
   return body;

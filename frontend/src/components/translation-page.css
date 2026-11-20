@@ -57,7 +57,29 @@
   cursor: pointer;
 }
 .translation-help { margin: -4px 0 0; font-size: 13px; line-height: 1.45; color: var(--color-muted); overflow-wrap: anywhere; }
-.translation-preview { display: block; width: 100%; max-height: 220px; object-fit: contain; border-radius: 12px; }
+.translation-image {
+  position: relative;
+  justify-self: center;
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+}
+.translation-preview { display: block; width: auto; height: auto; max-width: 100%; max-height: 220px; }
+.translation-image-overlay { position: absolute; inset: 0; pointer-events: none; }
+.translation-image-overlay span {
+  position: absolute;
+  overflow: hidden;
+  background: #145440;
+  color: #fff;
+  font-size: clamp(.56rem, 2.3vw, .76rem);
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.translation-photo-results { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.translation-photo-results li { display: grid; gap: 3px; padding-block: 6px; border-block-end: 1px solid var(--color-border); overflow-wrap: anywhere; }
+.translation-photo-results li :is(span, small) { color: var(--color-muted); }
 .translation-voice-input {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -127,8 +149,6 @@
 }
 
 .translation-photo-field { display: grid; gap: 4px; }
-.translation-photo-language { display: grid; gap: 4px; }
-.translation-photo-language small { color: var(--color-muted); }
 
 
 .translation-language-value { display: flex; align-items: center; gap: 6px; min-width: 0; }

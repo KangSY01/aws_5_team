@@ -120,9 +120,42 @@ const chatOutcomeCopy = {
   "zh-Hant": ["無法完成要求的變更，原行程保持不變。", "已更新行程，請在行程頁面查看。", "已將該地點更換為{place}。"],
 };
 
+const generalChatDemo = {
+  ko: "데모에서는 저장된 명소 소개를 볼 수 있어요. 광안대교나 태종대에 대해 물어보세요. 그 밖의 질문에 답하려면 AI 서버 연결이 필요해요.",
+  en: "The demo can share saved landmark descriptions. Ask about Gwangan Bridge or Taejongdae. Other questions need a connection to the AI server.",
+  ja: "デモでは登録済みの名所を紹介できます。広安大橋や太宗台について聞いてみてください。その他の質問にはAIサーバーへの接続が必要です。",
+  "zh-Hans": "演示版可以介绍已收录的地标。试着问问广安大桥或太宗台。其他问题需要连接 AI 服务。",
+  "zh-Hant": "示範版可以介紹已收錄的地標。試著問問廣安大橋或太宗臺。其他問題需要連接 AI 服務。",
+};
+
+const addNeedsItinerary = {
+  ko: "추가할 일정이 아직 없어요. 일정 탭에서 코스를 먼저 만들어 주세요.",
+  en: "There’s no itinerary to add to yet. Create one in the itinerary tab first.",
+  ja: "追加先の旅程がありません。日程タブで旅程を作ってください。",
+  "zh-Hans": "还没有可以添加的行程。请先在行程页面创建行程。",
+  "zh-Hant": "還沒有可以新增的行程。請先在行程頁面建立行程。",
+};
+
+const additionTiming = {
+  ko: "기존 일정을 유지하면 요청한 시간에 이동 여유 30분과 선택한 방문 시간을 확보할 수 없어요.",
+  en: "The requested time doesn’t leave room for a 30-minute travel buffer and the selected visit duration around your existing stops.",
+  ja: "既存の予定を維持すると、ご希望の時刻には移動30分と選んだ滞在時間を確保できません。",
+  "zh-Hans": "在保留原行程的情况下，请求的时间无法留出 30 分钟交通缓冲和 所选游览时长。",
+  "zh-Hant": "在保留原行程的情況下，指定時段無法預留 30 分鐘交通緩衝及 所選遊覽時長。",
+};
+
+const placeCardLabels = {
+  ko: ["장소 추천", "몇 시부터 몇 시까지 일정에 넣을까요?", "시작 시간", "종료 시간", "확인하고 일정에 추가", "일정에 추가했어요.", "다른 가능한 시간을 입력했어요. 확인 전에 바꿀 수 있어요.", "장소 자세히 보기", "종료 시간은 시작 시간보다 늦어야 해요."],
+  en: ["Suggested places", "What time should this visit start and end?", "Start time", "End time", "Confirm and add to itinerary", "Added to your itinerary.", "A different available time is shown. You can change it before confirming.", "Place details", "End time must be after start time."],
+  ja: ["おすすめの場所", "何時から何時まで旅程に入れますか？", "開始時刻", "終了時刻", "確認して旅程に追加", "旅程に追加しました。", "別の空き時間を表示しています。確認前に変更できます。", "場所の詳細", "終了時刻は開始時刻より後にしてください。"],
+  "zh-Hans": ["推荐地点", "想把这次到访安排在几点到几点？", "开始时间", "结束时间", "确认并添加到行程", "已添加到行程。", "已显示另一个可用时段，确认前可以修改。", "地点详情", "结束时间必须晚于开始时间。"],
+  "zh-Hant": ["推薦地點", "想把這次造訪安排在幾點到幾點？", "開始時間", "結束時間", "確認並新增到行程", "已新增到行程。", "已顯示另一個可用時段，確認前可以修改。", "地點詳情", "結束時間必須晚於開始時間。"],
+};
+
 export function getPlannerCopy(language) {
   const [durations, areasList] = choices[language];
   const [chatPlanUnchanged, chatPlanUpdated, chatStopReplaced] = chatOutcomeCopy[language];
+  const [results, prompt, start, end, confirm, added, adjusted, details, invalidEnd] = placeCardLabels[language];
   const [addArea, closeArea, removeArea, showAreas, doneAreas, cancelAreas, changeAreas, noAreaSelection] = areaActions[language];
   const [extraNames, extraDescriptions, limitedPlaces] = additionalAreas[language];
   const areaAdded = selectionStatus[language];
@@ -132,10 +165,15 @@ export function getPlannerCopy(language) {
   const doneAreasLabel = (total) => total
     ? `${doneAreas} · ${new Intl.NumberFormat(language).format(total)}`
     : doneAreas;
-  return { ...Object.fromEntries(keys.map((key, i) => [key, labels[language][i]])),
+  const text = Object.fromEntries(keys.map((key, i) => [key, labels[language][i]]));
+  return { ...text,
     durations, areasList: [...areasList, ...extraNames], areaDescriptions: [...areaDescriptions[language], ...extraDescriptions],
     activityCopy: getActivityCopy(language), addArea, areaAdded, closeArea, removeArea, showAreas, doneAreasLabel, cancelAreas, limitedPlaces,
     planServerError: planServerErrors[language],
+    generalChatDemo: generalChatDemo[language],
+    placeCards: { results, prompt, start, end, confirm, added, adjusted, details, invalidEnd,
+      noItinerary: addNeedsItinerary[language], stale: text.stale },
+    additionNoTime: additionTiming[language],
     chatPlanUnchanged, chatPlanUpdated, chatStopReplaced: (place) => chatStopReplaced.replace("{place}", () => place),
     emptyRecommendation: emptyRecommendationCopy[language],
     requiredAnswer, optionalAnswer, durationRequired, changeAreas, noAreaSelection,

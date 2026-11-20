@@ -1,15 +1,4 @@
-const ocrLanguages = { ko: "kor", en: "eng", ja: "jpn", "zh-Hans": "chi_sim", "zh-Hant": "chi_tra" };
-
-export async function readPhoto(file, language) {
-  const { createWorker } = await import("tesseract.js");
-  const worker = await createWorker(language ? ocrLanguages[language] : Object.values(ocrLanguages));
-  try {
-    const { data } = await worker.recognize(file);
-    return data.text.trim();
-  } finally {
-    await worker.terminate();
-  }
-}
+const supportedLanguages = ["ko", "en", "ja", "zh-Hans", "zh-Hant"];
 
 function detectWrittenLanguage(text) {
   const korean = /\p{Script=Hangul}/u.test(text);
@@ -33,7 +22,7 @@ export async function detectSourceLanguage(text, signal) {
     try {
       const [best] = await detector.detect(text, { signal });
       const code = best?.detectedLanguage;
-      return best?.confidence >= .7 && Object.hasOwn(ocrLanguages, code) ? code : null;
+      return best?.confidence >= .7 && supportedLanguages.includes(code) ? code : null;
     } finally {
       detector.destroy();
     }

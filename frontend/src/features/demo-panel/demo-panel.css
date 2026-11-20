@@ -1,0 +1,114 @@
+/* 데모 스위치 패널 (D). 화면 왼쪽 아래에 떠 있고, 다른 화면 요소와 겹치지 않게 작게 둔다. */
+.demo-panel {
+  position: fixed;
+  left: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 1000;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: min(320px, calc(100vw - 24px));
+  font-size: 0.875rem;
+}
+
+.demo-panel__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border, #e5e5e7);
+  border-radius: 999px;
+  background: var(--color-bg, #fff);
+  color: var(--color-muted, #555);
+  font: inherit;
+  font-weight: 700;
+  box-shadow: 0 2px 8px var(--color-shadow, #0000001a);
+  cursor: pointer;
+}
+
+.demo-panel__toggle--on {
+  border-color: #d97706;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.demo-panel__summary {
+  font-weight: 400;
+}
+
+.demo-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--color-border, #e5e5e7);
+  border-radius: 12px;
+  background: var(--color-bg, #fff);
+  color: var(--color-text, #171717);
+  box-shadow: 0 4px 16px var(--color-shadow, #0000001a);
+}
+
+.demo-panel__row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.demo-panel__row input,
+.demo-panel__row select {
+  min-height: 44px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border, #e5e5e7);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.demo-panel__switch {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.demo-panel__switch input {
+  width: 24px;
+  height: 24px;
+}
+
+.demo-panel__scenes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.demo-panel__scenes legend {
+  margin-bottom: 4px;
+  padding: 0;
+}
+
+.demo-panel__scenes button,
+.demo-panel__reset {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border, #e5e5e7);
+  border-radius: 8px;
+  background: var(--color-surface, #f5f5f6);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.demo-panel__note {
+  margin: 0;
+  color: var(--color-muted, #555);
+}
+
+.demo-panel button:focus-visible,
+.demo-panel input:focus-visible,
+.demo-panel select:focus-visible {
+  outline: 3px solid var(--color-text, #171717);
+  outline-offset: 2px;
+}

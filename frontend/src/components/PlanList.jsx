@@ -26,7 +26,7 @@ function buildKeys(stops) {
   });
 }
 
-export default function PlanList({ plan, places, displayLanguage, selected, onSelect, lockedLabel, onEdit, editLabel, formatStopDate, onSaveStops, busy, saveError }) {
+export default function PlanList({ plan, places, displayLanguage, selected, tripStopId, onSelect, lockedLabel, onEdit, editLabel, formatStopDate, onSaveStops, busy, saveError, renderStopChecks, onToggleLock, lockCopy }) {
   const stops = Array.isArray(plan?.stops) ? plan.stops : [];
   const placesById = buildPlacesById(places);
   const language = displayLanguage ?? plan?.profile?.language;
@@ -67,6 +67,7 @@ export default function PlanList({ plan, places, displayLanguage, selected, onSe
       )}
       {/* 재정렬 없이 plan.stops 순서 그대로, 같은 place_id 여도 병합·생략하지 않는다 */}
       {overlaps.size > 0 && <p className="stop-overlap-summary" role="status">{copy.overlap}</p>}
+      {onToggleLock && <p className="stop-lock-hint">{lockCopy.hint}</p>}
       {saveError && !editorStop && <p className="stop-overlap-summary" role="alert">{saveError}</p>}
       <ol className="plan-list__stops" ref={list} onKeyDown={cancel}>
         {stops.map((stop, index) => (
@@ -77,6 +78,7 @@ export default function PlanList({ plan, places, displayLanguage, selected, onSe
             language={language}
             number={onSelect ? index + 1 : undefined}
             active={selected === index}
+            tripTarget={tripStopId != null && stop.stop_id === tripStopId}
             onSelect={onSelect ? () => onSelect(index) : undefined}
             lockedLabel={lockedLabel}
             onEdit={onEdit && !stop.locked ? () => onEdit(index) : undefined}
@@ -94,6 +96,12 @@ export default function PlanList({ plan, places, displayLanguage, selected, onSe
             overlap={overlaps.has(index) ? copy.overlap : undefined}
             dragging={drag?.from === index}
             insertion={drag?.to === index && drag.from !== index ? (drag.from > index ? 'before' : 'after') : undefined}
+            checks={renderStopChecks?.(stop)}
+            lock={onToggleLock ? {
+              label: (name) => lockCopy.label(name, stop.locked),
+              disabled: busy,
+              toggle: () => onToggleLock(stop),
+            } : undefined}
           />
         ))}
       </ol>

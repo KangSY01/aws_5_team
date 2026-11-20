@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { languages } from "../constants/travelCopy.js";
-import { detectSourceLanguage, readPhoto, translateText } from "../api/translationClient.js";
+import { detectSourceLanguage, translateText } from "../api/translationClient.js";
+import { photoLanguages, photoTypes, translatePhoto } from "../api/photoClient.js";
 import { localeFlags } from "../constants/localeFlags.js";
 import "./translation-page.css";
 
@@ -11,7 +12,7 @@ const photoTargetKey = "busannow.photoTranslationTarget";
 function loadPhotoTarget() {
   try {
     const value = window.localStorage.getItem(photoTargetKey);
-    return Object.hasOwn(languages, value) ? value : null;
+    return photoLanguages.includes(value) ? value : null;
   } catch {
     return null;
   }
@@ -25,9 +26,7 @@ export default function TranslationPage({ mode, active, language, copy, onInputF
   const [editVoiceSource, setEditVoiceSource] = useState(false);
   const [targetChoice, setTarget] = useState(null);
   const [photoTarget, setPhotoTarget] = useState(loadPhotoTarget);
-  const [detected, setDetected] = useState(null);
-  const [photoSource, setPhotoSource] = useState("");
-  const [editPhotoSource, setEditPhotoSource] = useState(false);
+  const [photoItems, setPhotoItems] = useState([]);
   const defaultTarget = language !== "ko" && Object.hasOwn(languages, language) ? language : "en";
   const isPhoto = mode === "photo";
   const isVoice = mode === "voice";
@@ -42,7 +41,6 @@ export default function TranslationPage({ mode, active, language, copy, onInputF
   const [speechStarting, setSpeechStarting] = useState(false);
   const speechActive = listening || speechStarting;
   const [message, setMessage] = useState("");
-  const [original, setOriginal] = useState("");
   const [result, setResult] = useState("");
   const body = useRef(null);
   const recognition = useRef(null);
@@ -78,7 +76,7 @@ export default function TranslationPage({ mode, active, language, copy, onInputF
 
   function clearResult() {
     setMessage("");
-    setOriginal("");
+    setPhotoItems([]);
     setResult("");
   }
 
@@ -144,11 +142,12 @@ export default function TranslationPage({ mode, active, language, copy, onInputF
     event.target.value = "";
     if (!image) return;
     clearResult();
+    if (!photoTypes.includes(image.type)) {
+      setFile(null);
+      setMessage("photoInvalid");
+      return;
+    }
     setFile(image);
-    setDetected(null);
-    setPhotoSource("");
-    setEditPhotoSource(false);
-    void runTranslation(image, true);
   }
 
   function changePhotoTarget(value) {
@@ -161,17 +160,21 @@ export default function TranslationPage({ mode, active, language, copy, onInputF
     }
   }
 
-  function changePhotoSource(value) {
-    clearResult();
-    setPhotoSource(value);
-  }
-
   function submit(event) {
     event.preventDefault();
     void runTranslation(file);
   }
 
-  async function runTranslation(image, detectOnly = false) {
+  function handlePreviewError() {
+    pending.current?.abort();
+    pending.current = null;
+    setBusy(false);
+    clearResult();
+    setFile(null);
+    setMessage("imageError");
+  }
+
+  async function runTranslation(image) {
     if (pending.current || speechActive || (!isPhoto && !draft.trim())) return;
     if (isPhoto && !image) return;
     const request = new AbortController();
@@ -179,51 +182,26 @@ export default function TranslationPage({ mode, active, language, copy, onInputF
     clearResult();
     setBusy(true);
     try {
-      let text = draft.trim();
-      let from;
       if (isPhoto) {
-        const explicit = detectOnly ? "" : photoSource;
-        const cached = detectOnly ? null : detected;
-        if (explicit) {
-          from = explicit;
-          text = cached?.language === explicit ? cached.text : await readPhoto(image, explicit);
-        } else {
-          text = cached?.text ?? await readPhoto(image);
-          if (request.signal.aborted) return;
-          from = cached?.language ?? await detectSourceLanguage(text, request.signal);
-          if (request.signal.aborted) return;
-          setDetected({ language: from, text });
-          if (!from) {
-            setEditPhotoSource(true);
-            setMessage(text ? "detectFailed" : "noText");
-            return;
-          }
-        }
-        if (detectOnly) return;
-      } else {
-        from = voiceSource || spokenSource || await detectSourceLanguage(text, request.signal);
+        const items = await translatePhoto(image, target, request.signal);
         if (request.signal.aborted) return;
-        if (!from) {
-          setEditVoiceSource(true);
-          setMessage("detectVoiceFailed");
-          return;
-        }
-        setResolvedVoiceSource(from);
+        setPhotoItems(items);
+        if (!items.length) setMessage("noText");
+        return;
       }
+      const text = draft.trim();
+      const from = voiceSource || spokenSource || await detectSourceLanguage(text, request.signal);
       if (request.signal.aborted) return;
-      if (!text) { setMessage("noText"); return; }
-      setOriginal(text);
+      if (!from) {
+        setEditVoiceSource(true);
+        setMessage("detectVoiceFailed");
+        return;
+      }
+      setResolvedVoiceSource(from);
       const translated = from === target ? text : await translateText(text, from, target, request.signal);
       if (!request.signal.aborted) setResult(translated);
     } catch (error) {
-      if (!request.signal.aborted) {
-        if (isPhoto && (detectOnly || (!detected && !photoSource))) {
-          setEditPhotoSource(true);
-          setMessage("detectFailed");
-        } else {
-          setMessage(error.message === "unavailable" ? "unavailable" : "failed");
-        }
-      }
+      if (!request.signal.aborted) setMessage(Object.hasOwn(copy, error.message) ? error.message : "failed");
     } finally {
       if (!request.signal.aborted) {
         pending.current = null;
@@ -257,8 +235,6 @@ export default function TranslationPage({ mode, active, language, copy, onInputF
   }, [compact]);
 
 
-  const recognizedLanguage = photoSource || detected?.language;
-  const detectedName = detected?.language && new Intl.DisplayNames([language], { type: "language" }).of(detected.language);
   const inputHelp = message ? copy[message] : listening ? copy.listening : (busy || speechStarting) ? copy.working
     : emptyPhoto && copy.photoNeeded;
 
@@ -271,7 +247,7 @@ export default function TranslationPage({ mode, active, language, copy, onInputF
                 onChange={(value) => { clearResult(); setVoiceSource(value); }} />}
               {isVoice && <LanguageField label={copy.speakingLanguage} value={speechLanguage} onChange={setSpeechLanguage} disabled={speechActive} />}
               {!isPhoto && <DirectionIcon />}
-              <LanguageField label={copy.photoTarget} value={target} onChange={isPhoto ? changePhotoTarget : (value) => {
+              <LanguageField label={copy.photoTarget} value={target} available={isPhoto ? photoLanguages : undefined} onChange={isPhoto ? changePhotoTarget : (value) => {
                 clearResult();
                 setTarget(value);
               }} />
@@ -288,18 +264,21 @@ export default function TranslationPage({ mode, active, language, copy, onInputF
             {isPhoto ? (
               <>
                 <div className="translation-photo-inputs">
-                  <label><PhotoActionIcon camera /><span>{copy.camera}</span><input type="file" accept="image/*" capture="environment" onChange={chooseFile} /></label>
-                  <label><PhotoActionIcon /><span>{copy.upload}</span><input type="file" accept="image/*" onChange={chooseFile} /></label>
+                  <label><PhotoActionIcon camera /><span>{copy.camera}</span><input type="file" accept="image/jpeg,image/png" capture="environment" onChange={chooseFile} /></label>
+                  <label><PhotoActionIcon /><span>{copy.upload}</span><input type="file" accept="image/jpeg,image/png" onChange={chooseFile} /></label>
                 </div>
-                {preview && <img className="translation-preview" src={preview} alt={copy.preview} onError={() => { setFile(null); setMessage("imageError"); }} />}
-                {file && (detectedName || editPhotoSource) && (
-                  <div className="translation-photo-language">
-                    {detectedName && <small>{copy.detected} · {detectedName}</small>}
-                    {editPhotoSource ? (
-                      <LanguageField label={copy.source} value={recognizedLanguage || ""} onChange={changePhotoSource} placeholder={copy.chooseSource} />
-                    ) : (
-                      <button type="button" className="translation-swap" onClick={() => setEditPhotoSource(true)}>{copy.correctSource}</button>
-                    )}
+                {preview && (
+                  <div className="translation-image">
+                    <img className="translation-preview" src={preview} alt={copy.preview} onError={handlePreviewError} />
+                    <div className="translation-image-overlay" aria-hidden="true">
+                      {photoItems.map(({ bbox, translated }, index) => (
+                        <span key={index} lang={target} style={{
+                          left: `${bbox.left * 100}%`, top: `${bbox.top * 100}%`,
+                          width: `${Math.min(bbox.width, 1 - bbox.left) * 100}%`,
+                          height: `${Math.min(bbox.height, 1 - bbox.top) * 100}%`,
+                        }}>{translated}</span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </>
@@ -339,13 +318,23 @@ export default function TranslationPage({ mode, active, language, copy, onInputF
             )}
             {inputHelp && <p id={mode + "-translation-help"} className="translation-help" role="status">{inputHelp}</p>}
         </fieldset>
-        {isPhoto && <div className="translation-status" role="status">
-          {original && <section><h2>{copy.original}</h2><p lang={recognizedLanguage}>{original}</p></section>}
-          {result && <section><h2>{copy.result}</h2><p lang={target}>{result}</p></section>}
-        </div>}
+        {isPhoto && photoItems.length > 0 && (
+          <section className="translation-status" role="status" aria-label={copy.result}>
+            <h2>{copy.result}</h2>
+            <ul className="translation-photo-results">
+              {photoItems.map(({ text_ko, translated, spicy }, index) => (
+                <li key={index}>
+                  <span lang="ko">{text_ko}</span>
+                  <strong lang={target}>{translated}</strong>
+                  <small>{spicy === null ? copy.spicyUnknown : spicy ? copy.spicyYes : copy.spicyNo}</small>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </form>
       <div className="translation-footer" hidden={isPhoto ? emptyPhoto : isVoice && emptyText}>
-        <button aria-describedby={inputHelp ? mode + "-translation-help" : undefined} form={mode + "-translation-form"} className="translation-submit" type="submit" disabled={busy || speechActive || (isPhoto ? !file || (editPhotoSource && !recognizedLanguage) : emptyText || (isVoice && editVoiceSource && !voiceSource && !resolvedVoiceSource))}>
+        <button aria-describedby={inputHelp ? mode + "-translation-help" : undefined} form={mode + "-translation-form"} className="translation-submit" type="submit" disabled={busy || speechActive || (isPhoto ? !file : emptyText || (isVoice && editVoiceSource && !voiceSource && !resolvedVoiceSource))}>
               {busy ? copy.working : mode === "photo" ? copy.photoSubmit : copy.submit}
             </button>
       </div>
@@ -364,7 +353,7 @@ function LanguageValue({ value, placeholder }) {
   );
 }
 
-function LanguageField({ label, value, onChange, placeholder, disabled, allowAuto }) {
+function LanguageField({ label, value, onChange, placeholder, disabled, allowAuto, available = Object.keys(languages) }) {
   return (
     <label className="translation-photo-field">
       <span className="translation-language-label">{label}</span>
@@ -372,7 +361,7 @@ function LanguageField({ label, value, onChange, placeholder, disabled, allowAut
         <LanguageValue value={value} placeholder={placeholder} />
         <select aria-label={label} disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)}>
           {placeholder && <option value="" disabled={!allowAuto}>{placeholder}</option>}
-          {Object.entries(languages).map(([code, name]) => <option key={code} value={code} lang={code}>{flagEmoji[code]} {name}</option>)}
+          {available.map((code) => <option key={code} value={code} lang={code}>{flagEmoji[code]} {languages[code]}</option>)}
         </select>
       </span>
     </label>

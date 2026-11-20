@@ -6,23 +6,29 @@ import { LOCKED_LABEL, PLACE_NAME_FALLBACK_NOTE } from '../constants/messages.js
 const SUPPORTED_LANGUAGES = ['ko', 'en', 'ja', 'zh-Hans', 'zh-Hant'];
 
 // 잠금 아이콘 (장식용이므로 보조기기에서 숨긴다)
-function LockIcon() {
+function LockIcon({ locked }) {
   return (
     <svg
       className="stop-item__locked-icon"
       aria-hidden="true"
       focusable="false"
-      width="14"
-      height="14"
+      width="17"
+      height="17"
       viewBox="0 0 24 24"
-      fill="currentColor"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
     >
-      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 0 1 6 0v3H9z" />
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d={locked ? "M8 11V7a4 4 0 0 1 8 0v4" : "M8 11V7a4 4 0 0 1 7.5-2"} />
+      <path d="M12 15v2" />
     </svg>
   );
 }
 
-export default function StopItem({ stop, place, language, number, active, onSelect, lockedLabel = LOCKED_LABEL, onEdit, editLabel, day, formatStopDate, timing, overlap, dragging, insertion }) {
+export default function StopItem({ stop, place, language, number, active, tripTarget, onSelect, lockedLabel = LOCKED_LABEL, onEdit, editLabel, day, formatStopDate, timing, overlap, dragging, insertion, checks, lock }) {
   // resolvePlaceName 은 Map 을 받으므로 단일 장소를 Map 으로 감싸 전달한다
   const placesById = place ? new Map([[stop.place_id, place]]) : new Map();
   const { name, isFallbackToId } = resolvePlaceName(stop, placesById, language);
@@ -49,9 +55,9 @@ export default function StopItem({ stop, place, language, number, active, onSele
       >
         {name}
       </span>
-      {stop.locked === true && (
+      {stop.locked === true && !lock && (
         <span className="stop-item__locked">
-          <LockIcon />
+          <LockIcon locked />
           <span>{lockedLabel}</span>
         </span>
       )}
@@ -65,27 +71,39 @@ export default function StopItem({ stop, place, language, number, active, onSele
     <li className="stop-item" data-insert={insertion}>
       {day && <time className="stop-day" dateTime={day}>{formatStopDate(day)}</time>}
       {onSelect ? (
-        <div className="stop-row" data-editable-time={Boolean(timing)} data-dragging={dragging || undefined}>
-          <button type="button" className="stop-select" aria-pressed={active} onClick={onSelect}>
-            {content}
-          </button>
-          {timing && (
-            <button type="button" className="stop-time" disabled={timing.disabled}
-              aria-label={timing.label + ' · ' + name + ' · ' + formatTime(stop.start) + ' – ' + formatTime(stop.end)}
-              aria-haspopup="dialog" aria-description={timing.hint}
-              onClick={timing.open}>
-              <span>{time}</span>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 4 4M4 20l4-.8L20 7l-4-4L4.8 15z" /></svg>
+        <div className="stop-track">
+          <div className="stop-row" data-editable-time={Boolean(timing)} data-has-lock={Boolean(lock)} data-dragging={dragging || undefined}>
+            <button type="button" className="stop-select" aria-pressed={active} aria-current={tripTarget || undefined} onClick={onSelect}>
+              {content}
             </button>
-          )}
-          {onEdit && (
-            <button type="button" className="stop-edit" aria-label={editLabel + " · " + name} onClick={onEdit}>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 3c0 5-4 9-9 9 5 0 9 4 9 9 0-5 4-9 9-9-5 0-9-4-9-9Z" />
-              </svg>
-              <span>{editLabel}</span>
-            </button>
-          )}
+            {timing && (
+              <button type="button" className="stop-time" disabled={timing.disabled}
+                aria-label={timing.label + ' · ' + name + ' · ' + formatTime(stop.start) + ' – ' + formatTime(stop.end)}
+                aria-haspopup="dialog" aria-description={timing.hint}
+                onClick={timing.open}>
+                <span>{time}</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 4 4M4 20l4-.8L20 7l-4-4L4.8 15z" /></svg>
+              </button>
+            )}
+            {(lock || onEdit) && <div className="stop-actions">
+              {lock && (
+                <button type="button" className="stop-lock" aria-pressed={Boolean(stop.locked)}
+                  aria-label={lock.label(name)} title={lock.label(name)} disabled={lock.disabled} onClick={lock.toggle}>
+                  <LockIcon locked={stop.locked} />
+                  {stop.locked && <span>{lockedLabel}</span>}
+                </button>
+              )}
+              {onEdit && (
+                <button type="button" className="stop-edit" aria-label={editLabel + " · " + name} onClick={onEdit}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 3c0 5-4 9-9 9 5 0 9 4 9 9 0-5 4-9 9-9-5 0-9-4-9-9Z" />
+                  </svg>
+                  <span>{editLabel}</span>
+                </button>
+              )}
+            </div>}
+          </div>
+          {checks}
         </div>
       ) : content}
     </li>

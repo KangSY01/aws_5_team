@@ -1,11 +1,32 @@
 import { expect, it } from "vitest";
-import { overlappingStops, reorderStops, stopDate } from "../lib/itineraryTiming.js";
+import { getTripStop, insertStopAfter, overlappingStops, reorderStops, stopDate } from "../lib/itineraryTiming.js";
 
 const date = "2026-11-21";
 const makeStop = (id, start, end, day = date) => ({
   stop_id: id,
   start: `${day}T${start}:00+09:00`,
   end: `${day}T${end}:00+09:00`,
+});
+
+it("keeps the requested start time and declines an insertion that would crowd another visit", () => {
+  const anchor = makeStop("museum", "13:20", "14:50");
+  const requested = [4 * 60 + 30, 16 * 60 + 30];
+  expect(insertStopAfter([anchor], 0, "park", requested)[1].start).toBe(`${date}T16:30:00.000+09:00`);
+  expect(insertStopAfter([anchor, makeStop("next", "17:30", "18:30")], 0, "park", requested)).toBeNull();
+  expect(insertStopAfter([anchor], 0, "park", [4 * 60 + 30])).toBeNull();
+});
+
+it("uses the next scheduled visit during gaps and clears the target after the last visit", () => {
+  const morning = makeStop("morning", "10:00", "11:00");
+  const afternoon = makeStop("afternoon", "13:00", "14:00");
+  const tomorrow = makeStop("tomorrow", "09:00", "10:00", "2026-11-22");
+  const at = (time) => Date.parse(`${date}T${time}:00+09:00`);
+  const stops = [tomorrow, afternoon, morning];
+  expect(getTripStop(stops, at("08:00"))).toBe(morning);
+  expect(getTripStop(stops, at("10:30"))).toBe(morning);
+  expect(getTripStop(stops, at("11:00"))).toBe(afternoon);
+  expect(getTripStop(stops, at("14:00"))).toBe(tomorrow);
+  expect(getTripStop(stops, Date.parse(tomorrow.end))).toBeNull();
 });
 
 it("reuses the affected start slots and keeps the duration attached to each stop", () => {

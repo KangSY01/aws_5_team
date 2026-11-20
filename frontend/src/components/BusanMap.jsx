@@ -302,7 +302,9 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
       const element = marker.getElement();
       element?.setAttribute("aria-pressed", String(active));
       element?.toggleAttribute("data-next-stop", id === nextStopId);
-      marker.setZIndexOffset(active || id === nextStopId ? 1000 : 0);
+      if (id === nextStopId) element?.setAttribute("aria-current", "true");
+      else element?.removeAttribute("aria-current");
+      marker.setZIndexOffset(id === nextStopId ? 2000 : active ? 1000 : 0);
     }
   }, [selectedId, nextStopId, plan, places, language, onSelect]);
 
