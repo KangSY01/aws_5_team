@@ -1,0 +1,68 @@
+.emergency-help {
+  display: none;
+  pointer-events: auto;
+}
+
+@media (max-width: 899px) {
+  .travel-preview .emergency-help {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    max-width: 48%;
+    flex-shrink: 0;
+    padding: 6px 10px;
+    border: 1px solid #e5e5e7;
+    border-radius: 999px;
+    background: #fff;
+    color: #8c302c;
+    box-shadow: 0 2px 8px #17171714;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 650;
+  }
+
+  .emergency-help svg { width: 17px; height: 17px; flex: none; }
+}
+
+.emergency-dialog {
+  box-sizing: border-box;
+  width: min(360px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 20px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #e5e5e7;
+  border-radius: 20px;
+  background: #fff;
+  color: #171717;
+  pointer-events: auto;
+  overflow-wrap: anywhere;
+}
+
+.emergency-dialog::backdrop { background: #17232c66; }
+.emergency-dialog h2 { margin: 0 0 12px; font-size: 21px; }
+.emergency-dialog p { margin: 0 0 12px; font-size: 14px; line-height: 1.55; }
+.emergency-dialog-actions { display: grid; gap: 8px; margin-top: 16px; }
+
+.emergency-dialog-actions a,
+.emergency-dialog-actions button {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid #e5e5e7;
+  border-radius: 12px;
+  background: #f5f5f6;
+  color: #171717;
+  font: inherit;
+  font-size: 14px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.emergency-dialog-actions a { background: #fff4f2; color: #8c302c; font-weight: 700; }
+.emergency-help:focus-visible,
+.emergency-dialog :focus-visible { outline: 2px solid #285d6a; outline-offset: 2px; }
