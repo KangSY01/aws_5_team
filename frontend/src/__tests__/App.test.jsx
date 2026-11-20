@@ -305,3 +305,60 @@ it("shows a Korean edit outcome when the API replies in English and translation 
   await user.click(screen.getByRole("button", { name: "전송" }));
   expect(await screen.findByText("요청한 변경을 반영하지 못했어요. 기존 일정은 그대로예요.")).toHaveAttribute("lang", "ko");
 });
+
+it("confirms itinerary reset, preserves preferences, and permits a new course without old AI suggestions", async () => {
+  if (!HTMLDialogElement.prototype.showModal) {
+    HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+    HTMLDialogElement.prototype.close = function () { this.open = false; };
+  }
+  const preferences = { regions: ["oldtown"], duration: "half", activities: ["mural_village"] };
+  const course = await recommendDemo(preferences, "en");
+  course.plan.stops = course.plan.stops.slice(0, 2).map((stop, index) => ({
+    ...stop,
+    start: "2026-11-28T" + (index ? "14" : "10") + ":00:00+09:00",
+    end: "2026-11-28T" + (index ? "15" : "11") + ":00:00+09:00",
+  }));
+  const savedCourse = { ...course, preferences };
+  localStorage.setItem("busannow.course", JSON.stringify(savedCourse));
+  localStorage.setItem("busannow.preferences", JSON.stringify(preferences));
+  localStorage.setItem("busannow.language", "en");
+  localStorage.setItem("busannow.activeTrip", course.plan.plan_id);
+  render(<App />);
+  const click = (name) => fireEvent.click(screen.getByRole("button", { name, exact: true }));
+  click("Itinerary");
+  expect(screen.queryByLabelText("Itinerary options")).not.toBeInTheDocument();
+  click("End trip");
+  click("Itinerary");
+
+  fireEvent.click(screen.getByRole("button", { name: "Edit with AI · Jagalchi Market" }));
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "Try a different market" } });
+  click("Send");
+  await screen.findByRole("button", { name: "Apply to itinerary" });
+
+  click("Itinerary");
+  const openReset = () => {
+    fireEvent.click(screen.getByLabelText("Itinerary options"));
+    click("Reset itinerary");
+    return screen.getByRole("dialog", { name: "Clear your current itinerary?" });
+  };
+  fireEvent.click(within(openReset()).getByRole("button", { name: "Cancel", exact: true }));
+  expect(JSON.parse(localStorage.getItem("busannow.course"))).toEqual(savedCourse);
+  expect(document.querySelectorAll(".busan-map-pin")).toHaveLength(course.plan.stops.length);
+
+  fireEvent.click(within(openReset()).getByRole("button", { name: "Clear itinerary", exact: true }));
+  expect(screen.getByText("There are no stops in this itinerary.")).toBeVisible();
+  expect(screen.queryByLabelText("Itinerary options")).not.toBeInTheDocument();
+  expect(document.querySelector(".busan-map-pin, .busan-visit-line")).toBeNull();
+  expect(localStorage.getItem("busannow.course")).toBeNull();
+  expect(localStorage.getItem("busannow.activeTrip")).toBeNull();
+  expect(JSON.parse(localStorage.getItem("busannow.preferences"))).toEqual(preferences);
+  expect(localStorage.getItem("busannow.language")).toBe("en");
+
+  click("Get an AI itinerary");
+  expect(screen.getByRole("button", { name: "Remove area · Nampo · Yeongdo" })).toBeVisible();
+  click("Create itinerary");
+  await screen.findAllByRole("button", { name: /^Edit with AI/ });
+  click("Chat");
+  expect(screen.queryByRole("button", { name: "Apply to itinerary" })).not.toBeInTheDocument();
+  expect(document.querySelectorAll(".busan-map-pin").length).toBeGreaterThan(0);
+});

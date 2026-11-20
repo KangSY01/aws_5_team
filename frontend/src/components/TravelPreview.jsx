@@ -213,6 +213,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
   const [guardianActionError, setGuardianActionError] = useState(false);
   const [alternative, setAlternative] = useState(null);
   const [undoRepair, setUndoRepair] = useState(null);
+  const [showReset, setShowReset] = useState(false);
   const [showDelay, setShowDelay] = useState(false);
   const [showLocalCard, setShowLocalCard] = useState(false);
   const demo = useDemoSwitch();
@@ -471,6 +472,37 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
     setOpen(false);
     setExpanded(false);
     tabBar.current?.querySelector(`[data-tab="${panel}"]`)?.focus();
+  }
+
+  function resetItinerary() {
+    if (tripStarted || !stops.length || requestInProgress.current) return;
+    // A saved empty demo course prevents automatic demo seeding after a reset.
+    const cleared = demoMode ? { plan: emptyPlan, places: emptyPlaces } : null;
+    if (demoMode) save(courseKey, cleared);
+    else {
+      try {
+        window.localStorage.removeItem(courseKey);
+      } catch {
+        // The current session can still be cleared when storage is unavailable.
+      }
+    }
+    changeTrip(false, false);
+    setCourse(cleared);
+    setSelectedId(null);
+    setMapFocus(null);
+    setEditId(null);
+    setDraft("");
+    setMessages((previous) => previous.filter((message) => !message.result && !message.options));
+    generalChatSession.current = null;
+    setReviewStatus(null);
+    setPlanError(null);
+    setScheduleSaveFailed(false);
+    setGuardian(null);
+    setGuardianActionError(false);
+    setAlternative(null);
+    setUndoRepair(null);
+    setShowReset(false);
+    requestAnimationFrame(() => chatHeading.current?.focus());
   }
 
   function changeTrip(active, closePanel = true) {
@@ -982,6 +1014,28 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
               <span>{copy.guardian.late}</span>
             </button>
           )}
+          {sheetOpen && !showTranslation && !showChat && !showPreferences && !tripStarted && stops.length > 0 && (
+            <details className="itinerary-options"
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== "Escape" || !event.currentTarget.open) return;
+                event.stopPropagation();
+                event.currentTarget.open = false;
+                event.currentTarget.querySelector("summary").focus();
+              }}>
+              <summary aria-label={copy.resetItinerary.menu}>⋯</summary>
+              <div className="itinerary-options-popover">
+                <button type="button" disabled={Boolean(pending)} aria-haspopup="dialog" onClick={(event) => {
+                  const options = event.currentTarget.closest("details");
+                  options.open = false;
+                  options.querySelector("summary").focus();
+                  setShowReset(true);
+                }}>{copy.resetItinerary.action}</button>
+              </div>
+            </details>
+          )}
           <button type="button" className="chat-collapse" aria-label={showTranslation ? translationCopy.close : collapseLabel} onClick={close}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
           </button>
@@ -1116,6 +1170,16 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
           </div>
         )}
       </aside>
+      {showReset && (
+        <TravelActionDialog title={copy.resetItinerary.title}
+          className="itinerary-reset-dialog" onClose={() => setShowReset(false)}>
+          <p>{copy.resetItinerary.description}</p>
+          <div className="stop-time-actions">
+            <button type="button" onClick={() => setShowReset(false)} autoFocus>{copy.resetItinerary.cancel}</button>
+            <button type="button" className="itinerary-reset-confirm" onClick={resetItinerary}>{copy.resetItinerary.confirm}</button>
+          </div>
+        </TravelActionDialog>
+      )}
       {showDelay && (
         <TravelActionDialog title={copy.guardian.late} closeLabel={copy.guardian.delayClose} className="travel-delay-dialog"
           busy={Boolean(pending)} onClose={() => setShowDelay(false)}>

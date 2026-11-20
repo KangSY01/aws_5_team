@@ -30,6 +30,14 @@ const itineraryActions = {
   "zh-Hant": ["收合行程", "關閉行程"],
 };
 
+const itineraryResetCopy = {
+  ko: ["일정 옵션", "일정 초기화", "현재 일정을 비울까요?", "현재 코스와 수정한 방문 시간·순서가 삭제돼요.", "취소", "일정 비우기"],
+  en: ["Itinerary options", "Reset itinerary", "Clear your current itinerary?", "Your current route and any edits to visit times or order will be cleared.", "Cancel", "Clear itinerary"],
+  ja: ["旅程のオプション", "旅程をリセット", "現在の旅程を消去しますか？", "現在のコースと、変更した訪問時間や順序が消去されます。", "キャンセル", "旅程を消去"],
+  "zh-Hans": ["行程选项", "重置行程", "要清空当前行程吗？", "当前路线及修改过的游览时间和顺序将被清空。", "取消", "清空行程"],
+  "zh-Hant": ["行程選項", "重設行程", "要清空目前行程嗎？", "目前路線及修改過的遊覽時間和順序將被清空。", "取消", "清空行程"],
+};
+
 const profileCopy = {
   ko: ["프로필", "게스트로 이용 중", "계정 관리", "현재 로그인과 계정 관리 기능을 제공하지 않습니다."],
   en: ["Profile", "Browsing as a guest", "Account management", "Sign-in and account management are currently unavailable."],
@@ -134,6 +142,7 @@ export function getTravelCopy(language) {
   const [ask, send, close, expand, reduce, ready, messageLabel, sampleTitle, home, chat, navigation] = chatCopy[language];
   const [greeting, placeholder, collapse, suggestions] = starterCopy[language];
   const [collapseItinerary, closeItinerary] = itineraryActions[language];
+  const [resetMenu, resetAction, resetTitle, resetDescription, resetCancel, resetConfirm] = itineraryResetCopy[language];
   const [profile, guest, account, accountUnavailable] = profileCopy[language];
   const [startTrip, endTrip, traveling, currentPlace, askForRoute] = tripCopy[language];
   const [check, clear, apply, move_time, reorder, replace, remove] = guardianLabels[language];
@@ -153,6 +162,7 @@ export function getTravelCopy(language) {
     startTrip, endTrip, traveling, currentPlace, askForRoute,
     profile, guest, account, accountUnavailable,
     collapseItinerary, closeItinerary,
+    resetItinerary: { menu: resetMenu, action: resetAction, title: resetTitle, description: resetDescription, cancel: resetCancel, confirm: resetConfirm },
     greeting, placeholder, collapse, suggestions,
     ask, send, close, expand, reduce, ready, messageLabel, sampleTitle, home, chat, navigation,
     intro, prompt, example, submit, title, edit, itinerary, map, schematic, locked,

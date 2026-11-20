@@ -14,7 +14,7 @@ export default function TravelActionDialog({ title, closeLabel, busy, onClose, c
       onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}>
       <header>
         <h2 id={titleId}>{title}</h2>
-        <button type="button" aria-label={closeLabel} disabled={busy} onClick={onClose}>×</button>
+        {closeLabel && <button type="button" aria-label={closeLabel} disabled={busy} onClick={onClose}>×</button>}
       </header>
       {children}
     </dialog>

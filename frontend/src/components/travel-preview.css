@@ -1709,3 +1709,40 @@
   }
   .travel-chat .chat-heading { padding-block: 8px; }
 }
+
+.itinerary-options { position: relative; flex: none; z-index: 1; }
+.itinerary-options summary {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  cursor: pointer;
+  list-style: none;
+}
+.itinerary-options summary::-webkit-details-marker { display: none; }
+.itinerary-options summary:focus-visible { outline: 2px solid var(--coast-focus); outline-offset: -2px; }
+.itinerary-options[open] summary { background: var(--color-selected); }
+.itinerary-options-popover {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-end: 0;
+  width: max-content;
+  max-width: min(200px, 55vw);
+  padding: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-bg);
+  box-shadow: var(--coast-card-shadow);
+}
+.itinerary-options-popover button {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 9px;
+  color: var(--coast-coral);
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+.itinerary-options-popover button:focus-visible { outline-offset: -2px; }
+.itinerary-reset-dialog .itinerary-reset-confirm { background: #a63822; color: #fff; border-color: transparent; }
