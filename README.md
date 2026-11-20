@@ -28,7 +28,7 @@ uv run python -m scripts.local_server   # 로컬 서버 http://127.0.0.1:8000 (C
 | 역할 | 담당 | 맡는 곳 |
 |---|---|---|
 | A. 에이전트 백엔드 | 노윤지 | `backend/app/agent.py`, `backend/app/tools/plan_edit.py`, `backend/app/storage/`, `backend/app/voice/`(음성 입력 서명 URL), `backend/app/config.py`, `backend/scripts/`, `infra/`(SAM 템플릿·배포 구성) |
-| B. 데이터·도구 | 강서영 | `backend/app/data/`, `backend/app/tools/lookup.py`, `backend/app/speech/`(음성 출력 Polly) |
+| B. 데이터·도구 | 강서영 | `backend/app/data/`, `backend/app/tools/lookup.py`, `backend/app/tools/schedule.py`(일정 시각 계산), `backend/app/speech/`(음성 출력 Polly) |
 | C. 프론트엔드 | 이지혜 | `frontend/` (D 폴더 제외) |
 | D. 아키텍처 설계 인프라 | 이온규 | `backend/app/guardian/`(예약 점검 로직 `scheduled.py` 포함), `backend/app/prompts.py`, `backend/app/photo/`(사진 인식 백엔드), `backend/eval/`, `frontend/src/features/local-card/`, `frontend/src/features/demo-panel/` |
 

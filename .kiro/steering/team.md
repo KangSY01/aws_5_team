@@ -54,7 +54,7 @@ inclusion: always
 - 도구 함수는 app/tools/ 아래. docstring에 언제 쓰는지, 입력, 출력을 자세히 쓴다.
 - 도구 반복 상한 5회, max_tokens 설정, 외부 API 타임아웃 5초 재시도 1회.
 - Lambda: 모델 객체는 핸들러 밖에서 1회 생성, Agent는 요청마다 생성.
-- API 응답은 /chat만 스트리밍한다. 나머지 경로는 한 번에 돌려준다. 스트리밍 방식과 이벤트 형식은 금 12:00 점검 1에서 확정해 docs/api-contract.md에 적는다.
+- API 응답은 /chat만 스트리밍한다(SSE, 이벤트 형식은 docs/api-contract.md). 나머지 경로는 한 번에 돌려준다. 배포 방식(AgentCore 또는 Lambda Web Adapter)은 금 12:00 점검 1에서 확인한다.
 - FastAPI, Django, Firebase를 쓰지 않는다.
 - 응답 형식은 docs/api-contract.md를 따른다.
 - 주석과 로그는 한국어.

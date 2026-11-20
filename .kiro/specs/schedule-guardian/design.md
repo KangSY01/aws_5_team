@@ -29,7 +29,8 @@ backend/app/guardian/
 | `travel_min` | `(from_place_id, to_place_id)` → 이동 시간(분) |
 | `events` | 방문일 행사 목록 |
 
-`get_weather`, `get_crowd`의 반환 형식이 아직 TODO입니다. 도구 담당과 정한 뒤 이 표를 확정합니다.
+도구 반환 형식은 11/20에 정했습니다(`.kiro/specs/chat-agent/design.md` 「조회 도구 반환 형식」). `build_context`는 그 결과를 이 표의 필드로 옮깁니다. `get_crowd`의 `ratio`가 `null`이면(`source: "weekday_rule"`) `crowd`에 넣지 않고 요일 규칙으로 판단합니다.
+`demo.now`가 있으면 `now`에, `demo.weather_preset`이 있으면 `backend/app/data/weather/{이름}.json`을 `weather`에 넣습니다.
 
 ## 기준값 (`thresholds.py`)
 리허설 전에 데모 데이터로 맞추고 고정합니다.
@@ -107,7 +108,8 @@ propose_repairs(plan, issue, ctx) -> list[RepairOption]
 ## 지연 재조정 (요구사항 7)
 - 입력: 일정, 지연 시간(분), `context`. 기준 시각(`context.now`) 이후의 비고정 Stop만 대상으로 합니다.
 - 탐색: `propose_repairs`와 같은 단계 순서를 씁니다. 먼저 남은 비고정 Stop을 지연만큼 뒤로 미루고, 고정 일정과 겹치면 `MIN_DWELL_MIN`까지 체류 시간을 줄입니다. 그래도 안 되면 순서 변경 → 교체 → 제외로 넘어갑니다.
-- 출력: `RepairOption` 목록과 보전 지표. 입력 경로(API·채팅)는 계약 변경 PR에서 정하고, 함수 이름은 그때 확정합니다.
+- 출력: `RepairOption` 목록과 보전 지표. API는 `POST /plan/{plan_id}/delay`(`DelayRequest` → `DelayResponse`, `docs/api-contract.md`)입니다.
+- 함수: `guardian/delay.py`의 `propose_delay_repairs(plan, delay_min, ctx) -> list[RepairOption]`. `handler.py` 연결은 A와 따로 PR로 올립니다.
 
 ## 예약 점검 (요구사항 8)
 ```

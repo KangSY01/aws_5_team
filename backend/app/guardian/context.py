@@ -4,7 +4,7 @@ check_plan·propose_repairs 는 boto3·HTTP 를 직접 부르지 않고 이 모�
 모델은 guardian/ 안에 두므로 공용 모델(app/models/)을 바꾸지 않는다.
 
 TODO(Guardian 담당, 스펙 작업 build_context): app/tools/lookup.py 조회 결과로 조립하는 build_context(plan).
-TODO(도구 담당과 확정): get_weather·get_crowd 반환 형식이 정해지면 HourlyWeather·crowd 형식을 맞춘다.
+도구 반환 형식(11/20 결정)은 .kiro/specs/chat-agent/design.md 「조회 도구 반환 형식」에 있다. 필드 이름은 이 파일의 모델과 같다.
 """
 
 import datetime as dt

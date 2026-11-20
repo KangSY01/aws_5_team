@@ -7,7 +7,7 @@
 ## Tasks
 
 - [ ] 1. 모델과 고정 응답 경로
-  - `agent.py`의 `build_model()` 구현 (`config.MODEL_ID`, `config.BEDROCK_REGION`, `max_tokens`, 스트리밍 설정은 점검 1에서 확정한 방식에 맞춤)
+  - `agent.py`의 `build_model()` 구현 (`config.MODEL_ID`, `config.BEDROCK_REGION`, `max_tokens`, `/chat` SSE 스트리밍에 맞춘 모델 스트리밍 설정)
   - `FAKE_LLM=1`이면 `run_chat`이 고정 `ChatResponse`를 돌려주도록 구현
   - `AWS_REGION`이 `ap-northeast-2`가 아니면 한국어 오류 로그를 남기고 예외 발생
   - Bedrock 호출에 타임아웃 5초, 재시도 1회 적용
@@ -17,9 +17,11 @@
 
 - [ ] 2. 조회 도구 구현 (`tools/lookup.py`)
   - [ ] 2.1 `search_places`: `places.json`에서 `query`·`category`·`indoor`로 걸러 `Place` dict 목록 반환
-  - [ ] 2.2 `get_weather`: 기상청 단기예보, `USE_MOCK=1`이면 샘플 반환. 반환 형식 확정
-  - [ ] 2.3 `get_crowd`: 집중률 + 요일 규칙 + 행사 가중. 반환 형식 확정
-  - [ ] 2.4 영업 정보·이동 시간 조회 도구 추가
+  - [ ] 2.2 `get_weather`: 기상청 단기예보, `USE_MOCK=1`이면 샘플 반환
+  - [ ] 2.3 `get_crowd`: 집중률 + 요일 규칙 + 행사 가중
+  - [ ] 2.4 `get_hours`, `get_travel_time`, `get_events` 추가
+  - 반환 형식은 `design.md` 「조회 도구 반환 형식」(11/20 결정)을 따름
+  - `backend/app/tools/schedule.py`의 `build_plan()` (일정 시각 계산, B)
   - 외부 API는 타임아웃 5초, 재시도 1회. 실패 시 오류 dict 반환
   - _요구사항: 4.1, 4.4, 7.2_
 
@@ -43,7 +45,7 @@
   - _요구사항: 1.1~1.3, 3.4~3.6, 4.1~4.7, 5.1~5.3, 6.5, 6.8, 9.1~9.5, 10.1, 10.2_
 
 - [ ] 5. 일정 생성
-  - 시각 계산 함수 위치를 도구 담당과 정하고 구현
+  - `tools/schedule.py`의 `build_plan()`(B)으로 시각 계산
   - `plan_id`가 없을 때 새 일정 생성, 저장은 `app/storage` 사용
   - 서로 다른 Stop의 시간 구간이 겹치지 않고, `start`가 `end`보다 앞서며 시간대 오프셋 포함 ISO 8601 형식
   - 유효하지 않은 `place_id`는 제외하고 한국어 경고 로그 후 나머지로 계속
@@ -58,7 +60,7 @@
 
 - [ ] 7. `handler.py` 연결 PR (공용 파일, 뼈대 담당자 리뷰)
   - `TODO(에이전트 담당)` 자리를 `run_chat(request)` 호출로 교체
-  - `/chat` 스트리밍 응답 연결 (점검 1에서 확정한 방식, 계약 변경 PR 먼저)
+  - `/chat` SSE 스트리밍 응답 연결 (`docs/api-contract.md` 「스트리밍」, 배포 방식은 점검 1에서 확인)
   - `uv run python -m scripts.local_server`로 프론트엔드에서 확인
   - _요구사항: 6.1_
 

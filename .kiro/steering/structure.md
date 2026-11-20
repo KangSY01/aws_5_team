@@ -12,7 +12,7 @@ backend/
     models/         공용 ⚠️  Pydantic 데이터·요청·응답 모델
     agent.py        A  Strands Agent 구성
     prompts.py      D  시스템 프롬프트
-    tools/          A·B  lookup.py(공공데이터 조회, B), plan_edit.py(부분 수정, A)
+    tools/          A·B  lookup.py(공공데이터 조회, B), schedule.py(일정 시각 계산 build_plan, B), plan_edit.py(부분 수정, A)
     guardian/       D  check.py(점검), repair.py(해결안), scheduled.py(예약 점검). LLM 미사용
     photo/          D  사진 인식 (S3 presigned URL → Textract → Bedrock 번역)
     voice/          A  음성 입력 (Transcribe 서명 URL)
@@ -35,13 +35,13 @@ frontend/           C  React + Vite + MapLibre (features/local-card/, features/d
 | 역할 | 담당 | 맡는 곳 |
 |---|---|---|
 | A. 에이전트 백엔드 | 노윤지 | `backend/app/agent.py`, `backend/app/tools/plan_edit.py`, `backend/app/storage/`, `backend/app/voice/`(음성 입력 서명 URL), `backend/app/config.py`, `backend/scripts/`, `infra/`(SAM 템플릿·배포 구성) |
-| B. 데이터·도구 | 강서영 | `backend/app/data/`, `backend/app/tools/lookup.py`, `backend/app/speech/`(음성 출력 Polly) |
+| B. 데이터·도구 | 강서영 | `backend/app/data/`, `backend/app/tools/lookup.py`, `backend/app/tools/schedule.py`(일정 시각 계산), `backend/app/speech/`(음성 출력 Polly) |
 | C. 프론트엔드 | 이지혜 | `frontend/` (D 폴더 제외) |
 | D. 아키텍처 설계 인프라 | 이온규 | `backend/app/guardian/`(예약 점검 로직 `scheduled.py` 포함), `backend/app/prompts.py`, `backend/app/photo/`(사진 인식 백엔드), `backend/eval/`, `frontend/src/features/local-card/`, `frontend/src/features/demo-panel/` |
 
 - 테스트는 각자 `backend/tests/test_<영역>.py` 파일에 씁니다.
 - 예약 점검 로직은 `guardian/scheduled.py`(D), Lambda 연결과 EventBridge 스케줄은 `infra/`(A)입니다.
-- `/photo`, `/speak`, 음성 입력 경로는 계약 변경 PR로 `docs/api-contract.md`와 `handler.py`에 추가합니다.
+- 새 경로는 `docs/api-contract.md` 「v0.2 추가 경로」에 있습니다. 구현한 담당자가 `handler.py` 연결 PR을 따로 올립니다.
 
 ## AI 에이전트(Kiro) 작업 규칙
 - 요청받은 폴더 밖의 파일을 수정하지 마십시오. 필요하면 수정안만 제시하십시오.
