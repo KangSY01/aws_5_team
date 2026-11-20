@@ -8,6 +8,7 @@ GET·PUT /plan, /plan/check, /plan/{plan_id}/delay 는 app.storage 에서 일정
 - 한 테스트가 일정을 고쳐도 다음 테스트에 남지 않는다.
 - get_weather(USE_MOCK=0)의 날씨 캐시도 실제 DynamoDB 테이블을 만들지 않는다. 캐시를 보는 테스트만 가짜 테이블을 끼운다.
 - 저장소 자체 테스트(test_storage*.py)는 실제 get_storage() 와 reset_mock_store() 를 검증하므로 대상에서 뺀다.
+- 셸에 KAKAO_REST_API_KEY 가 있어도 get_return_options 가 카카오를 실제로 부르지 않는다 (no_kakao).
 """
 
 from pathlib import Path
@@ -18,7 +19,7 @@ from app import storage
 from app.models.plan import Plan
 from app.storage.backends import MemoryBackend
 from app.storage.service import Storage
-from app.tools import lookup
+from app.tools import lookup, return_options
 
 SAMPLE_PLAN_PATH = Path(__file__).parents[1] / "app" / "data" / "sample_plan.json"
 STORAGE_OWN_TESTS = {"test_storage", "test_storage_aws"}
@@ -42,3 +43,13 @@ def no_real_weather_cache(monkeypatch) -> None:
         raise RuntimeError("테스트에서는 실제 캐시 테이블을 쓰지 않는다")
 
     monkeypatch.setattr(lookup, "_cache_table", unavailable)
+
+
+@pytest.fixture(autouse=True)
+def no_kakao(monkeypatch) -> None:
+    """return_options 가 import 한 fetch_routes 를 None 으로 고정한다 (좌표 추정으로 동작한다).
+
+    카카오 성공을 보는 테스트(test_return_options_kakao.py)는 테스트 안에서 return_options.fetch_routes 를 다시 끼우므로
+    그쪽 mock 이 이긴다. test_kakao_route.py 는 kakao_route.fetch_routes 를 직접 부르므로 영향이 없다.
+    """
+    monkeypatch.setattr(return_options, "fetch_routes", lambda *args, **kwargs: None)
