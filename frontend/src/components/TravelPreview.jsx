@@ -1077,7 +1077,7 @@ export default function TravelPreview({ night = false, demoMode = false } = {}) 
         {crowdLevels && stops.length > 0 && !regionDraft && <CrowdLegend language={language} />}
         <header className="travel-header">
           <button type="button" className="travel-ask" aria-controls="travel-chat" onClick={openChat}>
-            <span className="travel-ask__mark" aria-hidden="true">B</span>
+            <span className="travel-ask__mark" aria-hidden="true">부산</span>
             <span className="travel-ask__text">{copy.placeholder}</span>
           </button>
           <div className="travel-brand-column">

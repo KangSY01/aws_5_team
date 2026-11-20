@@ -14,7 +14,7 @@
       "id": "land",
       "type": "background",
       "paint": {
-        "background-color": "#F5F4EF"
+        "background-color": "#ECEBE7"
       }
     },
     {
@@ -38,7 +38,7 @@
       ],
       "minzoom": 7,
       "paint": {
-        "fill-color": "#CBDDC4",
+        "fill-color": "#DDE3D7",
         "fill-opacity": 0.9
       }
     },
@@ -49,7 +49,7 @@
       "source-layer": "park",
       "minzoom": 9,
       "paint": {
-        "fill-color": "#CBDDC4",
+        "fill-color": "#DDE3D7",
         "fill-opacity": 0.74
       }
     },
@@ -73,7 +73,7 @@
       ],
       "minzoom": 11,
       "paint": {
-        "fill-color": "#EDE1C5"
+        "fill-color": "#E6E1D3"
       }
     },
     {
@@ -82,8 +82,8 @@
       "source": "openmaptiles",
       "source-layer": "water",
       "paint": {
-        "fill-color": "#A9CCD5",
-        "fill-outline-color": "#8FB4BE"
+        "fill-color": "#CFDADC",
+        "fill-outline-color": "#BCC9CC"
       }
     },
     {
@@ -93,7 +93,7 @@
       "source-layer": "waterway",
       "minzoom": 10,
       "paint": {
-        "line-color": "#A9CCD5",
+        "line-color": "#CFDADC",
         "line-width": [
           "interpolate",
           [
@@ -281,7 +281,7 @@
       },
       "paint": {
         "text-color": "#203A48",
-        "text-halo-color": "#F5F4EF",
+        "text-halo-color": "#ECEBE7",
         "text-halo-width": 1.45
       }
     },
@@ -362,7 +362,7 @@
       },
       "paint": {
         "text-color": "#203A48",
-        "text-halo-color": "#F5F4EF",
+        "text-halo-color": "#ECEBE7",
         "text-halo-width": 1.45
       }
     },
@@ -420,7 +420,7 @@
       },
       "paint": {
         "text-color": "#203A48",
-        "text-halo-color": "#F5F4EF",
+        "text-halo-color": "#ECEBE7",
         "text-halo-width": 1.45
       }
     },
@@ -492,7 +492,7 @@
       },
       "paint": {
         "text-color": "#203A48",
-        "text-halo-color": "#F5F4EF",
+        "text-halo-color": "#ECEBE7",
         "text-halo-width": 1.45
       }
     },
@@ -561,7 +561,7 @@
       },
       "paint": {
         "text-color": "#203A48",
-        "text-halo-color": "#F5F4EF",
+        "text-halo-color": "#ECEBE7",
         "text-halo-width": 1.45
       }
     }

@@ -1,152 +1,215 @@
-/* 디자인 스킨 (design/giljabi-ui 브랜치 시험). 화면 구조는 바꾸지 않고 색·글꼴·버튼·말풍선·지도 마커만 덮어쓴다.
+/* 디자인 실험 (design/giljabi-ui). 레퍼런스 HTML(랜딩 페이지 언어 전환 동작)의 값으로 화면 전체를 덮어쓴다.
    main.jsx 에서 마지막에 불러온다. 되돌리려면 main.jsx 의 import 한 줄을 지우면 된다.
-   지도는 위치를 알아보는 도로·지명·해안선은 그대로 두고, 마커·경로선만 바꾼다(바다색은 public/maps/busan-poster.json). */
+   지도: 면 색(육지·녹지·모래·바다)만 바꾸고(public/maps/busan-poster.json), 도로·지명·해안선의 모양과 굵기는 원본 그대로다. */
 
-.travel-preview:not([data-night="true"]) {
-  --skin-paper: #f3f1eb;
-  --skin-card: #fbfaf6;
-  --skin-ink: #1c2331;
-  --skin-line: #d8d2c6;
+/* ---------- 팔레트 (레퍼런스 HTML 값) ---------- */
+.travel-preview {
+  --skin-paper: #f5f0e6;   /* 사이드바·패널 배경 */
+  --skin-card: #fffdf8;    /* 카드·말풍선 */
+  --skin-ink: #1c2433;     /* 글자·주 버튼·사용자 말풍선 */
+  --skin-muted: #5a6170;
+  --skin-body: #3a4252;   /* 본문 보조 글자 */
+  --skin-line: #d8cfbe;    /* 카드 테두리 */
+  --skin-divider: #e4dccb; /* 구획선 */
+  --skin-coral: #b83a26;   /* 강조 빨강·혼잡 */
+  --skin-coral-surface: #f6e2dc;
+  --skin-ochre: #d9a441;   /* 금색·보통 */
+  --skin-calm: #2f6f64;    /* 초록·여유·라벨 */
+  --skin-track: #d5cfc0;
+  --skin-sans: "IBM Plex Sans KR", "Pretendard Variable", "Noto Sans CJK KR", "Noto Sans CJK JP", "Noto Sans CJK SC",
+    "Hiragino Sans", "Yu Gothic", "PingFang SC", "Malgun Gothic", system-ui, sans-serif;
+  --skin-serif: "Gowun Batang", Georgia, "Noto Serif KR", "Noto Serif JP", "Source Han Serif", "Yu Mincho", "Batang", serif;
+
   --color-bg: var(--skin-card);
   --color-surface: var(--skin-paper);
   --color-text: var(--skin-ink);
-  --color-muted: #5e6672;
+  --color-muted: var(--skin-muted);
   --color-border: var(--skin-line);
-  --color-selected: #e6ece8;
+  --color-selected: var(--skin-paper);
   --color-selected-text: var(--skin-ink);
   --color-action: var(--skin-ink);
-  --color-shadow: #1c233122;
-  --capsule-surface: rgb(251 250 246 / 96%);
-  --trip-green: var(--skin-ink);
-}
-
-.travel-preview {
-  --skin-coral: #a5402a;
-  --skin-coral-surface: #f6e4dd;
-  --skin-ochre: #c99a3c;
-  --skin-calm: #4c7366;
-  --skin-serif: Georgia, "Noto Serif KR", "Noto Serif JP", "Noto Serif CJK KR", "Source Han Serif", "Yu Mincho", "Batang", serif;
+  --color-shadow: #1c243318;
+  --capsule-surface: rgb(255 253 248 / 96%);
   --coast-coral: var(--skin-coral);
   --coast-coral-surface: var(--skin-coral-surface);
-}
-.travel-preview[data-night="true"] {
-  --skin-ink: #f2f4f6;
-  --skin-coral: #f0a48f;
-  --skin-coral-surface: #4a3330;
-  --trip-green: #4c7366;
+  --trip-green: var(--skin-ink);
+  font-family: var(--skin-sans);
 }
 
-/* ---------- 글꼴: 장소 이름은 serif ---------- */
+/* ---------- 글꼴: 장소 이름·로고는 serif ---------- */
 .travel-preview :is(.stop-item__name, .chat-place-card h3, .guardian-alternative-place h3, .guardian-replacement-heading, .map-event-card h2) {
   font-family: var(--skin-serif);
   font-weight: 400;
-  font-size: 1.08em;
   letter-spacing: 0;
 }
-.travel-preview .chat-heading h2,
-.travel-preview .travel-panel > h2 {
-  letter-spacing: -.01em;
+.travel-preview .stop-item__name { font-size: 18px; }
+.travel-preview .chat-heading h1 { font-family: var(--skin-sans); font-weight: 600; letter-spacing: 0; }
+
+/* 로고: 코랄 사각 마크 + serif 글자 (이름은 BusanNow 유지) */
+.travel-preview .travel-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  font-family: var(--skin-serif);
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: var(--skin-ink);
 }
+.travel-preview .travel-brand::before {
+  content: "부산";
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 3px;
+  background: var(--skin-coral);
+  color: var(--skin-paper);
+  font-family: var(--skin-serif);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  margin-inline-end: 12px;
+  transform: rotate(-4deg);
+}
+.travel-preview .travel-brand span { color: inherit; }
 
 /* ---------- 버튼 ---------- */
-/* 주 버튼: 잉크색 채움, 모서리 6px */
 .travel-preview :is(.trip-actions button:last-child, .guardian-apply, .planner-actions button[type="submit"]) {
   border: 1.5px solid var(--skin-ink);
-  border-radius: 6px;
+  border-radius: 4px;
   background: var(--skin-ink);
-  color: var(--color-bg);
-  font-weight: 650;
+  color: var(--skin-paper);
+  font-weight: 600;
 }
-/* 보조 버튼: 잉크색 테두리 */
 .travel-preview :is(.trip-actions[data-has-stops="true"] button:first-child, .guardian-review button, .guardian-candidate-toggle) {
   border: 1.5px solid var(--skin-ink);
   border-radius: 6px;
-  background: transparent;
+  background: var(--skin-card);
   color: var(--skin-ink);
   font-weight: 600;
 }
-/* 칩: 알약 모양 테두리 */
-.travel-preview :is(.chat-suggestions button, .activity-chip, .duration-chip) {
-  border: 1px solid var(--skin-ink);
+.travel-preview :is(.chat-suggestions button, .activity-chip, .duration-chip, .travel-tool-actions button) {
+  border: 1.5px solid var(--skin-ink);
   border-radius: 999px;
   background: transparent;
   color: var(--skin-ink);
 }
 .travel-preview :is(.chat-suggestions button, .activity-chip, .duration-chip)[aria-pressed="true"] {
   background: var(--skin-ink);
-  color: var(--color-bg);
+  color: var(--skin-card);
 }
 
-/* ---------- 채팅 말풍선 ---------- */
+/* ---------- 패널·채팅 ---------- */
+.travel-preview .travel-chat { background: var(--skin-paper); border-color: var(--skin-divider); }
+.travel-preview .chat-heading { border-bottom: 1px solid var(--skin-divider); }
 .travel-preview .chat-bubble {
+  border: 1px solid var(--skin-line);
   border-radius: 12px;
-  background: var(--color-bg);
-  border-color: var(--color-border);
-  line-height: 1.55;
+  background: var(--skin-card);
+  line-height: 1.6;
 }
 .travel-preview .chat-bubble[data-role="user"] {
   border-color: var(--skin-ink);
-  border-radius: 12px;
   background: var(--skin-ink);
-  color: var(--color-bg);
+  color: var(--skin-card);
 }
+.travel-preview .chat-compose textarea {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 999px;
+  background: var(--skin-card);
+  color: var(--skin-ink);
+}
+.travel-preview .chat-compose button[type="submit"]::before { background: var(--skin-coral); }
+.travel-preview .chat-compose button[type="submit"] { color: #fff; }
+.travel-preview .chat-compose button[type="submit"]:disabled { opacity: .45; }
 
 /* ---------- 카드 ---------- */
-.travel-preview :is(.chat-place-card, .guardian-candidate, .map-event-card) {
-  border: 1.5px solid var(--skin-ink);
-  border-radius: 10px;
-  background: var(--color-bg);
+.travel-preview :is(.guardian-candidate, .map-event-card, .trip-next) {
+  border: 1px solid var(--skin-line);
+  border-radius: 6px;
+  background: var(--skin-card);
   box-shadow: none;
 }
+.travel-preview .chat-place-card {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 6px;
+  background: var(--skin-card);
+  box-shadow: none;
+}
+.travel-preview .chat-place-card { padding: 16px 18px; }
+.travel-preview .chat-place-card h3 { margin: 0 0 6px; font-size: 24px; font-weight: 400; line-height: 1.3; }
+.travel-preview .chat-place-reason strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--skin-calm);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.travel-preview .chat-place-reason span { color: var(--skin-body); line-height: 1.6; }
 
-/* ---------- 혼잡 배지·점: 여유·보통·혼잡 = 세이지·오커·코랄 ---------- */
+/* ---------- 일정 목록 ---------- */
+/* 선택 행: 연두 배경 대신 카드 + 잉크 테두리 */
+.travel-preview:not([data-trip-active="true"]) .stop-row:has(.stop-select[aria-pressed="true"]),
+.travel-preview .stop-row:has(.stop-select[aria-current="true"]) {
+  background: var(--skin-card);
+  box-shadow: inset 0 0 0 1.5px var(--skin-ink);
+  color: var(--skin-ink);
+  --color-muted: var(--skin-muted);
+}
+.travel-preview .stop-number {
+  border-radius: 6px;
+  background: var(--skin-ink);
+  color: var(--skin-card);
+}
 .travel-preview .guardian-dot { background: var(--skin-coral); }
 .travel-preview .guardian-stop-controls .guardian-badge[data-crowding="true"] {
   border-color: transparent;
   background: var(--skin-coral-surface);
   color: var(--skin-coral);
 }
-.travel-preview .stop-number {
-  border-radius: 6px;
-  background: var(--skin-ink);
-  color: var(--color-bg);
+.travel-preview .guardian-review { background: transparent; }
+
+/* ---------- 지도 위 버튼: 잉크 테두리 사각 ---------- */
+.travel-preview .busan-map .leaflet-control-zoom {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 8px;
+  box-shadow: none;
+  overflow: hidden;
+}
+.travel-preview .busan-map .leaflet-control-zoom a {
+  width: 40px;
+  height: 40px;
+  line-height: 38px;
+  background: var(--skin-card);
+  color: var(--skin-ink);
+}
+.travel-preview .busan-map .busan-location-control,
+.travel-preview .travel-language-trigger {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 8px;
+  background: var(--skin-card);
+  color: var(--skin-ink);
+  box-shadow: none;
 }
 
 /* ---------- 하단 탭 ---------- */
-.travel-preview .travel-tabs [aria-current="page"] {
-  background: var(--skin-ink);
-  color: var(--color-bg);
+.travel-preview .travel-tabs {
+  border: 1.5px solid var(--skin-ink);
+  border-radius: 14px;
+  background: var(--skin-card);
+  color: var(--skin-ink);
+  box-shadow: none;
 }
-
-/* ---------- 지도: 일정 마커와 경로선 ---------- */
-.busan-map-pin {
-  --pin-fill: #1c2331;
-  --pin-ink: #fbfaf6;
-  --pin-edge: #fbfaf6;
-}
-.busan-map-pin path { stroke-width: 2px; }
-.travel-preview:not([data-trip-active="true"]) .busan-map-pin[aria-pressed="true"],
-.busan-map-pin[data-next-stop] {
-  --pin-fill: #a5402a;
-  --pin-ink: #fbfaf6;
-  --pin-edge: #fbfaf6;
-}
-.busan-map-pin[data-next-stop] path {
-  filter: drop-shadow(0 0 1px #a5402a) drop-shadow(0 0 3px #a5402a88);
-}
-.busan-visit-line {
-  stroke: #a5402a;
-  stroke-width: 3px;
-  stroke-dasharray: 2 7;
-  stroke-linecap: round;
-  stroke-opacity: .9;
-}
+.travel-preview .travel-tabs > button { border-radius: 8px; }
+.travel-preview .travel-tabs [aria-current="page"] { background: var(--skin-ink); color: var(--skin-card); }
 
 /* 패널을 열 때 프로그램이 포커스를 옮기는 제목(tabIndex -1)에는 키보드 포커스 테두리를 그리지 않는다 */
 .travel-preview [tabindex="-1"]:focus-visible { outline: none; }
 
 /* =====================================================================
-   화면 구조 실험 (design/giljabi-ui)
+   화면 구조
    ===================================================================== */
 
 /* ---------- 데스크톱: 왼쪽 사이드바 + 오른쪽 지도 ---------- */
@@ -163,31 +226,28 @@
     margin: 0;
     border-width: 0 1px 0 0;
     border-radius: 0;
-    background: var(--skin-paper);
     box-shadow: none;
   }
   .travel-preview[data-sidebar="true"] .travel-chat > .chat-content { flex: 1 1 auto; min-height: 0; }
-  .travel-preview[data-sidebar="true"] .chat-heading { padding: 12px 20px 8px; }
+  .travel-preview[data-sidebar="true"] .chat-heading { padding: 12px 20px 10px; }
   .travel-preview[data-sidebar="true"] .chat-heading :is(.chat-close, .chat-collapse) { display: none; }
-  .travel-preview[data-sidebar="true"] .chat-content { padding: 12px 20px; }
-  .travel-preview[data-sidebar="true"] .chat-compose { padding: 12px 20px 18px; border-top: 1px solid var(--color-border); }
+  .travel-preview[data-sidebar="true"] .chat-content { padding: 14px 20px; }
+  .travel-preview[data-sidebar="true"] .chat-compose { padding: 12px 20px 18px; border-top: 1px solid var(--skin-divider); }
   .travel-preview[data-sidebar="true"] .trip-actions { padding: 10px 20px 18px; }
 
   .sidebar-brand {
     display: flex;
     align-items: center;
-    min-height: 72px;
+    min-height: 76px;
     padding: 0 20px;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--skin-divider);
   }
-  .sidebar-brand .travel-brand { padding: 0; background: transparent; font-size: 1.45rem; }
+  .sidebar-brand .travel-brand { padding: 0; border: 0; background: transparent; box-shadow: none; font-size: 1.5rem; }
 
-  /* 지도 위 로고는 사이드바로 옮겼으므로 숨긴다 */
   .travel-preview[data-sidebar="true"] .travel-brand-group > .travel-brand { display: none; }
-
-  /* 하단 탭: 지도 영역 가운데, 사이드바가 늘 열려 있어 홈 탭은 숨긴다 */
   .travel-preview[data-sidebar="true"] .travel-tabs { left: calc(380px + (100% - 380px) / 2); }
   .travel-preview[data-sidebar="true"] .travel-tabs [data-tab="home"] { display: none; }
+  body:has(.travel-preview[data-sidebar="true"]) .demo-panel { left: 396px; bottom: 120px; }
 
   .travel-ask { display: none; }
 }
@@ -202,13 +262,12 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 48px;
-    padding: 4px 16px 4px 5px;
+    min-height: 50px;
+    padding: 5px 16px 5px 6px;
     border: 1.5px solid var(--skin-ink);
     border-radius: 999px;
-    background: var(--color-bg);
-    color: var(--color-muted);
-    box-shadow: 0 4px 14px var(--color-shadow);
+    background: var(--skin-card);
+    color: var(--skin-muted);
     text-align: start;
     pointer-events: auto;
   }
@@ -216,72 +275,79 @@
     display: grid;
     place-items: center;
     flex: none;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    border-radius: 3px;
     background: var(--skin-coral);
-    color: #fff;
-    font-weight: 800;
+    color: var(--skin-paper);
+    font-family: var(--skin-serif);
+    font-size: 13px;
+    font-weight: 700;
+    transform: rotate(-4deg);
   }
+  /* 지도 위 비상 도움·여행 문구 버튼: 잉크 테두리 알약 */
+  .travel-preview .travel-map-tools :is(.emergency-help, .travel-phrases) {
+    border: 1.5px solid var(--skin-ink);
+    border-radius: 999px;
+    background: var(--skin-card);
+    color: var(--skin-ink);
+    box-shadow: none;
+  }
+  .travel-preview .travel-map-tools .emergency-help { border-color: var(--skin-coral); color: var(--skin-coral); }
   .travel-ask__text { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .travel-preview .travel-brand-group > .travel-brand { display: none; }
-  .travel-preview .travel-language-trigger { order: -1; }
   .travel-preview .travel-map-tools { flex-basis: 100%; justify-content: flex-end; }
 }
 
-/* ---------- 지도 마커: 혼잡도 색 + 장소 이름표 ---------- */
+/* ---------- 지도 일정 마커: 혼잡도 색 사각 타일 + 이름표 ---------- */
 .busan-map-pin {
-  --crowd-fill: #1c2331;
+  --crowd-fill: #1c2433;
   --pin-fill: var(--crowd-fill);
+  --pin-ink: #fffdf8;
+  --pin-edge: #fffdf8;
   overflow: visible;
 }
-.busan-map-pin[data-crowd="calm"] { --crowd-fill: #4c7366; }
-.busan-map-pin[data-crowd="moderate"] { --crowd-fill: #c99a3c; }
-.busan-map-pin[data-crowd="busy"] { --crowd-fill: #a5402a; }
-/* 선택·다음 방문지는 색을 바꾸지 않고(혼잡도 유지) 이름표를 뒤집어 강조한다 */
+.busan-map-pin[data-crowd="calm"] { --crowd-fill: #2f6f64; }
+.busan-map-pin[data-crowd="moderate"] { --crowd-fill: #d9a441; }
+.busan-map-pin[data-crowd="busy"] { --crowd-fill: #b83a26; }
+.busan-map-pin rect {
+  fill: var(--pin-fill);
+  stroke: var(--pin-edge);
+  stroke-width: 2px;
+}
+.busan-map-pin svg { filter: drop-shadow(0 1px 2px #1c243333); }
 .travel-preview:not([data-trip-active="true"]) .busan-map-pin[aria-pressed="true"],
 .busan-map-pin[data-next-stop] {
   --pin-fill: var(--crowd-fill);
-  --pin-edge: #1c2331;
+  --pin-ink: #fffdf8;
+  --pin-edge: #1c2433;
 }
-.busan-map-pin[data-next-stop] path { filter: drop-shadow(0 2px 4px #1c233155); }
+.busan-map-pin[data-displaced]::before { top: 22px; }
 .busan-map-pin__label {
   position: absolute;
-  top: 3px;
-  left: calc(100% - 4px);
+  top: 9px;
+  left: calc(100% - 6px);
   padding: 3px 9px;
-  border: 1.5px solid #1c2331;
-  border-radius: 6px;
-  background: #fbfaf6;
-  color: #1c2331;
+  border: 1.5px solid #1c2433;
+  border-radius: 4px;
+  background: #fffdf8;
+  color: #1c2433;
+  font-family: "IBM Plex Sans KR", "Pretendard Variable", system-ui, sans-serif;
   font-size: 12.5px;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.3;
   white-space: nowrap;
-  box-shadow: 0 1px 3px #1c233122;
   pointer-events: none;
 }
 .busan-map-pin[aria-pressed="true"] .busan-map-pin__label,
 .busan-map-pin[data-next-stop] .busan-map-pin__label {
-  background: #1c2331;
-  color: #fbfaf6;
+  background: #1c2433;
+  color: #fffdf8;
 }
-
-/* ---------- 채팅 추천 카드: 큰 serif 제목 ---------- */
-.travel-preview .chat-place-card { padding: 16px 18px; }
-.travel-preview .chat-place-card h3 { margin: 0 0 6px; font-size: 1.45rem; line-height: 1.2; }
-.travel-preview .chat-place-reason strong {
-  display: block;
-  margin-bottom: 2px;
-  color: var(--color-muted);
-  font-size: .7rem;
-  font-weight: 650;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-}
-
-/* 데스크톱 사이드바 모드: 발표자용 DEMO 버튼을 지도 영역 왼쪽 아래로, 사이드바 로고는 칩 장식 없이 */
-@media (min-width: 900px) {
-  body:has(.travel-preview[data-sidebar="true"]) .demo-panel { left: 396px; bottom: 120px; }
-  .sidebar-brand .travel-brand { box-shadow: none; border: 0; }
+.busan-visit-line {
+  stroke: #b83a26;
+  stroke-width: 3px;
+  stroke-dasharray: 2 7;
+  stroke-linecap: round;
+  stroke-opacity: .9;
 }

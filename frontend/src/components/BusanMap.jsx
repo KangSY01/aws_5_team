@@ -14,6 +14,8 @@ const osmAttribution = '© <a href="https://www.openstreetmap.org/copyright">Ope
 const tileOverrideAttribution = import.meta.env.VITE_MAP_TILE_ATTRIBUTION;
 const pinSize = 44;
 const pinAnchor = [22, 42];
+// 일정 마커는 둥근 사각 타일이라 가운데가 장소 위치다 (디자인 실험)
+const stopPinAnchor = [22, 22];
 const pinGap = pinSize + 4;
 const eventIcons = {
   festival: "m12 2 2.3 6.7L21 11l-6.7 2.3L12 20l-2.3-6.7L3 11l6.7-2.3z",
@@ -177,10 +179,10 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
         icon: L.divIcon({
           className: "busan-map-pin",
           iconSize: [pinSize, pinSize],
-          iconAnchor: pinAnchor,
+          iconAnchor: stopPinAnchor,
           html: `<svg viewBox="0 0 44 44" aria-hidden="true">
-            <path d="M22 42C15 34 7 25 7 18a15 15 0 1 1 30 0c0 7-8 16-15 24Z"/>
-            <text x="22" y="18" dy=".34em">${index + 1}</text>
+            <rect x="8" y="8" width="28" height="28" rx="7"/>
+            <text x="22" y="22" dy=".34em">${index + 1}</text>
           </svg><span class="busan-map-pin__label" aria-hidden="true">${escapeHtml(placeName)}</span>`,
         }),
       }).addTo(layer);
@@ -217,8 +219,8 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
         element.toggleAttribute("data-displaced", Boolean(x || y));
         element.style.setProperty("--pin-tether-length", `${Math.hypot(x, y)}px`);
         element.style.setProperty("--pin-tether-angle", `${Math.atan2(-y, -x)}rad`);
-        element.style.setProperty("--pin-origin-x", `${pinAnchor[0] - x}px`);
-        element.style.setProperty("--pin-origin-y", `${pinAnchor[1] - y}px`);
+        element.style.setProperty("--pin-origin-x", `${stopPinAnchor[0] - x}px`);
+        element.style.setProperty("--pin-origin-y", `${stopPinAnchor[1] - y}px`);
       }
     }
 
