@@ -100,7 +100,7 @@
   },
   {
     "place_id": "the-bay-101",
-    "names": { "en": "The Bay 101" },
+    "names": { "en": "The Bay 101", "ja": "The bay101", "zh-Hans": "The Bay 101", "zh-Hant": "The Bay 101" },
     "lat": 35.1565836936,
     "lng": 129.1520693211,
     "category": "attraction",
@@ -118,7 +118,7 @@
   },
   {
     "place_id": "haeundae-market",
-    "names": { "en": "Busan Haeundae Market", "ja": "釜山海雲台市場" },
+    "names": { "en": "Busan Haeundae Market", "ja": "釜山海雲台市場", "zh-Hans": "釜山海云台市场", "zh-Hant": "釜山海雲臺市場" },
     "lat": 35.1614753828,
     "lng": 129.1627110674,
     "category": "market",
@@ -136,7 +136,7 @@
   },
   {
     "place_id": "cheongsapo-skywalk",
-    "names": { "en": "Cheongsapo Daritdol Observatory", "ja": "青沙浦タリットル展望台", "zh-Hans": "青沙浦踏石观景台" },
+    "names": { "en": "Cheongsapo Daritdol Observatory", "ja": "青沙浦タリットル展望台", "zh-Hans": "青沙浦踏石观景台", "zh-Hant": "青沙浦踏石觀景臺" },
     "lat": 35.1633119624,
     "lng": 129.1953779554,
     "category": "observatory",
@@ -145,7 +145,7 @@
   },
   {
     "place_id": "busan-x-the-sky",
-    "names": { "en": "BUSAN X the SKY", "zh-Hans": "釜山X the SKY", "zh-Hant": "釜山X The Sky" },
+    "names": { "en": "BUSAN X the SKY", "ja": "BUSAN X the SKY", "zh-Hans": "釜山X the SKY", "zh-Hant": "釜山X The Sky" },
     "lat": 35.1613422355,
     "lng": 129.1680138925,
     "category": "observatory",
@@ -154,7 +154,7 @@
   },
   {
     "place_id": "sea-life-busan",
-    "names": { "en": "SEA LIFE Busan Aquarium", "zh-Hans": "SEA LIFE 釜山水族馆SEA LIFE" },
+    "names": { "en": "SEA LIFE Busan Aquarium", "ja": "SEA LIFE 釜山アクアリウム", "zh-Hans": "SEA LIFE 釜山水族馆SEA LIFE", "zh-Hant": "SEA LIFE 釜山水族館" },
     "lat": 35.1591562501,
     "lng": 129.1610034953,
     "category": "aquarium",
@@ -181,7 +181,7 @@
   },
   {
     "place_id": "busan-cinema-center",
-    "names": { "en": "Busan Cinema Center", "zh-Hans": "釜山电影殿堂" },
+    "names": { "en": "Busan Cinema Center", "ja": "釜山映画の殿堂", "zh-Hans": "釜山电影殿堂", "zh-Hant": "釜山電影殿堂" },
     "lat": 35.1709631305,
     "lng": 129.1270422473,
     "category": "culture",
@@ -190,7 +190,7 @@
   },
   {
     "place_id": "millak-waterside-park",
-    "names": { "ja": "民楽水辺公園", "zh-Hans": "民乐水边公园", "zh-Hant": "民樂水邊公園" },
+    "names": { "en": "Millak Waterfront Park", "ja": "民楽水辺公園", "zh-Hans": "民乐水边公园", "zh-Hant": "民樂水邊公園" },
     "lat": 35.1545,
     "lng": 129.133,
     "category": "park",
@@ -199,7 +199,7 @@
   },
   {
     "place_id": "lotte-world-busan",
-    "names": { "en": "Lotte World Adventure Busan", "zh-Hans": "釜山乐天世界探险世界", "zh-Hant": "釜山樂天世界" },
+    "names": { "en": "Lotte World Adventure Busan", "ja": "ロッテワールドアドベンチャー釜山", "zh-Hans": "釜山乐天世界探险世界", "zh-Hant": "釜山樂天世界" },
     "lat": 35.1960278871,
     "lng": 129.2129698479,
     "category": "theme_park",
@@ -208,7 +208,7 @@
   },
   {
     "place_id": "lotte-outlet-dongbusan",
-    "names": { "zh-Hant": "樂天名牌折扣購物中心東釜山店" },
+    "names": { "en": "LOTTE Premium Outlets – Dongbusan Store", "ja": "[事後免税店] RN・ロッテプレミアムアウトレットトンブサン（東釜山）店", "zh-Hans": "[事后免税店]RN乐天名牌奥特莱斯东釜山店", "zh-Hant": "樂天名牌折扣購物中心東釜山店" },
     "lat": 35.1921894462,
     "lng": 129.2127644188,
     "category": "shopping",
@@ -235,7 +235,7 @@
   },
   {
     "place_id": "songdo-cable-car",
-    "names": { "en": "Busan Air Cruise" },
+    "names": { "en": "Busan Air Cruise", "ja": "釜山 松島海上ケーブルカー", "zh-Hans": "釜山松岛海上缆车", "zh-Hant": "釜山松島海上纜車" },
     "lat": 35.0766411637,
     "lng": 129.023396378,
     "category": "attraction",
@@ -289,11 +289,29 @@
   },
   {
     "place_id": "busan-museum",
-    "names": { "en": "Busan Museum", "zh-Hans": "釜山博物馆", "zh-Hant": "釜山博物館" },
+    "names": { "en": "Busan Museum", "ja": "釜山博物館", "zh-Hans": "釜山博物馆", "zh-Hant": "釜山博物館" },
     "lat": 35.1295140526,
     "lng": 129.0947549351,
     "category": "museum",
     "indoor": true,
     "nearest_station": "Daeyeon"
+  },
+  {
+    "place_id": "biff-square",
+    "names": { "en": "BIFF Square", "ja": "BIFF広場", "zh-Hans": "BIFF广场", "zh-Hant": "BIFF廣場" },
+    "lat": 35.0980089584,
+    "lng": 129.0320042811,
+    "category": "street",
+    "indoor": false,
+    "nearest_station": "Nampo"
+  },
+  {
+    "place_id": "jeonpo-cafe-street",
+    "names": { "en": "Jeonpo Café Street", "ja": "田浦カフェ通り", "zh-Hans": "田浦咖啡街", "zh-Hant": "田浦咖啡街" },
+    "lat": 35.15542,
+    "lng": 129.067338,
+    "category": "street",
+    "indoor": false,
+    "nearest_station": "Jeonpo"
   }
 ]

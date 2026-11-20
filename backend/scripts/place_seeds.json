@@ -23,7 +23,7 @@
   {"place_id": "millak-waterside-park", "name_ko": "민락수변공원", "query": "민락수변공원", "keywords": {"en": "Millak Waterside Park"}, "category": "park", "indoor": false},
   {"place_id": "lotte-world-busan", "name_ko": "롯데월드 어드벤처 부산", "query": "롯데월드 어드벤처 부산", "keywords": {"en": "Lotte World Adventure"}, "category": "theme_park", "indoor": false},
   {"place_id": "lotte-outlet-dongbusan", "name_ko": "롯데프리미엄아울렛 동부산점", "query": "롯데프리미엄아울렛 동부산점", "contentid": "1993017", "keywords": {"en": "Lotte Premium Outlets"}, "category": "shopping", "indoor": false},
-  {"place_id": "biff-square", "name_ko": "BIFF광장", "query": "BIFF광장", "keywords": {"en": "BIFF Square"}, "category": "street", "indoor": false},
+  {"place_id": "biff-square", "name_ko": "BIFF광장", "query": "BIFF 광장", "keywords": {"en": "BIFF Square"}, "category": "street", "indoor": false},
   {"place_id": "yongdusan-park", "name_ko": "용두산공원", "query": "용두산공원", "keywords": {"en": "Yongdusan Park"}, "category": "park", "indoor": false},
   {"place_id": "huinnyeoul-village", "name_ko": "흰여울문화마을", "query": "흰여울문화마을", "keywords": {"en": "Huinnyeoul Culture Village"}, "category": "village", "indoor": false},
   {"place_id": "songdo-cable-car", "name_ko": "송도해상케이블카", "query": "송도해상케이블카", "keywords": {"en": "Busan Air Cruise", "ja": "釜山エアクルーズ"}, "category": "attraction", "indoor": false},
@@ -32,5 +32,6 @@
   {"place_id": "choryang-ibagu-gil", "name_ko": "초량이바구길", "query": "이바구길", "keywords": {"en": "Ibagu"}, "category": "street", "indoor": false},
   {"place_id": "busan-chinatown", "name_ko": "부산 차이나타운", "query": "부산 차이나타운", "keywords": {"en": "Busan Chinatown"}, "category": "street", "indoor": false},
   {"place_id": "busan-citizens-park", "name_ko": "부산시민공원", "query": "부산시민공원", "keywords": {"en": "Busan Citizens"}, "category": "park", "indoor": false},
-  {"place_id": "busan-museum", "name_ko": "부산박물관", "query": "부산박물관", "keywords": {"en": "Busan Museum"}, "category": "museum", "indoor": true}
+  {"place_id": "busan-museum", "name_ko": "부산박물관", "query": "부산박물관", "keywords": {"en": "Busan Museum"}, "category": "museum", "indoor": true},
+  {"place_id": "jeonpo-cafe-street", "name_ko": "전포카페거리", "query": "전포카페거리", "keywords": {"en": "Jeonpo Cafe Street"}, "category": "street", "indoor": false}
 ]

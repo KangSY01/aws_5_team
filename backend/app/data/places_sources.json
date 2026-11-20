@@ -316,11 +316,17 @@
     "provider": "한국관광공사 TourAPI (공공데이터포털)",
     "apis": {
       "ko": "KorService2",
-      "en": "EngService2"
+      "en": "EngService2",
+      "ja": "JpnService2/areaBasedList2",
+      "zh-Hans": "ChsService2/areaBasedList2",
+      "zh-Hant": "ChtService2/areaBasedList2"
     },
     "contentids": {
       "ko": "2350092",
-      "en": "2357538"
+      "en": "2357538",
+      "ja": "2351241",
+      "zh-Hans": "2357426",
+      "zh-Hant": "2357704"
     },
     "kor_class": {
       "contenttypeid": "12",
@@ -330,10 +336,16 @@
     },
     "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
-      "en": 300
+      "en": 300,
+      "ja": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
     },
     "match_kind": {
-      "en": "keyword_en"
+      "en": "keyword_en",
+      "ja": "contains",
+      "zh-Hans": "contains",
+      "zh-Hant": "contains"
     },
     "names_overridden": [],
     "station_source": "busan_stations.csv",
@@ -383,12 +395,16 @@
     "apis": {
       "ko": "KorService2",
       "en": "EngService2",
-      "ja": "JpnService2"
+      "ja": "JpnService2",
+      "zh-Hans": "ChsService2/areaBasedList2",
+      "zh-Hant": "ChtService2/areaBasedList2"
     },
     "contentids": {
       "ko": "995455",
       "en": "1468918",
-      "ja": "1920279"
+      "ja": "1920279",
+      "zh-Hans": "1869052",
+      "zh-Hant": "2351468"
     },
     "kor_class": {
       "contenttypeid": "38",
@@ -399,11 +415,15 @@
     "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
-      "ja": 300
+      "ja": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
     },
     "match_kind": {
       "en": "keyword_en",
-      "ja": "keyword_ja"
+      "ja": "keyword_ja",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
     },
     "names_overridden": [],
     "station_source": "busan_stations.csv",
@@ -454,13 +474,15 @@
       "ko": "KorService2",
       "en": "EngService2",
       "ja": "JpnService2",
-      "zh-Hans": "ChsService2"
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2/areaBasedList2"
     },
     "contentids": {
       "ko": "2607943",
       "en": "2946894",
       "ja": "2946811",
-      "zh-Hans": "2949347"
+      "zh-Hans": "2949347",
+      "zh-Hant": "2948597"
     },
     "kor_class": {
       "contenttypeid": "12",
@@ -472,12 +494,14 @@
     "match_radius_m": {
       "en": 300,
       "ja": 300,
-      "zh-Hans": 300
+      "zh-Hans": 300,
+      "zh-Hant": 300
     },
     "match_kind": {
       "en": "keyword_en",
       "ja": "exact",
-      "zh-Hans": "exact"
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
     },
     "names_overridden": [],
     "station_source": "busan_stations.csv",
@@ -489,13 +513,15 @@
       "ko": "KorService2",
       "en": "EngService2",
       "zh-Hans": "ChsService2",
-      "zh-Hant": "ChtService2"
+      "zh-Hant": "ChtService2",
+      "ja": "JpnService2/areaBasedList2"
     },
     "contentids": {
       "ko": "2668973",
       "en": "2815428",
       "zh-Hans": "2816119",
-      "zh-Hant": "2731077"
+      "zh-Hant": "2731077",
+      "ja": "2816164"
     },
     "kor_class": {
       "contenttypeid": "12",
@@ -507,12 +533,14 @@
     "match_radius_m": {
       "en": 300,
       "zh-Hans": 300,
-      "zh-Hant": 300
+      "zh-Hant": 300,
+      "ja": 300
     },
     "match_kind": {
       "en": "keyword_en",
       "zh-Hans": "exact",
-      "zh-Hant": "exact"
+      "zh-Hant": "exact",
+      "ja": "exact"
     },
     "names_overridden": [],
     "station_source": "busan_stations.csv",
@@ -523,12 +551,16 @@
     "apis": {
       "ko": "KorService2",
       "en": "EngService2",
-      "zh-Hans": "ChsService2"
+      "zh-Hans": "ChsService2",
+      "ja": "JpnService2/areaBasedList2",
+      "zh-Hant": "ChtService2/areaBasedList2"
     },
     "contentids": {
       "ko": "229912",
       "en": "2666408",
-      "zh-Hans": "331340"
+      "zh-Hans": "331340",
+      "ja": "281854",
+      "zh-Hant": "332640"
     },
     "kor_class": {
       "contenttypeid": "14",
@@ -539,11 +571,15 @@
     "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
-      "zh-Hans": 300
+      "zh-Hans": 300,
+      "ja": 300,
+      "zh-Hant": 300
     },
     "match_kind": {
       "en": "keyword_en",
-      "zh-Hans": "contains"
+      "zh-Hans": "contains",
+      "ja": "exact",
+      "zh-Hant": "contains"
     },
     "names_overridden": [],
     "station_source": "busan_stations.csv",
@@ -632,12 +668,16 @@
     "apis": {
       "ko": "KorService2",
       "en": "EngService2",
-      "zh-Hans": "ChsService2"
+      "zh-Hans": "ChsService2",
+      "ja": "JpnService2/areaBasedList2",
+      "zh-Hant": "ChtService2/areaBasedList2"
     },
     "contentids": {
       "ko": "3454074",
       "en": "2503886",
-      "zh-Hans": "2503888"
+      "zh-Hans": "2503888",
+      "ja": "2517020",
+      "zh-Hant": "2495655"
     },
     "kor_class": {
       "contenttypeid": "14",
@@ -648,11 +688,15 @@
     "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
-      "zh-Hans": 300
+      "zh-Hans": 300,
+      "ja": 300,
+      "zh-Hant": 300
     },
     "match_kind": {
       "en": "keyword_en",
-      "zh-Hans": "contains"
+      "zh-Hans": "contains",
+      "ja": "contains",
+      "zh-Hant": "contains"
     },
     "names_overridden": [],
     "station_source": "busan_stations.csv",
@@ -664,13 +708,15 @@
       "ko": "KorService2",
       "ja": "JpnService2",
       "zh-Hans": "ChsService2",
-      "zh-Hant": "ChtService2"
+      "zh-Hant": "ChtService2",
+      "en": "EngService2/areaBasedList2"
     },
     "contentids": {
       "ko": "126799",
       "ja": "1370469",
       "zh-Hans": "1865457",
-      "zh-Hant": "1669673"
+      "zh-Hant": "1669673",
+      "en": "1392313"
     },
     "kor_class": {
       "contenttypeid": "12",
@@ -682,12 +728,14 @@
     "match_radius_m": {
       "ja": 300,
       "zh-Hans": 1000,
-      "zh-Hant": 300
+      "zh-Hant": 300,
+      "en": 300
     },
     "match_kind": {
       "ja": "exact",
       "zh-Hans": "exact",
-      "zh-Hant": "exact"
+      "zh-Hant": "exact",
+      "en": "exact"
     },
     "names_overridden": [],
     "station_source": "busan_stations.csv",
@@ -699,13 +747,15 @@
       "ko": "KorService2",
       "en": "EngService2",
       "zh-Hans": "ChsService2",
-      "zh-Hant": "ChtService2"
+      "zh-Hant": "ChtService2",
+      "ja": "JpnService2/areaBasedList2"
     },
     "contentids": {
       "ko": "2815627",
       "en": "2835516",
       "zh-Hans": "2949389",
-      "zh-Hant": "2949015"
+      "zh-Hant": "2949015",
+      "ja": "2947861"
     },
     "kor_class": {
       "contenttypeid": "12",
@@ -717,12 +767,14 @@
     "match_radius_m": {
       "en": 300,
       "zh-Hans": 300,
-      "zh-Hant": 300
+      "zh-Hant": 300,
+      "ja": 300
     },
     "match_kind": {
       "en": "keyword_en",
       "zh-Hans": "exact",
-      "zh-Hant": "exact"
+      "zh-Hant": "exact",
+      "ja": "exact"
     },
     "names_overridden": [],
     "station_source": "busan_stations.csv",
@@ -732,11 +784,17 @@
     "provider": "한국관광공사 TourAPI (공공데이터포털)",
     "apis": {
       "ko": "KorService2",
-      "zh-Hant": "ChtService2"
+      "zh-Hant": "ChtService2",
+      "en": "EngService2/areaBasedList2",
+      "ja": "JpnService2/areaBasedList2",
+      "zh-Hans": "ChsService2/areaBasedList2"
     },
     "contentids": {
       "ko": "1993017",
-      "zh-Hant": "1993137"
+      "zh-Hant": "1993137",
+      "en": "1993111",
+      "ja": "2963090",
+      "zh-Hans": "2970433"
     },
     "kor_class": {
       "contenttypeid": "38",
@@ -746,10 +804,16 @@
     },
     "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
-      "zh-Hant": 300
+      "zh-Hant": 300,
+      "en": 300,
+      "ja": 300,
+      "zh-Hans": 300
     },
     "match_kind": {
-      "zh-Hant": "exact"
+      "zh-Hant": "exact",
+      "en": "exact",
+      "ja": "exact",
+      "zh-Hans": "exact"
     },
     "names_overridden": [],
     "station_source": "busan_stations.csv",
@@ -837,11 +901,17 @@
     "provider": "한국관광공사 TourAPI (공공데이터포털)",
     "apis": {
       "ko": "KorService2",
-      "en": "EngService2"
+      "en": "EngService2",
+      "ja": "JpnService2/areaBasedList2",
+      "zh-Hans": "ChsService2/areaBasedList2",
+      "zh-Hant": "ChtService2/areaBasedList2"
     },
     "contentids": {
       "ko": "2504464",
-      "en": "2657034"
+      "en": "2657034",
+      "ja": "2651929",
+      "zh-Hans": "2666404",
+      "zh-Hant": "2668206"
     },
     "kor_class": {
       "contenttypeid": "12",
@@ -851,10 +921,16 @@
     },
     "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
-      "en": 300
+      "en": 300,
+      "ja": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
     },
     "match_kind": {
-      "en": "keyword_en"
+      "en": "keyword_en",
+      "ja": "exact",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
     },
     "names_overridden": [],
     "station_source": "busan_stations.csv",
@@ -1037,13 +1113,15 @@
       "ko": "KorService2",
       "en": "EngService2",
       "zh-Hans": "ChsService2",
-      "zh-Hant": "ChtService2"
+      "zh-Hant": "ChtService2",
+      "ja": "JpnService2/areaBasedList2"
     },
     "contentids": {
       "ko": "129783",
       "en": "1054712",
       "zh-Hans": "1052096",
-      "zh-Hant": "569377"
+      "zh-Hant": "569377",
+      "ja": "1059107"
     },
     "kor_class": {
       "contenttypeid": "14",
@@ -1055,10 +1133,90 @@
     "match_radius_m": {
       "en": 300,
       "zh-Hans": 300,
-      "zh-Hant": 300
+      "zh-Hant": 300,
+      "ja": 300
     },
     "match_kind": {
       "en": "keyword_en",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact",
+      "ja": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "biff-square": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2/areaBasedList2",
+      "ja": "JpnService2/areaBasedList2",
+      "zh-Hans": "ChsService2/areaBasedList2",
+      "zh-Hant": "ChtService2/areaBasedList2"
+    },
+    "contentids": {
+      "ko": "127488",
+      "en": "789805",
+      "ja": "994056",
+      "zh-Hans": "604402",
+      "zh-Hant": "604206"
+    },
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE04",
+      "lclsSystm3": "VE040100"
+    },
+    "foreign_lookup": "areaBasedList2 lDongRegnCd=26 부산 전체 목록, 반경 300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains)",
+    "match_radius_m": {
+      "en": 300,
+      "ja": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "en": "exact",
+      "ja": "exact",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "jeonpo-cafe-street": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2/areaBasedList2",
+      "ja": "JpnService2/areaBasedList2",
+      "zh-Hans": "ChsService2/areaBasedList2",
+      "zh-Hant": "ChtService2/areaBasedList2"
+    },
+    "contentids": {
+      "ko": "1805965",
+      "en": "3107897",
+      "ja": "2602916",
+      "zh-Hans": "3107957",
+      "zh-Hant": "2986557"
+    },
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE04",
+      "lclsSystm3": "VE040100"
+    },
+    "foreign_lookup": "areaBasedList2 lDongRegnCd=26 부산 전체 목록, 반경 300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains)",
+    "match_radius_m": {
+      "en": 300,
+      "ja": 1000,
+      "zh-Hans": 1000,
+      "zh-Hant": 1000
+    },
+    "match_kind": {
+      "en": "exact",
+      "ja": "exact",
       "zh-Hans": "exact",
       "zh-Hant": "exact"
     },
