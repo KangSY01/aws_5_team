@@ -162,11 +162,36 @@ def _kakao_routes_by_station(origins: list[dict], destination: dict) -> dict[str
     return found
 
 
-def _time_source_fields(route: dict | None) -> dict:
+def _stop_names(name: object, mode: object, stations: dict[str, dict]) -> dict[str, str]:
+    """카카오 승하차 이름의 언어별 이름. 장소의 names 처럼 있는 언어만 넣는다 (역 표에는 한국어·영어만 있다).
+
+    지하철 구간의 이름만 '역'을 떼고 역 표의 name_ko 와 비교한다. 카카오는 "서면"처럼 '역' 없이 준다.
+    버스 정류장과 역 표에 없는 역은 한국어 원문만 넣고, 이름이 없으면(도보 구간) 빈 dict 다.
+    """
+    if not isinstance(name, str) or not name:
+        return {}
+    names = {"ko": name}
+    if mode == "SUBWAY":
+        by_ko = {station["name_ko"].removesuffix("역"): station["station"] for station in stations.values()}
+        english = by_ko.get(name.strip().removesuffix("역"))
+        if english:
+            names["en"] = english
+    return names
+
+
+def _time_source_fields(route: dict | None, stations: dict[str, dict]) -> dict:
     """후보 시간의 출처와, 카카오 성공 시 첫 경로의 노선·승하차 요약을 만든다."""
     if route is None:
         return {"time_source": "estimate"}
-    return {"time_source": "kakao", **{key: route[key] for key in KAKAO_DETAIL_KEYS}}
+    fields = {"time_source": "kakao", **{key: route[key] for key in KAKAO_DETAIL_KEYS}}
+    # 카카오가 준 leg 는 그대로 두고 언어별 이름만 덧붙인 사본을 넣는다
+    fields["legs"] = [
+        {**leg, "from_names": _stop_names(leg.get("from_name"), leg.get("mode"), stations),
+         "to_names": _stop_names(leg.get("to_name"), leg.get("mode"), stations)}
+        if isinstance(leg, dict) else leg
+        for leg in route["legs"]
+    ]
+    return fields
 
 
 def _destination(stations: dict, places: dict, station: str | None, place_id: str | None) -> dict:
@@ -296,13 +321,13 @@ def return_options(date: str, place_id: str | None = None, event_name: str | Non
             route["total_minutes"] if route is not None else subway_minutes(departure_station, dest, rule)
         )
         option["extra_min"] = option["walk_min"] + station_minutes - baseline_min
-        option.update(_time_source_fields(route))
+        option.update(_time_source_fields(route, stations))
 
     # 기존 options 필드는 유지하고, 갱신된 시간 기준으로 기존 상한과 안정 정렬을 적용한다.
     options = sorted(options, key=lambda o: (o["extra_min"], o["type"] == "walk_to_station"))[:MAX_OPTIONS]
     baseline = {
         "depart_at": depart.isoformat(), "station": origin["station"], "congested": congested,
-        "minutes": baseline_min, "mode": "subway", **_time_source_fields(baseline_route),
+        "minutes": baseline_min, "mode": "subway", **_time_source_fields(baseline_route, stations),
     }
     result = {
         "date": day.isoformat(),
@@ -378,7 +403,12 @@ def get_return_options(date: str, place_id: str | None = None, event_name: str |
             original option, "score", "travel_min", "arrive_at", "breakdown", "labels", "excluded"}. Labels are
             "best", "earliest_arrival", and "least_walking".
         When time_source is "kakao", baseline or option also has {"route_type", "transfers", "distance_m", "fare",
-            "walk_meters", "legs": [{"mode", "minutes", "distance_m", "lines", "from_name", "to_name"}]}.
+            "walk_meters", "legs": [{"mode", "minutes", "distance_m", "lines", "from_name", "to_name",
+            "from_names", "to_names"}]}. from_name and to_name are Kakao's Korean stop names. from_names and to_names
+            map a language to the same stop's name and hold only the languages in the data: "ko" always, plus "en"
+            when a SUBWAY leg's stop is in the station table. Use the user's language when it is present, otherwise
+            the Korean name as it is; never translate or invent a stop name. Bus stops have only "ko"; legs without
+            a stop name (walking) have {}.
         Times are ISO strings (+09:00). options and ranked are empty and baseline.congested is false when the planned
         departure is outside the crowded window or the origin's station is not the crowded station.
         On failure returns {"error": {"code", "message"}}: invalid_date, invalid_time, missing_argument,

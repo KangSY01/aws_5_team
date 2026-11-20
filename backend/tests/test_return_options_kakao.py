@@ -83,6 +83,7 @@ def test_카카오_성공은_출발역별_한번씩_병렬_조회하고_ranked�
     assert result["baseline"]["legs"][0] == {
         "mode": "SUBWAY", "minutes": 40, "distance_m": 16000, "lines": ["2호선"],
         "from_name": "해운대", "to_name": "서면",
+        "from_names": {"ko": "해운대", "en": "Haeundae"}, "to_names": {"ko": "서면", "en": "Seomyeon"},
     }
 
     by_station = {option["station"]: option for option in result["options"] if option["type"] == "walk_to_station"}
@@ -151,3 +152,36 @@ def test_USE_MOCK은_fetch_routes를_부르지_않고_추정값을_쓴다(monkey
     assert result["baseline"]["minutes"] == 39 and result["baseline"]["time_source"] == "estimate"
     assert all(option["time_source"] == "estimate" for option in result["options"])
     assert result["ranked"]
+
+
+def test_카카오_승하차_이름에_역_표의_언어별_이름을_붙인다(monkeypatch):
+    legs = [
+        {"mode": "WALKING", "minutes": 2, "distance_m": 120, "lines": [], "from_name": None, "to_name": None},
+        {"mode": "BUS", "minutes": 10, "distance_m": 4000, "lines": ["1003"],
+         "from_name": "해운대역", "to_name": "센텀시티역.벡스코"},  # 버스 정류장은 역 이름과 같아도 한국어 그대로
+        {"mode": "SUBWAY", "minutes": 20, "distance_m": 9000, "lines": ["2호선"],
+         "from_name": "센텀시티", "to_name": "서면역"},  # '역'이 있든 없든 역 표와 맞춘다
+        {"mode": "SUBWAY", "minutes": 5, "distance_m": 2000, "lines": ["동해선"],
+         "from_name": "벡스코", "to_name": "오시리아"},  # 역 표(1~4호선)에 없는 역
+    ]
+
+    def fake_fetch(origin_lat, origin_lng, dest_lat, dest_lng):
+        route = kakao_routes("Haeundae", 40)[0]
+        return [{**route, "legs": [dict(leg) for leg in legs]}]
+
+    monkeypatch.setattr(ro, "fetch_routes", fake_fetch)
+    result = scene7()
+
+    got = result["baseline"]["legs"]
+    assert [{key: leg[key] for key in legs[0]} for leg in got] == legs  # 카카오가 준 값은 그대로다
+    assert [(leg["from_names"], leg["to_names"]) for leg in got] == [
+        ({}, {}),
+        ({"ko": "해운대역"}, {"ko": "센텀시티역.벡스코"}),
+        ({"ko": "센텀시티", "en": "Centum City"}, {"ko": "서면역", "en": "Seomyeon"}),
+        ({"ko": "벡스코"}, {"ko": "오시리아"}),
+    ]
+    # 역 표에는 한국어·영어 이름만 있다. 없는 언어(ja, zh-Hans, zh-Hant)는 만들지 않는다
+    assert all(set(names) <= {"ko", "en"} for leg in got for names in (leg["from_names"], leg["to_names"]))
+    assert all(option["legs"][2]["to_names"]["en"] == "Seomyeon" for option in result["options"])
+    assert result["ranked"][0]["option"]["legs"][2]["from_names"] == {"ko": "센텀시티", "en": "Centum City"}
+    assert json.loads(json.dumps(result)) == result
