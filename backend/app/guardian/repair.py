@@ -9,7 +9,7 @@ import datetime as dt
 from app.guardian import thresholds as th
 from app.guardian.check import check_plan
 from app.guardian.context import CheckContext, Event
-from app.guardian.metrics import compute_metrics
+from app.guardian.metrics import compute_metrics, total_travel_min
 from app.models.plan import Issue, Plan, RepairAction, RepairOption, Severity, Stop, StopChange
 
 # 남은 문제의 심각도 순위. 문제가 사라지면 -1
@@ -23,7 +23,7 @@ def propose_repairs(plan: Plan, issue: Issue, context: CheckContext | dict) -> l
     출력: RepairOption 목록. 순서는 시간 이동 → 순서 변경 → 비슷한 장소로 교체 → 제외.
           각 해결안의 metrics 에 보전 지표(changed, kept, extra_travel_min, locked_kept)를 채운다.
 
-    TODO(Guardian 담당, 스펙 작업 5.3~5.6): reorder·replace·remove, 재점검 필터, 정렬, 상위 3개.
+    TODO(Guardian 담당, 스펙 작업 5.4~5.6): replace·remove, 고정 일정 검증, 정렬, 상위 3개.
     """
     raise NotImplementedError("TODO(Guardian 담당)")
 
@@ -92,6 +92,26 @@ def _remaining_rank(issue: Issue, after_issues: dict[str, Issue]) -> int | None:
     return rank
 
 
+def _improvement(plan: Plan, after: list[Stop], issue: Issue, ctx: CheckContext) -> int | None:
+    """해결안 적용 후 대상 Issue 의 남은 심각도 순위(사라지면 -1). 쓸 수 없는 해결안이면 None.
+
+    - 원래 없던 high Issue 가 새로 생기면 None
+    - crowded: check_crowded 는 하루 단위라 시각을 옮겨도 Issue 가 남는다.
+      원래 체류가 행사 시간대와 겹쳤고, 바뀐 뒤 겹치지 않으면 -1. 아니면 None
+    - 그 밖의 유형: 같은 Issue 가 사라지거나 심각도가 낮아져야 한다
+    """
+    after_issues = _recheck(plan, after, ctx)
+    if after_issues is None:
+        return None
+    if issue.type == "crowded":
+        before_stop = next((s for s in plan.stops if s.stop_id == issue.stop_id), None)
+        after_stop = next((s for s in after if s.stop_id == issue.stop_id), None)
+        if before_stop is None or after_stop is None or not _event_overlaps(before_stop, ctx):
+            return None
+        return None if _event_overlaps(after_stop, ctx) else -1
+    return _remaining_rank(issue, after_issues)
+
+
 def _find(stops: list[Stop], stop_id: str) -> int | None:
     for i, s in enumerate(stops):
         if s.stop_id == stop_id:
@@ -127,14 +147,7 @@ def try_move_time(plan: Plan, issue: Issue, ctx: CheckContext) -> list[RepairOpt
             after = _shift_with_neighbors(stops, idx, delta, ctx)
             if after is None:
                 continue
-            after_issues = _recheck(plan, after, ctx)
-            if after_issues is None:
-                continue
-            if issue.type == "crowded":
-                # check_crowded 는 하루 단위라 시각을 옮겨도 Issue 가 남는다. 행사 시간대를 벗어났는지로 판단한다
-                rank = None if _event_overlaps(after[idx], ctx) else -1
-            else:
-                rank = _remaining_rank(issue, after_issues)
+            rank = _improvement(plan, after, issue, ctx)
             if rank is None:
                 continue
             moved = sum(1 for a, b in zip(stops, after) if a != b)
@@ -175,6 +188,65 @@ def _shift_with_neighbors(stops: list[Stop], idx: int, delta_min: int, ctx: Chec
             if shrunk is None:
                 return None
             after[idx + 1] = shrunk
+    return after
+
+
+# ---------- 2단계: 순서 변경 ----------
+
+def try_reorder(plan: Plan, issue: Issue, ctx: CheckContext) -> list[RepairOption]:
+    """대상 Stop 과 이웃한 비고정 Stop 의 순서를 바꾸는 해결안 (앞 이웃, 뒤 이웃 각각 최대 1개씩).
+
+    - 두 Stop 이 쓰던 시간 구간 [앞 Stop 시작, 뒤 Stop 끝] 안에서 순서만 바꾼다.
+      먼저 갈 Stop 은 구간 시작에, 나중 갈 Stop 은 구간 끝에 붙이고 체류 시간은 그대로 둔다.
+      그래서 구간 밖 Stop 의 시각은 바뀌지 않는다.
+    - 두 Stop 사이, 구간 앞뒤 이웃과의 간격이 이동 시간 + 여유보다 짧으면 만들지 않는다.
+    - 구간 시작이 기준 시각(ctx.now)보다 이르면 만들지 않는다 (이미 시작한 일정).
+    - 이동 시간을 모르는 구간이 있거나 이동 시간 증가가 REPLACE_MAX_EXTRA_MIN 을 넘으면 뺀다.
+    - 대상 Issue 개선 여부와 새 high Issue 검사는 try_move_time 과 같다.
+    - 장소는 그대로라 metrics.changed 는 0 이다. 시각이 바뀐 두 Stop 이 changes 에 들어간다.
+    """
+    stops = _ordered(plan.stops)
+    idx = _find(stops, issue.stop_id)
+    if idx is None or stops[idx].locked:
+        return []
+
+    old_total = total_travel_min(stops, ctx)
+    if old_total is None:
+        return []
+
+    options = []
+    for first in (idx - 1, idx):  # (앞 이웃, 대상), (대상, 뒤 이웃) 두 쌍
+        if first < 0 or first + 1 >= len(stops):
+            continue
+        after = _swap_pair(stops, first, ctx)
+        if after is None:
+            continue
+        new_total = total_travel_min(after, ctx)
+        if new_total is None or new_total - old_total > th.REPLACE_MAX_EXTRA_MIN:
+            continue
+        if _improvement(plan, after, issue, ctx) is None:
+            continue
+        options.append(_option("reorder", plan, after, ctx))
+    return options
+
+
+def _swap_pair(stops: list[Stop], first: int, ctx: CheckContext) -> list[Stop] | None:
+    """stops[first] 와 stops[first+1] 의 순서를 바꾼 새 Stop 목록 (시각순). 안 되면 None."""
+    a, b = stops[first], stops[first + 1]
+    if a.locked or b.locked or a.start < ctx.now:
+        return None
+
+    new_b = b.model_copy(update={"start": a.start, "end": a.start + (b.end - b.start)})
+    new_a = a.model_copy(update={"start": b.end - (a.end - a.start), "end": b.end})
+    if new_a.start - new_b.end < _required_gap(new_b, new_a, ctx):
+        return None
+    if first > 0 and new_b.start - stops[first - 1].end < _required_gap(stops[first - 1], new_b, ctx):
+        return None
+    if first + 2 < len(stops) and stops[first + 2].start - new_a.end < _required_gap(new_a, stops[first + 2], ctx):
+        return None
+
+    after = list(stops)
+    after[first], after[first + 1] = new_b, new_a
     return after
 
 

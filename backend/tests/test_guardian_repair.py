@@ -4,7 +4,7 @@ import datetime as dt
 
 from app.guardian.check import check_plan
 from app.guardian.context import Event, OpeningHours
-from app.guardian.repair import try_move_time
+from app.guardian.repair import try_move_time, try_reorder
 from app.models.plan import Plan, RepairOption
 from guardian_fixtures import BASE_TRAVEL_MIN, at, hourly_weather, load_sample_plan, make_context
 
@@ -145,3 +145,67 @@ def test_move_time_prefers_smallest_step_and_respects_now():
     # 기준 시각 10:00: 지금보다 이르게 옮길 수 없어 해결안이 없다
     ctx = make_context(now=at(10), hours=hours)
     assert try_move_time(PLAN, issue_of(PLAN, ctx, "s1-closed"), ctx) == []
+
+
+# ---------- 5.3 try_reorder ----------
+
+# 자갈치→해운대 이동 시간. 기본 고정 데이터에는 없다 (순서를 바꾸면 처음 생기는 구간)
+REORDER_TRAVEL = dict(BASE_TRAVEL_MIN) | {("jagalchi-market", "haeundae-beach"): 20}
+
+
+def test_reorder_swaps_with_previous_neighbor():
+    # 15~17시 비 → 해운대 high. 부산타워와 순서를 바꾸면 해운대 13:30-15:00, 부산타워(실내) 16:00-17:00.
+    # 두 Stop 이 쓰던 13:30-17:00 구간 안에서만 바뀌고, 이동은 15+20+40=75분(+10분)
+    ctx = make_context(weather=hourly_weather(rain_hours=range(15, 17)), travel_min=REORDER_TRAVEL)
+    issue = issue_of(PLAN, ctx, "s4-rain")
+
+    options = try_reorder(PLAN, issue, ctx)
+
+    assert len(options) == 1
+    opt = options[0]
+    assert opt.action == "reorder"
+    assert [c.stop_id for c in opt.changes] == ["s3", "s4"]
+    s3, s4 = after_of(opt, "s3"), after_of(opt, "s4")
+    assert (s4.place_id, s4.start, s4.end) == ("haeundae-beach", at(13, 30), at(15))
+    assert (s3.place_id, s3.start, s3.end) == ("busan-tower", at(16), at(17))
+    m = opt.metrics
+    assert (m.changed, m.kept, m.extra_travel_min) == (0, 4, 10)
+    assert_locked_untouched(opt)
+
+
+def test_reorder_dropped_when_extra_travel_over_limit():
+    # 자갈치→해운대 45분이면 이동 +35분 > 30분 → 뺀다
+    travel = dict(BASE_TRAVEL_MIN) | {("jagalchi-market", "haeundae-beach"): 45}
+    ctx = make_context(weather=hourly_weather(rain_hours=range(15, 17)), travel_min=travel)
+    assert try_reorder(PLAN, issue_of(PLAN, ctx, "s4-rain"), ctx) == []
+
+
+def test_reorder_dropped_when_travel_unknown():
+    # 자갈치→해운대 이동 시간을 모르면 이동 시간 증가를 계산할 수 없어 만들지 않는다
+    ctx = make_context(weather=hourly_weather(rain_hours=range(15, 17)))
+    assert try_reorder(PLAN, issue_of(PLAN, ctx, "s4-rain"), ctx) == []
+
+
+def test_reorder_never_swaps_with_locked_stop():
+    # 감천(s1)의 이웃은 고정 일정(자갈치)뿐이라 순서 변경 해결안이 없다
+    ctx = make_context(hours={"gamcheon-village": OpeningHours(closes=dt.time(11))}, travel_min=REORDER_TRAVEL)
+    assert try_reorder(PLAN, issue_of(PLAN, ctx, "s1-closed"), ctx) == []
+
+
+def test_reorder_skips_stop_already_started():
+    # 기준 시각 14:00 이면 부산타워(13:30 시작)는 이미 시작했으므로 순서를 바꾸지 않는다
+    ctx = make_context(now=at(14), weather=hourly_weather(rain_hours=range(15, 17)), travel_min=REORDER_TRAVEL)
+    assert try_reorder(PLAN, issue_of(PLAN, ctx, "s4-rain"), ctx) == []
+
+
+def test_reorder_crowded_only_with_event_window():
+    # 해운대 15:00-17:00 행사. 순서를 바꾸면 해운대 13:30-15:00 이라 행사 시간대를 피한다
+    event = Event(name="테스트 행사", start=at(15), end=at(17), place_ids=["haeundae-beach"])
+    ctx = make_context(events=[event], travel_min=REORDER_TRAVEL)
+    opt = try_reorder(PLAN, issue_of(PLAN, ctx, "s4-crowded"), ctx)[0]
+    assert (after_of(opt, "s4").start, after_of(opt, "s4").end) == (at(13, 30), at(15))
+    assert opt.metrics.changed == 0
+    # 행사가 18시 이후면 시간대 근거가 없어 만들지 않는다
+    late = Event(name="테스트 행사", start=at(18), end=at(22), place_ids=["haeundae-beach"])
+    ctx = make_context(events=[late], travel_min=REORDER_TRAVEL)
+    assert try_reorder(PLAN, issue_of(PLAN, ctx, "s4-crowded"), ctx) == []
