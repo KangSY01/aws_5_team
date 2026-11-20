@@ -423,9 +423,12 @@ def get_events(date: str) -> dict:
 
     Returns:
         {"date": "YYYY-MM-DD", "events": [{"name": 행사 이름, "start": ISO 시각, "end": ISO 시각,
+        "period_start": ISO 시각, "period_end": ISO 시각,
         "place_ids": [행사 장소 1km 이내의 장소 ID], "kind": "short" | "opening_day"}]}.
         kind 가 "short" 면 7일 이하 행사의 기간 중 하루, "opening_day" 면 7일보다 긴 행사의 개막일이다.
-        start·end 는 행사 전체 기간의 첫날 00:00 과 마지막 날 23:59(+09:00)이다. 하루 중 진행 시간은 알 수 없다.
+        start·end 는 요청한 날짜의 행사 시간대다(+09:00). 진행 시간을 아는 행사는 그 시간(예: 18:00~23:00),
+        모르는 행사는 그날 00:00~23:59 로 나온다. 00:00~23:59 이면 진행 시간을 말하지 않는다.
+        period_start·period_end 는 행사 전체 기간의 첫날과 마지막 날이다. 행사가 언제까지인지는 period_end 로 답한다.
         해당하는 행사가 없으면 events 가 빈 목록.
         실패하면 {"error": {"code", "message"}} (invalid_date, data_unavailable 등).
     """
@@ -434,5 +437,15 @@ def get_events(date: str) -> dict:
     for event in _load_json("events.json")["events"]:
         kind = _event_kind_on(event, day)
         if kind:
-            events.append({**{key: event[key] for key in ("name", "start", "end", "place_ids")}, "kind": kind})
+            # 파일의 start·end 는 기간 첫날·마지막 날이고, 시각 부분([10:])이 하루 중 시작·종료 시각이다
+            # (모르면 00:00:00·23:59:59). 요청한 날짜에 그 시각을 붙여 그날의 시간대로 돌려준다.
+            events.append({
+                "name": event["name"],
+                "start": day.isoformat() + event["start"][10:],
+                "end": day.isoformat() + event["end"][10:],
+                "period_start": event["start"],
+                "period_end": event["end"],
+                "place_ids": event["place_ids"],
+                "kind": kind,
+            })
     return {"date": day.isoformat(), "events": events}
