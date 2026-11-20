@@ -33,5 +33,7 @@
   {"place_id": "busan-chinatown", "name_ko": "부산 차이나타운", "query": "부산 차이나타운", "keywords": {"en": "Busan Chinatown"}, "category": "street", "indoor": false},
   {"place_id": "busan-citizens-park", "name_ko": "부산시민공원", "query": "부산시민공원", "keywords": {"en": "Busan Citizens"}, "category": "park", "indoor": false},
   {"place_id": "busan-museum", "name_ko": "부산박물관", "query": "부산박물관", "keywords": {"en": "Busan Museum"}, "category": "museum", "indoor": true},
-  {"place_id": "jeonpo-cafe-street", "name_ko": "전포카페거리", "query": "전포카페거리", "keywords": {"en": "Jeonpo Cafe Street"}, "category": "street", "indoor": false}
+  {"place_id": "jeonpo-cafe-street", "name_ko": "전포카페거리", "query": "전포카페거리", "keywords": {"en": "Jeonpo Cafe Street"}, "category": "street", "indoor": false},
+  {"place_id": "haeundae-rodeo-street", "name_ko": "해운대 로데오거리", "query": "해운대 로데오거리", "contentid": "1304431", "category": "street", "indoor": false},
+  {"place_id": "busan-cinema-street", "name_ko": "부산 영화의 거리", "query": "부산 영화의 거리", "contentid": "2946508", "category": "street", "indoor": false}
 ]

@@ -7,8 +7,8 @@
 
 | 데이터 | 제공 기관 · API | 저장 파일 | 쓰는 도구 | 기준 |
 |---|---|---|---|---|
-| 관광지 정보, 다국어 이름(영·일·중 간체·번체), 좌표 | 한국관광공사 국문·영문·일문·중문 관광정보서비스 (KorService2, EngService2, JpnService2, ChsService2, ChtService2) | `places.json` 35곳, `places_sources.json` | `search_places`, `get_place_info` | 2026-11-20 수집 |
-| 운영시간·휴무일 | 한국관광공사 TourAPI `detailIntro2` | `hours.json` 35곳 | `get_hours` | 2026-11-20 수집. 원문은 `raw_text`에 보관, 단순 패턴만 시각으로 변환 |
+| 관광지 정보, 다국어 이름(영·일·중 간체·번체), 좌표 | 한국관광공사 국문·영문·일문·중문 관광정보서비스 (KorService2, EngService2, JpnService2, ChsService2, ChtService2) | `places.json` 37곳, `places_sources.json` | `search_places`, `get_place_info` | 2026-11-20 수집. 해운대 로데오거리(contentid 1304431)·부산 영화의 거리(2946508)를 같은 날 추가 |
+| 운영시간·휴무일 | 한국관광공사 TourAPI `detailIntro2` | `hours.json` 37곳 | `get_hours` | 2026-11-20 수집. 원문은 `raw_text`에 보관, 단순 패턴만 시각으로 변환 |
 | 축제·행사와 다국어 행사명 | 한국관광공사 TourAPI 5개 언어 서비스 `searchFestival2` (부산, 2026년 11월), 행사 시간은 국문 `detailIntro2` | `events.json` 14건 | `get_events`(Guardian), `GET /events`(지도) | 2026-11-20 수집. 외국어 이름은 한국어 제목+거리 일치 항목만 사용 |
 | 음식점, 대표 메뉴 | 한국관광공사 TourAPI 음식점(`areaBasedList2`, `detailIntro2`) | `restaurants.json` 43곳 | `get_restaurants` | 해운대·자갈치·감천·서면역 반경 500m. 식단·가격 정보는 없음 |
 | 관광지 집중률 | 한국관광공사 관광지 집중률 방문자 추이 예측 (TatsCnctrRateService) | `congestion.json` 23곳 | `get_crowd` | 2026-11-18 ~ 12-17 일 단위 예측 |
@@ -26,7 +26,7 @@
 | 값 | 파일 · 코드 | 규칙 |
 |---|---|---|
 | 장소 사이 이동 시간 | `travel_times.json` (595쌍) | 직선거리 × 1.3. 1.2km 이하는 도보(시속 4.5km), 그 이상은 지하철(시속 25km + 대기·환승 10분) |
-| 요일 혼잡 규칙 | `guardian/thresholds.py` | 집중률이 없는 12곳은 토요일 medium, 일요일 low |
+| 요일 혼잡 규칙 | `guardian/thresholds.py` | 집중률이 없는 14곳은 토요일 medium, 일요일 low |
 | 행사일 혼잡 | `get_events` | 7일 이하 행사는 기간 전체, 그보다 긴 행사는 개막일만 행사일로 봄 |
 | 축제 후 귀가 혼잡 | `get_return_options` | 행사 대표 장소의 가까운 역을 행사 종료 30분 전 ~ 60분 뒤 혼잡으로 봄 (가정) |
 | 늦게 출발 제안의 막차 경고 | `last_trains.json`, `get_return_options` | 부산교통공사 표준 시간표의 해당 역·방향·요일 막차와 출발 시각을 비교 |
@@ -57,5 +57,7 @@ uv run python -m scripts.build_travel_times
 uv run python -m scripts.build_curation
 uv run python -m scripts.build_stations
 ```
+
+장소를 추가할 때는 `place_seeds.json`에 시드를 넣고 `fetch_places --reuse-raw`(기준 파일은 기본값인 `places.json`)로 돌립니다. `fetch_places`는 `backfill_names`가 보충한 이름의 출처를 다시 만들지 못하므로, `places_sources.json`은 기존 장소 항목을 실행 전 값으로 되돌리고 새 장소 항목만 더합니다(`places.json`·`places_review.csv`도 새 장소분만 뒤에 붙임).
 
 원본 응답은 `backend/app/data/raw/`에 저장되고 git에는 올리지 않습니다. 저장된 응답이 있으면 다시 호출하지 않습니다.

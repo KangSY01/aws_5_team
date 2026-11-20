@@ -26,6 +26,8 @@ WEEKDAY_RULE_PLACES = frozenset({
     "huinnyeoul-village",
     "busan-modern-history-museum",
     "choryang-ibagu-gil",
+    "haeundae-rodeo-street",
+    "busan-cinema-street",
 })
 # 요일 규칙 심각도. 키는 datetime.weekday() 값 (5=토, 6=일). 평일은 문제 없음
 WEEKDAY_RULE_SEVERITY: dict[int, Severity] = {5: "medium", 6: "low"}
