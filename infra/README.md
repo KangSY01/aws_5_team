@@ -57,3 +57,19 @@ AgentCore 가 안 될 때 `template.yaml` 에 `AWS::Serverless::Function` 을 �
 - Python 관리형 런타임은 응답 스트리밍을 기본 지원하지 않는다(Node.js 만). SSE 가 꼭 필요하면 Lambda Web Adapter + 별도 HTTP 서버가 필요하고, 이는 `backend/` 변경이므로 담당자와 정한다.
 - 이후 API Gateway HTTP API(payload v2.0)로 옮길 때도 같은 핸들러를 쓴다.
 - 두 경로가 같은 스택에서 공존할 수 없는 것은 아니므로, 전환 전까지 AgentCore 리소스는 그대로 두고 Lambda 만 추가해 비교해도 된다.
+
+## DynamoDB 연결 (busan-guide-base)
+일정·세션은 `busan-guide-base` 스택의 테이블 `busan-guide-sessions`(키 `pk`, `sk`)에 저장한다. 이 스택은 수정하지 않는다.
+- `deploy.ps1` 이 `busan-guide-base` Outputs 에서 `DataAccessPolicyArn`, `SessionsTableName` 을 조회해 `template.yaml` 파라미터로 넘긴다.
+- 실행 역할(`AgentExecutionRole`)에 `ManagedPolicyArns` 로 `busan-guide-data-access` 가 붙고, 런타임 환경 변수 `DYNAMODB_TABLE` 이 들어간다.
+- 이 정책은 base 스택의 S3·DynamoDB 3개 테이블 전체 권한을 포함한다. 저장소 코드는 `busan-guide-sessions` 에 `GetItem`, `PutItem`, `UpdateItem` 만 쓴다.
+- 런타임 zip 에 `app/storage` 는 아직 넣지 않았다(`build_zip.py` 의 `APP_ALLOWLIST`). Hello 에이전트가 저장소를 쓰기 시작할 때 추가한다.
+
+읽기 전용 확인:
+```powershell
+aws sts get-caller-identity --region ap-northeast-2
+aws cloudformation describe-stacks --stack-name busan-guide-base --region ap-northeast-2 --query "Stacks[0].Outputs[?OutputKey=='DataAccessPolicyArn'||OutputKey=='SessionsTableName'].[OutputKey,OutputValue]" --output text
+aws cloudformation describe-stack-resources --stack-name busan-guide-agent --region ap-northeast-2 --query "StackResources[?ResourceType=='AWS::IAM::Role'].PhysicalResourceId" --output text
+aws iam list-attached-role-policies --role-name <위에서 나온 역할 이름>
+```
+실제 DynamoDB 저장소 테스트(매번 새 ID `plan-itest-*` 를 쓰고 끝나면 지운다): `backend/tests/test_storage_aws.py` 머리말 참고.

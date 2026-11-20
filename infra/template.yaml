@@ -24,6 +24,15 @@ Parameters:
     AllowedValues: ["0", "1"]
     Description: 1이면 Bedrock을 호출하지 않고 고정 응답 (배포 자체만 먼저 확인할 때)
 
+  DataAccessPolicyArn:
+    Type: String
+    AllowedPattern: "arn:aws[a-z-]*:iam::[0-9]{12}:policy/.+"
+    Description: busan-guide-base 스택 Outputs 의 DataAccessPolicyArn (busan-guide-data-access). deploy.ps1 이 조회해서 넘긴다
+  DynamoDbTable:
+    Type: String
+    Default: busan-guide-sessions
+    Description: 일정·세션을 저장하는 DynamoDB 단일 테이블 이름. 런타임 환경 변수 DYNAMODB_TABLE 로 들어간다. 테이블은 busan-guide-base 스택이 만든다
+
 Resources:
   AgentExecutionRole:
     Type: AWS::IAM::Role
@@ -42,6 +51,8 @@ Resources:
                 aws:SourceAccount: !Ref AWS::AccountId
               ArnLike:
                 aws:SourceArn: !Sub arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*
+      ManagedPolicyArns:
+        - !Ref DataAccessPolicyArn
       Policies:
         - PolicyName: AgentRuntimeExecution
           PolicyDocument:
@@ -114,6 +125,7 @@ Resources:
       EnvironmentVariables:
         BEDROCK_MODEL_ID: !Ref BedrockModelId
         FAKE_LLM: !Ref FakeLlm
+        DYNAMODB_TABLE: !Ref DynamoDbTable
 
 Outputs:
   AgentRuntimeArn:
