@@ -29,8 +29,11 @@ from app.models.api import (
     ErrorBody,
     ErrorResponse,
     PlanResponse,
+    SpeakRequest,
+    SpeakResponse,
 )
 from app.models.plan import Place, Plan
+from app.speech import polly
 from app.storage import InvalidDataError, PlanNotFoundError, StorageError
 
 logger = logging.getLogger(__name__)
@@ -171,6 +174,14 @@ def _route(event: dict) -> BaseModel:
             if not plan_id:
                 raise ApiError(422, "validation_error", "plan_id 쿼리 파라미터가 필요합니다.")
             return storage.get_alerts(plan_id)  # 없는 일정은 PlanNotFoundError → 404, 점검 전이면 checked_at null
+
+        case "POST", ["speak"]:
+            request = _parse(event, SpeakRequest)
+            try:
+                audio = polly.synthesize(request.text, request.language)
+            except polly.SpeechError:  # 사유는 polly 가 로그에 남긴다. 계약 오류 표에 502 가 없어 500 으로 답한다
+                raise ApiError(500, "internal_error", "음성을 만들지 못했습니다.")
+            return SpeakResponse(content_type="audio/mpeg", audio_base64=base64.b64encode(audio).decode("ascii"))
 
         case _:
             raise ApiError(404, "not_found", f"{method} {event['rawPath']} 경로가 없습니다.")
