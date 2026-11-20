@@ -49,6 +49,13 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - 키는 환경 변수 `KAKAO_REST_API_KEY`로만 읽습니다. 커밋하거나 로그에 남기지 마십시오.
 - 테스트는 `tests/conftest.py`의 `no_kakao`가 실제 호출을 막습니다. 카카오 성공은 `tests/test_return_options_kakao.py`에서 직접 만든 경로로만 확인합니다.
 
+## 카카오 로컬 키워드 검색 (실시간 호출)
+- API: 카카오 로컬 키워드 검색 `https://dapi.kakao.com/v2/local/search/keyword.json` (`backend/app/tools/activities.py`의 `find_activities`).
+- `GET /activities?area=&kind=`(채팅 놀거리 카드)에서만 호출합니다. 요청 한 번에 1회, 5초 제한, 최대 5곳이며 다시 시도하지 않습니다. 주소가 "부산 "으로 시작하는 결과만 돌려줍니다.
+- 결과를 저장·캐시하지 않습니다. 운영시간·사진·평점은 응답에 없으므로 답변에서 말하지 마십시오.
+- 키가 없으면 `503 activities_unavailable`, 호출 실패는 `502`입니다. `USE_MOCK=1`이어도 키가 있으면 호출합니다.
+- 이 결과는 places.json의 장소가 아닙니다. place_id로 쓰거나 일정 도구에 넘기지 마십시오.
+
 ## 행사 (한국관광공사 행사정보)
 - API: 한국어·영어·일본어·중국어 간체·번체 TourAPI `searchFestival2` (`lDongRegnCd=26`, `eventStartDate`, `eventEndDate`). 서비스는 `KorService2`, `EngService2`, `JpnService2`, `ChsService2`, `ChtService2`입니다.
 - `uv run --env-file .env python -m scripts.fetch_events --reuse-raw`가 2026-11 기준 목록을 언어별 1회씩 받아 `backend/app/data/events.json`에 저장합니다. 같은 요청의 raw는 재사용하고, `--offline`은 호출 없이 다시 만듭니다.
@@ -128,7 +135,7 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - `backend/app/data/places.json`의 좌표, 다국어 이름, 가까운 역은 아직 검증하지 않은 값입니다. 공공데이터로 교체하기 전에는 사실처럼 단정하지 마십시오.
 
 ## 금지 사항
-- 카카오 대중교통 경로 API 결과를 저장·캐시하지 마십시오(파일·DynamoDB·메모리 캐시 모두, 오프라인 캐시 모드 포함). 실시간 호출만 허용되며, 호출하는 곳은 `get_return_options` 하나입니다.
+- 카카오 API 결과를 저장·캐시하지 마십시오(파일·DynamoDB·메모리 캐시 모두, 오프라인 캐시 모드 포함). 실시간 호출만 허용되며, 대중교통 경로는 `get_return_options`, 로컬 키워드 검색은 `GET /activities`에서만 호출합니다.
 - 네이버 블로그·검색 결과를 수집하거나 AI로 가공하지 마십시오.
 - 공공데이터 원문을 화면에 표시할 때 출처를 함께 표기하십시오. 백엔드는 출처를 `sources`에 담습니다.
 
