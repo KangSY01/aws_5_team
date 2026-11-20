@@ -12,6 +12,21 @@ const translations = {
 };
 
 const genders = ["", "woman", "man"];
+
+// 식사 제한 (D). 값은 백엔드 Profile.diet 로 그대로 보낸다 (영어 토큰, 모델이 읽는다).
+// 종교는 묻지 않는다: 추천에 필요한 것은 먹지 않는 음식이다. 힌두교 신자는 no beef 를 고르면 된다.
+export const dietOptions = ["halal", "no pork", "no beef", "vegetarian", "vegan"];
+const dietCopy = {
+  ko: ["식사 제한", "해당하는 것을 모두 골라 주세요.", ["할랄", "돼지고기 제외", "소고기 제외", "채식", "비건"]],
+  en: ["Dietary needs", "Choose all that apply.", ["Halal", "No pork", "No beef", "Vegetarian", "Vegan"]],
+  ja: ["食事の制限", "当てはまるものをすべて選んでください。", ["ハラール", "豚肉なし", "牛肉なし", "ベジタリアン", "ヴィーガン"]],
+  "zh-Hans": ["饮食限制", "请选择所有适用项。", ["清真", "不吃猪肉", "不吃牛肉", "素食", "纯素"]],
+  "zh-Hant": ["飲食限制", "請選擇所有適用項目。", ["清真", "不吃豬肉", "不吃牛肉", "素食", "純素"]],
+};
+export function dietLabels(language) {
+  const [, , names] = dietCopy[language] ?? dietCopy.en;
+  return Object.fromEntries(dietOptions.map((value, index) => [value, names[index]]));
+}
 const photoCopy = {
   ko: ["사진 추가", "사진 변경", "삭제", "사진을 열 수 없어요. 다른 사진을 골라 주세요."],
   en: ["Add photo", "Change photo", "Remove", "Couldn’t open this photo. Choose another one."],
@@ -49,7 +64,14 @@ export default function TravelerProfileForm({ language, initial, firstVisit = fa
   const photoInput = useRef(null);
   const [loadingPhoto, setLoadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState(false);
-  const [draft, setDraft] = useState({ name: "", age: "", gender: "", country: "", notes: "", ...initial, gender: genders.includes(initial?.gender) ? initial.gender : "" });
+  const [draft, setDraft] = useState({ name: "", age: "", gender: "", country: "", notes: "", ...initial,
+    gender: genders.includes(initial?.gender) ? initial.gender : "",
+    diet: Array.isArray(initial?.diet) ? initial.diet.filter((value) => dietOptions.includes(value)) : [] });
+  const [dietTitle, dietHint, dietNames] = dietCopy[language] ?? dietCopy.en;
+  function toggleDiet(value) {
+    setDraft((current) => ({ ...current, diet: current.diet.includes(value)
+      ? current.diet.filter((item) => item !== value) : [...current.diet, value] }));
+  }
 
   async function selectPhoto(event) {
     const file = event.target.files?.[0];
@@ -76,7 +98,7 @@ export default function TravelerProfileForm({ language, initial, firstVisit = fa
   return <form className="traveler-profile-form" onSubmit={(event) => {
     event.preventDefault();
     if (loadingPhoto) return;
-    onSave(Object.fromEntries(Object.entries(draft).map(([key, value]) => [key, value.trim()])));
+    onSave(Object.fromEntries(Object.entries(draft).map(([key, value]) => [key, typeof value === "string" ? value.trim() : value])));
   }}>
     <p className="traveler-profile-optional">{copy.optional}</p>
     <div className="traveler-profile-photo">
@@ -99,6 +121,18 @@ export default function TravelerProfileForm({ language, initial, firstVisit = fa
       </select></label>
     </div>
     <label>{copy.country}<input {...field("country")} autoComplete="off" maxLength={80} /></label>
+    <fieldset className="traveler-diet">
+      <legend>{dietTitle}</legend>
+      <p className="traveler-profile-optional">{dietHint}</p>
+      <div className="traveler-diet-options">
+        {dietOptions.map((value, index) => (
+          <label key={value} className="traveler-diet-chip">
+            <input type="checkbox" checked={draft.diet.includes(value)} onChange={() => toggleDiet(value)} />
+            <span>{dietNames[index]}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
     <label>{copy.notes}<textarea {...field("notes")} rows={2} maxLength={1000} placeholder={copy.example} /></label>
     <footer>
       <button type="button" onClick={onCancel}>{firstVisit ? copy.later : copy.cancel}</button>

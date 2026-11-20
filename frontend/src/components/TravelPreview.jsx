@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import TravelerProfileForm, { travelerCopy } from "./TravelerProfile.jsx";
+import TravelerProfileForm, { dietLabels, travelerCopy } from "./TravelerProfile.jsx";
 import { ChatSources, CrowdLegend, RainNotice } from "../features/data-notices";
 import { getTravelCopy, languages } from "../constants/travelCopy.js";
 import { closeLandmark, mapLandmarks } from "../constants/mapLandmarks.js";
@@ -216,7 +216,9 @@ function ProfilePage({ copy, language, onLanguageChange, demoMode, albumRevision
   const labels = travelerCopy(language);
   const { name, age, gender, country, photo } = traveler;
   const ageLabel = age ? new Intl.NumberFormat(language, { style: "unit", unit: "year", unitDisplay: "long" }).format(Number(age)) : "";
-  const details = [ageLabel, gender && labels.genderNames[gender], country].filter(Boolean);
+  const dietNames = dietLabels(language);
+  const diet = (Array.isArray(traveler.diet) ? traveler.diet : []).map((value) => dietNames[value]).filter(Boolean);
+  const details = [ageLabel, gender && labels.genderNames[gender], country, ...diet].filter(Boolean);
   const heading = useRef(null);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, []);
 
@@ -280,6 +282,8 @@ function formatDate(date, language) {
 }
 
 export default function TravelPreview({ night = false, demoMode = false, traveler = {}, onTravelerSave } = {}) {
+  // 여행자 프로필의 식사 제한. 모든 채팅·추천 요청의 profile.diet 로 보낸다
+  const travelerDiet = Array.isArray(traveler?.diet) ? traveler.diet : [];
   const suffix = demoMode ? ".demo" : "";
   const courseKey = courseStorageKey + suffix;
   const activeTripKey = activeTripStorageKey + suffix;
@@ -731,7 +735,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
         ].filter(Boolean).join("\n");
         const chat = runDemo
           ? await sendTravelMessage(demoItineraryPrompt, "ja", null)
-          : await sendTravelMessage(message, language, null, { interests });
+          : await sendTravelMessage(message, language, null, { interests, diet: travelerDiet });
         stage = "lookup";
         const saved = await fetchPlan(chat.plan_id);
         if (!saved.plan.stops.length) {
@@ -854,7 +858,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
       }
       if (!editStop) {
         if (liveApi) {
-          const chat = await sendTravelMessage(draft, language, generalChatSession.current);
+          const chat = await sendTravelMessage(draft, language, generalChatSession.current, { diet: travelerDiet });
           generalChatSession.current = { session_id: chat.session_id, plan_id: chat.plan_id };
           let answer = chat.answer;
           let answerLanguage = chat.language ?? language;
@@ -889,7 +893,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
           "Stop: " + editStop.stop_id + " (" + resolvePlaceName(editStop, placesById, language).name + ")",
           "Traveler request: " + message,
         ].join("\n");
-        const chat = await sendTravelMessage(instruction, language, { session_id: course.session_id, plan_id: plan.plan_id }, plan.profile);
+        const chat = await sendTravelMessage(instruction, language, { session_id: course.session_id, plan_id: plan.plan_id }, { ...plan.profile, diet: travelerDiet });
         requestStage = "GET /plan";
         const result = await fetchPlan(chat.plan_id);
         const next = { ...course, ...result, session_id: chat.session_id };
