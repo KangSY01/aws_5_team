@@ -85,7 +85,8 @@ def test_카카오_성공은_출발역별_한번씩_병렬_조회하고_ranked�
     assert result["baseline"]["legs"][0] == {
         "mode": "SUBWAY", "minutes": 40, "distance_m": 16000, "lines": ["2호선"],
         "from_name": "해운대", "to_name": "서면",
-        "from_names": {"ko": "해운대", "en": "Haeundae"}, "to_names": {"ko": "서면", "en": "Seomyeon"},
+        "from_names": {"ko": "해운대", "en": "Haeundae", "ja": "海雲台", "zh-Hans": "海云台", "zh-Hant": "海雲台"},
+        "to_names": {"ko": "서면", "en": "Seomyeon", "ja": "西面", "zh-Hans": "西面", "zh-Hant": "西面"},
     }
 
     by_station = {option["station"]: option for option in result["options"] if option["type"] == "walk_to_station"}
@@ -179,11 +180,12 @@ def test_카카오_승하차_이름에_역_표의_언어별_이름을_붙인다(
     assert [(leg["from_names"], leg["to_names"]) for leg in got] == [
         ({}, {}),
         ({"ko": "해운대역"}, {"ko": "센텀시티역.벡스코"}),
-        ({"ko": "센텀시티", "en": "Centum City"}, {"ko": "서면역", "en": "Seomyeon"}),
+        # 역 표의 names 에 있는 언어만 붙는다. 센텀시티는 출처에 중국어 칸이 비어 있어 ja 만 있다
+        ({"ko": "센텀시티", "en": "Centum City", "ja": "センタムシティ"},
+         {"ko": "서면역", "en": "Seomyeon", "ja": "西面", "zh-Hans": "西面", "zh-Hant": "西面"}),
         ({"ko": "벡스코"}, {"ko": "오시리아"}),
     ]
-    # 역 표에는 한국어·영어 이름만 있다. 없는 언어(ja, zh-Hans, zh-Hant)는 만들지 않는다
-    assert all(set(names) <= {"ko", "en"} for leg in got for names in (leg["from_names"], leg["to_names"]))
     assert all(option["legs"][2]["to_names"]["en"] == "Seomyeon" for option in result["options"])
-    assert result["ranked"][0]["option"]["legs"][2]["from_names"] == {"ko": "센텀시티", "en": "Centum City"}
+    assert result["ranked"][0]["option"]["legs"][2]["from_names"]["ja"] == "センタムシティ"
     assert json.loads(json.dumps(result)) == result
+

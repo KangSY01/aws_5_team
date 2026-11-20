@@ -173,7 +173,9 @@ def _kakao_routes_by_station(origins: list[dict], destination: dict) -> dict[str
 
 
 def _stop_names(name: object, mode: object, stations: dict[str, dict]) -> dict[str, str]:
-    """카카오 승하차 이름의 언어별 이름. 장소의 names 처럼 있는 언어만 넣는다 (역 표에는 한국어·영어만 있다).
+    """카카오 승하차 이름의 언어별 이름. 장소의 names 처럼 있는 언어만 넣는다.
+
+    en 은 역 표의 station, ja·zh-Hans·zh-Hant 는 역 표의 names 에 있을 때만 넣는다 (지금은 2호선 역 일부).
 
     지하철 구간의 이름만 '역'을 떼고 역 표의 name_ko 와 비교한다. 카카오는 "서면"처럼 '역' 없이 준다.
     버스 정류장과 역 표에 없는 역은 한국어 원문만 넣고, 이름이 없으면(도보 구간) 빈 dict 다.
@@ -182,10 +184,10 @@ def _stop_names(name: object, mode: object, stations: dict[str, dict]) -> dict[s
         return {}
     names = {"ko": name}
     if mode == "SUBWAY":
-        by_ko = {station["name_ko"].removesuffix("역"): station["station"] for station in stations.values()}
-        english = by_ko.get(name.strip().removesuffix("역"))
-        if english:
-            names["en"] = english
+        by_ko = {station["name_ko"].removesuffix("역"): station for station in stations.values()}
+        station = by_ko.get(name.strip().removesuffix("역"))
+        if station:
+            names = {**names, "en": station["station"], **station.get("names", {})}
     return names
 
 
@@ -430,7 +432,8 @@ def get_return_options(date: str, place_id: str | None = None, event_name: str |
             "walk_meters", "legs": [{"mode", "minutes", "distance_m", "lines", "from_name", "to_name",
             "from_names", "to_names"}]}. from_name and to_name are Kakao's Korean stop names. from_names and to_names
             map a language to the same stop's name and hold only the languages in the data: "ko" always, plus "en"
-            when a SUBWAY leg's stop is in the station table. Use the user's language when it is present, otherwise
+            when a SUBWAY leg's stop is in the station table, plus "ja", "zh-Hans", "zh-Hant" where the station
+            table has them (line 2 stations only). Use the user's language when it is present, otherwise
             the Korean name as it is; never translate or invent a stop name. Bus stops have only "ko"; legs without
             a stop name (walking) have {}.
         Times are ISO strings (+09:00). options and ranked are empty and baseline.congested is false when the planned

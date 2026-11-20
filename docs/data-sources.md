@@ -14,6 +14,7 @@
 | 관광지 집중률 | 한국관광공사 관광지 집중률 방문자 추이 예측 (TatsCnctrRateService) | `congestion.json` 23곳 | `get_crowd` | 2026-11-18 ~ 12-17 일 단위 예측 |
 | 날씨 | 기상청 단기예보 조회서비스 (VilageFcstInfoService_2.0) | 실시간 조회 + DynamoDB 캐시 | `get_weather` | 약 3일 이내만 제공 |
 | 지하철역 이름·좌표·노선 | 부산교통공사 도시철도역사정보 (파일데이터) | `stations.json` 108곳 | `get_transit_info`, `get_return_options` | 1~4호선. 동해선·경전철 없음 |
+| 2호선 역의 일본어·중국어(간체·번체) 역명 | 국가철도공단_도시광역철도 부산 2호선 역명_20260630 (공공데이터포털 파일데이터, 이용허락범위 제한 없음). 원본 `krna_busan_line2_station_names_20260630.xlsx` | `stations.json` 의 `names` (ja 40곳, zh-Hans·zh-Hant 39곳), 중간 파일 `scripts/busan_line2_station_names.csv` | `get_return_options` (카카오 지하철 구간의 `from_names`·`to_names`) | 기준일 2026-06-30. 2호선만. 역명 표기가 다른 3곳(시립미술관, 경성대부경대, 국제금융센터부산은행)과 2호선 밖 역은 넣지 않음 |
 | 지정 역·방향 막차 | [부산교통공사 부산 도시철도 열차시각표 조회 서비스](https://www.data.go.kr/data/15000522/openapi.do) | `last_trains.json` (API 승인 후 생성) | `get_return_options` | 현재 키는 미승인(`resultCode=12`). 파일이 없으면 `last_train_unknown` 유지 |
 | 지도 | © OpenStreetMap contributors | — | 프론트엔드 MapLibre | — |
 
@@ -57,6 +58,8 @@ uv run python -m scripts.build_travel_times
 uv run python -m scripts.build_curation
 uv run python -m scripts.build_stations
 ```
+
+2호선 역명 XLSX를 새로 받았을 때만 `uv run --with openpyxl python -m scripts.extract_station_names`로 `busan_line2_station_names.csv`를 다시 만들고(openpyxl은 의존성에 넣지 않음) `build_stations`를 돌립니다.
 
 장소를 추가할 때는 `place_seeds.json`에 시드를 넣고 `fetch_places --reuse-raw`(기준 파일은 기본값인 `places.json`)로 돌립니다. `fetch_places`는 `backfill_names`가 보충한 이름의 출처를 다시 만들지 못하므로, `places_sources.json`은 기존 장소 항목을 실행 전 값으로 되돌리고 새 장소 항목만 더합니다(`places.json`·`places_review.csv`도 새 장소분만 뒤에 붙임).
 
