@@ -55,3 +55,16 @@ RAIN_POINTS = {"medium": 1, "high": 2}
 ROUND_MIN = 10  # 다음 Stop 시작 시각을 이 단위로 올림 (tools/schedule.py 와 같은 규칙)
 FALLBACK_TRAVEL_MIN = 30  # 이동 시간을 모를 때 (tools/schedule.py 와 같은 값)
 MAX_ORDER_PLACES = 7  # 이보다 장소가 많으면 모든 순서를 채점하지 않는다 (6! = 720 순서까지)
+
+# ---------- 귀가 경로 점수 (rank_routes, 장면 7) ----------
+# 비용(분 환산) = 이동 분 × W_TRAVEL + 일찍 떠나는 분 × W_EARLY + 늦게 출발해 기다리는 분 × W_WAIT
+#              + 도보 분 × W_WALK + 경고·혼잡 벌점. 점수 = -비용. 높을수록 좋다.
+ROUTE_W_TRAVEL = 1.0  # 출발 후 도착역까지 1분당 (baseline.minutes + extra_min)
+ROUTE_W_EARLY = 1.0  # 계획 출발(행사 종료)보다 일찍 떠나는 1분당. 행사를 덜 본다
+ROUTE_W_WAIT = 0.5  # 계획 출발보다 늦게 떠나는 1분당. 근처에서 쉬며 기다릴 수 있어 이동보다 가볍게 본다
+ROUTE_W_WALK = 0.5  # 다른 역까지 걷는 1분당 (이동 분에 이미 들어 있고, 밤길 도보 부담을 더한다)
+ROUTE_PENALTY = {
+    "crowded": 30.0,  # avoids_congestion 이 false
+    "last_train_unknown": 20.0,  # 막차 표가 없어 탈 수 있는지 모름
+}
+ROUTE_EXCLUDE_WARNINGS = frozenset({"last_train_missed"})  # 막차를 놓치는 안은 후보에서 뺀다
