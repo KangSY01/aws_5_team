@@ -46,6 +46,7 @@ from app.prompts import Mode, build_system_prompt
 from app.storage import SessionNotFoundError, SessionState
 from app.tools import lookup
 from app.tools.plan_edit import PlanEditor
+from app.tools.return_options import station_table
 
 logger = logging.getLogger(__name__)
 
@@ -333,6 +334,30 @@ def _persist(chat: _Chat, plan: Plan | None) -> None:
         storage.link_plan(chat.session.session_id, plan.plan_id)
 
 
+def _return_routes(chat: _Chat) -> dict | None:
+    for output in reversed(chat.recorder.outputs):
+        data = output.data
+        if output.name != "get_return_options" or not isinstance(data, dict) or not data.get("ranked"):
+            continue
+        stations = station_table()
+
+        def station(name):
+            row = stations[name]
+            return {"lat": row["lat"], "lng": row["lng"],
+                    "names": {"ko": row["name_ko"], "en": name, **row.get("names", {})}}
+
+        return {
+            "origin_place_id": data["origin"]["place_id"],
+            "destination": station(data["destination"]["station"]),
+            "options": [
+                {"station": station(option["station"]), "travel_min": ranked["travel_min"], "walk_min": option["walk_min"],
+                 "depart_at": option["depart_at"], "time_source": option["time_source"]}
+                for ranked in data["ranked"] if (option := ranked["option"])["station"] in stations
+            ],
+        }
+    return None
+
+
 def _finish(chat: _Chat, model_text: str) -> ChatResponse:
     language = chat.language
     plan, notice, changes = _outcome(chat)
@@ -365,6 +390,7 @@ def _finish(chat: _Chat, model_text: str) -> ChatResponse:
                 "language": language,
                 "sources": [s.model_dump() for s in chat_answer.build_sources(chat.recorder.outputs, referenced, language)],
                 "plan_changes": [c.model_dump() for c in changes],
+                "return_routes": _return_routes(chat),
                 # v0.3: PlaceRanker 가 이번 요청에서 매긴 점수 (다시 계산하지 않는다). 비면 ChatResponse 가 키를 뺀다
                 "score_breakdown": chat.ranker.score_breakdown() if chat.ranker else [],
             }

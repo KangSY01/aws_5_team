@@ -575,7 +575,7 @@ Schedule Guardian 으로 일정을 점검한다. LLM 을 호출하지 않는다.
 
 ### POST /voice/url
 
-브라우저가 Transcribe 스트리밍에 직접 연결할 WebSocket presigned URL 을 발급한다. 인식된 문장은 프론트엔드가 `POST /chat` 의 `message` 로 보낸다.
+브라우저가 Transcribe 스트리밍에 직접 연결할 WebSocket presigned URL 을 발급한다. AI 채팅은 인식 결과를 채팅 입력에, 음성 번역은 번역 원문에 표시한다.
 
 요청 (`VoiceUrlRequest`)
 
@@ -595,8 +595,23 @@ Schedule Guardian 으로 일정을 점검한다. LLM 을 호출하지 않는다.
 ```
 
 - `language` 를 Transcribe 언어 코드로 바꾸는 일은 서버가 한다 (`backend/app/voice/languages.py`):
-  `en` → `en-US`, `ja` → `ja-JP`, `zh-Hans` → `zh-CN`(간체로 인식), `zh-Hant` → `zh-TW`(번체로 인식).
+  `ko` → `ko-KR`, `en` → `en-US`, `ja` → `ja-JP`, `zh-Hans` → `zh-CN`(간체로 인식), `zh-Hant` → `zh-TW`(번체로 인식).
 - 프론트엔드는 `sample_rate`, `media_encoding` 에 맞춰 마이크 오디오를 보낸다 (16비트 PCM 리틀 엔디언, 모노).
 - `url` 은 `expires_in`(최대 300초) 안에 연결을 시작해야 하고, 녹음할 때마다 새로 받는다. 서버는 서명만 하고 오디오를 받지 않는다.
 - 오류: 지원하지 않는 `language` 는 `422 validation_error`, 서버 설정·자격 증명 문제는 `500 internal_error`.
 - 브라우저 연결 방법(이벤트 스트림 인코딩, 인식 결과 처리)은 `docs/voice-input.md` 를 따른다.
+
+### POST /translate
+
+요청은 `{ "q": "안녕하세요", "source": "ko", "target": "ja" }`, 응답은 `{ "translatedText": "こんにちは" }`다.
+지원 언어는 `ko`, `en`, `ja`, `zh-Hans`, `zh-Hant`다. Lambda 실행 역할에 `translate:TranslateText`가 필요하다. 제공자 오류는 502다.
+
+### POST /routes/pedestrian
+
+요청은 `{ "origin": { "lat": 35.158, "lng": 129.160 }, "destination": { "lat": 35.163, "lng": 129.158 } }`다.
+응답 `paths`는 구간별 WGS84 `[경도, 위도]` 점 배열의 목록이다. TMAP 사용 권한이 있는 앱 키를 Lambda 환경의 `TMAP_APP_KEY`에 설정한다. 좌표를 조회할 수 없거나 키가 없으면 503이다.
+
+### POST /chat 응답의 return_routes
+
+`get_return_options`가 귀가 후보를 찾은 경우에만 `return_routes`가 포함된다. `origin_place_id`, 도착역 `destination`, 순위순 후보 `options`로 구성된다.
+각 역은 `names`, `lat`, `lng`를 담고, 각 후보에는 출발역 `station`, `depart_at`, `travel_min`, `walk_min`, `time_source`(`kakao` 또는 `estimate`)가 있다. 지도에서 출발역까지의 도보 선은 별도로 `POST /routes/pedestrian`에서 조회한다.

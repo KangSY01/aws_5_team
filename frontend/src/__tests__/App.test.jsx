@@ -56,6 +56,39 @@ it("opens general AI chat without an itinerary and continues the same conversati
   expect(localStorage.getItem("busannow.course")).toBeNull();
 });
 
+it("opens a walking path from a structured return option in chat", async () => {
+  vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+  const pathRequest = vi.fn();
+  vi.stubGlobal("fetch", async (url, request) => {
+    if (url.endsWith("/chat")) return Response.json({
+      session_id: "return-session", plan_id: "return-plan", language: "en", answer: "Try Dongbaek station.",
+      return_routes: {
+        origin_place_id: "haeundae-beach",
+        destination: { names: { en: "Seomyeon" } },
+        options: [{ station: { names: { en: "Dongbaek" }, lat: 35.161484, lng: 129.147897 },
+          travel_min: 51, depart_at: "2026-11-28T22:00:00+09:00", time_source: "kakao" }],
+      },
+    });
+    if (url.endsWith("/routes/pedestrian")) {
+      pathRequest(JSON.parse(request.body));
+      return Response.json({ paths: [[[129.16, 35.16], [129.147897, 35.161484]]] });
+    }
+    return Response.json({ events: [] });
+  });
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Chat", exact: true }));
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "How do I get back after the festival?" } });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  const walk = await screen.findByRole("button", { name: "Show walking route" });
+  expect(screen.getByText("Dongbaek → Seomyeon")).toBeVisible();
+  fireEvent.click(walk);
+  await waitFor(() => expect(document.querySelector(".travel-preview")).toHaveAttribute("data-sheet", "closed"));
+  expect(pathRequest).toHaveBeenCalledWith(expect.objectContaining({
+    destination: { lat: 35.161484, lng: 129.147897 },
+  }));
+  expect(document.querySelector(".leaflet-control-attribution")).toHaveTextContent("© TMAP");
+});
+
 it("answers a known landmark question in demo chat without a selected stop", async () => {
   render(<App />);
   fireEvent.click(screen.getByRole("button", { name: "Chat", exact: true }));
@@ -298,6 +331,10 @@ it("shows Korean names for AWS places missing Korean and preserves other languag
   expect(resolvePlaceName(place, places, "ko").name).toBe("부산시민공원");
   expect(resolvePlaceName(place, places, "ja").name).toBe("釜山市民公園");
   place.names.ko = "서버가 제공한 한국어 이름";
+  const cinema = { place_id: "busan-cinema-street", names: { en: "Busan Cine Road", ja: "釜山映画の通り" } };
+  const alternatives = new Map([[cinema.place_id, cinema]]);
+  expect(resolvePlaceName(cinema, alternatives, "ko").name).toBe("부산 영화의 거리");
+  expect(resolvePlaceName(cinema, alternatives, "en").name).toBe("Busan Cine Road");
   expect(resolvePlaceName(place, places, "ko").name).toBe(place.names.ko);
 });
 

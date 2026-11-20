@@ -7,6 +7,7 @@ import { mapEventName } from "../api/eventsClient.js";
 import { stopDate } from "../lib/itineraryTiming.js";
 import RegionMap from "./RegionMap.jsx";
 import { addLandmarkLayer } from "./mapLandmarkLayer.js";
+import { fetchPedestrianPaths } from "../api/pedestrianClient.js";
 
 const tileOverride = import.meta.env.VITE_MAP_TILE_URL;
 const osmTileUrl = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -22,7 +23,7 @@ const eventIcons = {
   event: "M5 5h14v15H5zm3-3v6m8-6v6M5 10h14",
 };
 
-export default function BusanMap({ plan, places, events, onEventSelect, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, focusRequest, regionPicker }) {
+export default function BusanMap({ plan, places, events, onEventSelect, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, focusRequest, regionPicker, liveRoutes, returnPaths }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const [locationControl, setLocationControl] = useState(null);
@@ -143,8 +144,10 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
   }, []);
 
   useEffect(() => {
-    if (!visitSegments.length) return;
-    const line = L.polyline(visitSegments, {
+    const group = L.layerGroup().addTo(mapRef.current);
+    const request = new AbortController();
+    for (const segment of visitSegments) {
+      const line = L.polyline(segment, {
         className: "busan-visit-line",
         color: "#387687",
         weight: 2.5,
@@ -152,9 +155,30 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
         dashArray: "2 6",
         lineCap: "round",
         interactive: false,
-    }).addTo(mapRef.current);
+      }).addTo(group);
+      const [origin, destination] = segment;
+      if (!liveRoutes || (origin[0] === destination[0] && origin[1] === destination[1])) continue;
+      fetchPedestrianPaths(origin, destination, request.signal).then((paths) => {
+        if (request.signal.aborted) return;
+        group.removeLayer(line);
+        L.polyline(paths, { ...line.options, dashArray: "5 5", weight: 3, attribution: "© TMAP" }).addTo(group);
+      }).catch(() => {});
+    }
+    return () => {
+      request.abort();
+      group.remove();
+    };
+  }, [visitSegments, liveRoutes]);
+
+  useEffect(() => {
+    if (!returnPaths?.length) return;
+    const map = mapRef.current;
+    const line = L.polyline(returnPaths, {
+      color: "#145440", weight: 4, dashArray: "6 5", interactive: false, attribution: "© TMAP",
+    }).addTo(map);
+    map.fitBounds(line.getBounds(), { padding: [42, 82], maxZoom: 16, animate: false });
     return () => line.remove();
-  }, [visitSegments]);
+  }, [returnPaths]);
 
   useEffect(() => {
     const map = mapRef.current;

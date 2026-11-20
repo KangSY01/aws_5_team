@@ -4,7 +4,7 @@ import { ChatSources, RainNotice } from "../features/data-notices";
 import { getTravelCopy, languages } from "../constants/travelCopy.js";
 import { closeLandmark, mapLandmarks } from "../constants/mapLandmarks.js";
 import { getPlannerCopy, transportPreferenceIds, durationIds, areaIds } from "../constants/plannerCopy.js";
-import { checkTravelPlan, delayTravelPlan, fetchPlan, hasConfiguredPlanApi, PlanClientError, saveTravelPlan, sendTravelMessage } from "../api/planClient.js";
+import { checkTravelPlan, delayTravelPlan, fetchPlan, fetchTravelAlerts, hasConfiguredPlanApi, PlanClientError, saveTravelPlan, sendTravelMessage } from "../api/planClient.js";
 import { translateText } from "../api/translationClient.js";
 import { findStopAddition, recommendDemo, suggestDemo } from "../lib/demoPlanner.js";
 import { activityTextKey, normalizeActivities } from "../lib/activityPreferences.js";
@@ -20,6 +20,7 @@ import catalogPlaces from "../mocks/places.json";
 import regionalPlaces from "../mocks/regionalPlaces.json";
 import { buildPlacesById, resolvePlaceName } from "../lib/resolvePlaceName.js";
 import BusanMap from "./BusanMap.jsx";
+import ReturnRouteOptions from "./ReturnRouteOptions.jsx";
 import TranslationPage, { PhotoActionIcon, MicIcon, TextActionIcon } from "./TranslationPage.jsx";
 import { getTranslationCopy } from "../constants/translationCopy.js";
 import EmergencyHelp from "./EmergencyHelp.jsx";
@@ -39,6 +40,10 @@ import { saveCompletedTrip } from "../features/trip-poster/album.js";
 import "./travel-preview.css";
 
 const recommendationCatalog = buildPlacesById([...catalogPlaces, ...regionalPlaces]);
+const savedAlertsTitle = {
+  ko: "최근 자동 점검", en: "Last scheduled check", ja: "前回の自動チェック",
+  "zh-Hans": "最近一次自动检查", "zh-Hant": "最近一次自動檢查",
+};
 
 function chatRecommendations(answer, sources, placesById, language) {
   const candidates = new Map();
@@ -288,6 +293,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
   const [messages, setMessages] = useState([]);
   const [guardian, setGuardian] = useState(null);
   const [guardianRefresh, setGuardianRefresh] = useState(0);
+  const [savedAlerts, setSavedAlerts] = useState(null);
   const manualGuardianCheck = useRef(null);
   const [guardianLoading, setGuardianLoading] = useState(false);
   const [guardianActionError, setGuardianActionError] = useState(false);
@@ -301,6 +307,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
   const liveApi = hasConfiguredPlanApi();
   const [selectedId, setSelectedId] = useState(() => course?.plan.stops[0]?.stop_id ?? null);
   const [mapFocus, setMapFocus] = useState(null);
+  const [returnPaths, setReturnPaths] = useState(null);
   const dragStart = useRef(null);
   const root = useRef(null);
   const tabBar = useRef(null);
@@ -316,10 +323,10 @@ export default function TravelPreview({ night = false, demoMode = false, travele
   const languageLabel = copy.languageLabel + ": " + languages[language];
   const plan = course?.plan ?? emptyPlan;
   const liveCourse = liveApi && Boolean(course?.session_id);
-  const showDemoCourse = liveApi && demo.enabled && demo.now === SCENES[0].now;
   const places = course?.places ?? emptyPlaces;
   const placesById = useMemo(() => buildPlacesById(places), [places]);
   const stops = plan.stops;
+  const showDemoCourse = demoMode && !tripStarted && (!stops.length || (liveApi && demo.now === SCENES[0].now));
   const rainIssue = guardian?.plan === plan && guardian.demo === demo
     ? guardian.issues?.find((issue) => issue.type === "rain" && guardian.repairs[issue.issue_id]?.length)
     : null;
@@ -384,6 +391,15 @@ export default function TravelPreview({ night = false, demoMode = false, travele
     void initializeDemo();
     return () => request.abort();
   }, [demoMode, liveApi, courseKey]);
+
+  useEffect(() => {
+    if (!liveCourse || demoMode || baseTab !== "itinerary") return;
+    const request = new AbortController();
+    fetchTravelAlerts(plan.plan_id, request.signal).then((alerts) => {
+      if (!request.signal.aborted) setSavedAlerts({ ...alerts, plan });
+    }).catch(() => {});
+    return () => request.abort();
+  }, [liveCourse, demoMode, baseTab, plan, guardianRefresh]);
 
   useEffect(() => {
     setAlternative(null);
@@ -596,6 +612,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
     setCourse(cleared);
     setSelectedId(null);
     setMapFocus(null);
+    setReturnPaths(null);
     setEditId(null);
     setDraft("");
     setMessages((previous) => previous.filter((message) => !message.result && !message.options));
@@ -830,7 +847,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
           setMessages((previous) => [
             ...previous,
             ...(options.length ? [{ options, readOnly: true, lang: answerLanguage }] : []),
-            { text, sources: chat.sources, lang: answerLanguage, role: "assistant" },
+            { text, sources: chat.sources, returnRoutes: chat.return_routes, lang: answerLanguage, role: "assistant" },
           ]);
         } else {
           const query = activityTextKey(message).replace(/\s/g, "");
@@ -1070,6 +1087,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
       <div className="travel-shell" inert={!isMap} aria-hidden={!isMap}>
         <BusanMap plan={plan} places={places} events={events} onEventSelect={setMapDetail} onLandmarkSelect={setMapDetail}
           language={language} label={copy.map} locationCopy={copy.location}
+          liveRoutes={liveCourse} returnPaths={returnPaths}
           selectedId={selectedId} nextStopId={nextStop?.stop_id} onSelect={setSelectedId} focusRequest={mapFocus}
           regionPicker={regionDraft && {
             selected: regionDraft, onChange: setRegionDraft, copy: plannerCopy,
@@ -1214,6 +1232,9 @@ export default function TravelPreview({ night = false, demoMode = false, travele
                 copy={plannerCopy.placeCards} busy={Boolean(pending)} currentPlan={plan} onConfirm={confirmChatPlace} />;
               if (!message.result) return <Fragment key={index}>
                 {message.text && <p className="chat-bubble" role={message.error ? "alert" : undefined} data-role={message.role} lang={message.lang}>{message.text}</p>}
+                {message.returnRoutes?.options?.length > 0 && <ReturnRouteOptions routes={message.returnRoutes} language={language}
+                  origin={placesById.get(message.returnRoutes.origin_place_id) ?? recommendationCatalog.get(message.returnRoutes.origin_place_id)}
+                  onShow={(paths) => { setReturnPaths(paths); close(); }} />}
                 <ChatSources sources={message.sources} language={language} />
               </Fragment>;
               const { result, target, snapshot } = message;
@@ -1284,6 +1305,22 @@ export default function TravelPreview({ night = false, demoMode = false, travele
                   {undoRepair?.applied === plan && <button type="button" disabled={Boolean(pending)} onClick={undoGuardianRepair}>{copy.guardian.undo}</button>}
                   {(guardian?.error || (guardianActionError && !alternative && !showDelay)) && <p role="alert">{plannerCopy.requestFailed}</p>}
                   {guardian?.issues?.length === 0 && <p role="status">{copy.guardian.clear}</p>}
+                  {!demoMode && savedAlerts?.plan === plan && savedAlerts.checked_at && savedAlerts.issues.length > 0 && (
+                    <div>
+                      <strong>{savedAlertsTitle[language]}</strong>
+                      <ul>
+                        {savedAlerts.issues.map((issue) => {
+                          const stop = stops.find((entry) => entry.stop_id === issue.stop_id);
+                          return stop && <li key={issue.issue_id}>
+                            {resolvePlaceName(stop, placesById, language).name} · {
+                              issue.type === "crowded" && issue.severity === "high" ? copy.guardian.crowdingWarning
+                                : copy.guardian.reasons[issue.type] ?? copy.guardian.warning
+                            }
+                          </li>;
+                        })}
+                      </ul>
+                    </div>
+                  )}
                   {guardian?.plan === plan && guardian.manual && guardian.issues.length > 0 && (
                     <ul className="guardian-check-results">
                       {guardian.issues.map((issue) => {

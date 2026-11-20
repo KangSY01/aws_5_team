@@ -269,3 +269,16 @@ it("refreshes a previously saved demo itinerary when the demo is opened again", 
   expect(JSON.parse(localStorage.getItem("busannow.course.demo")).plan.plan_id).toBe("fresh-demo");
   expect(requests.mock.calls.filter(([url]) => url.endsWith("/chat"))).toHaveLength(1);
 });
+
+it("can regenerate a cleared demo itinerary from another scene without changing its time", async () => {
+  vi.stubEnv("VITE_API_BASE_URL", "");
+  localStorage.setItem("busannow.course.demo", JSON.stringify({ plan: { stops: [] }, places: [] }));
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: /^DEMO/ }));
+  fireEvent.click(screen.getByRole("button", { name: "장면 5 오후 비" }));
+  fireEvent.click(screen.getByRole("button", { name: "Itinerary", exact: true }));
+  expect(screen.queryByRole("button", { name: "1. Huinnyeoul Culture Village" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "장면 1·2 데모 일정 만들기" }));
+  expect(await screen.findByRole("button", { name: "1. Huinnyeoul Culture Village" })).toBeInTheDocument();
+  expect(screen.getByLabelText("기준 시각 (한국 시각)")).toHaveValue("2026-11-28T13:00");
+});

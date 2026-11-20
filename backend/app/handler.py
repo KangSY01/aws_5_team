@@ -19,6 +19,9 @@ import json
 import logging
 from pathlib import Path
 
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
+
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from app import agent, config, storage
@@ -38,6 +41,8 @@ from app.models.api import (
     PlanResponse,
     SpeakRequest,
     SpeakResponse,
+    TextTranslationRequest,
+    TextTranslationResponse,
     VoiceUrlRequest,
 )
 from app.models.plan import Place, Plan
@@ -46,6 +51,7 @@ from app.photo import service as photo
 from app.speech import polly
 from app.storage import InvalidDataError, PlanNotFoundError, StorageError
 from app.tools import events_map
+from app.tools.pedestrian import PedestrianRequest, get_pedestrian_route
 from app.tools.lookup import LookupFailure
 from app.voice import service as voice
 from app.voice.errors import VoiceServiceError
@@ -255,6 +261,33 @@ def _route(event: dict) -> BaseModel:
                 return voice.create_voice_url(request)
             except VoiceServiceError:  # 사유는 app/voice 가 로그에 남긴다
                 raise ApiError(500, "internal_error", "서버 오류가 발생했습니다.")
+
+        case "POST", ["routes", "pedestrian"]:
+            request = _parse(event, PedestrianRequest)
+            try:
+                route = get_pedestrian_route(request)
+            except (OSError, ValueError, KeyError, TypeError):
+                logger.warning("TMAP pedestrian route request failed")
+                route = None
+            if route is None:
+                raise ApiError(503, "route_unavailable", "도보 경로를 불러오지 못했습니다.")
+            return route
+
+        case "POST", ["translate"]:
+            request = _parse(event, TextTranslationRequest)
+            if request.source == request.target:
+                return TextTranslationResponse(translatedText=request.q)
+            language_codes = {"zh-Hans": "zh", "zh-Hant": "zh-TW"}
+            try:
+                result = boto3.client("translate", region_name=config.BEDROCK_REGION).translate_text(
+                    Text=request.q,
+                    SourceLanguageCode=language_codes.get(request.source, request.source),
+                    TargetLanguageCode=language_codes.get(request.target, request.target),
+                )
+            except (BotoCoreError, ClientError):
+                logger.warning("Amazon Translate request failed")
+                raise ApiError(502, "translation_unavailable", "텍스트 번역을 불러오지 못했습니다.")
+            return TextTranslationResponse(translatedText=result["TranslatedText"])
 
         case _:
             raise ApiError(404, "not_found", f"{method} {event['rawPath']} 경로가 없습니다.")
