@@ -1,4 +1,4 @@
-"""docs/api-contract.md 의 v0.2 예시가 Pydantic 모델과 맞는지 확인한다.
+"""docs/api-contract.md 의 v0.2·v0.3 예시가 Pydantic 모델과 맞는지 확인한다.
 
 v0.2 추가 경로는 아직 handler.py 에 없으므로, 계약 문서의 JSON 예시를 모델로 직접 검증한다.
 """
@@ -14,6 +14,7 @@ from app.models.api import (
     AlertsResponse,
     ChatDelta,
     ChatRequest,
+    ChatResponse,
     CheckRequest,
     DelayRequest,
     DelayResponse,
@@ -23,6 +24,7 @@ from app.models.api import (
     PhotoTranslateResponse,
     PhotoUploadUrlRequest,
     PhotoUploadUrlResponse,
+    PlaceScoreBreakdown,
     SpeakRequest,
     SpeakResponse,
     VoiceUrlRequest,
@@ -54,6 +56,7 @@ CASES: dict[str, list[type[BaseModel]]] = {
     "POST /photo/translate": [PhotoTranslateRequest, PhotoTranslateResponse],
     "POST /speak": [SpeakRequest, SpeakResponse],
     "POST /voice/url": [VoiceUrlRequest, VoiceUrlResponse],
+    "POST /chat score_breakdown": [PlaceScoreBreakdown],
 }
 
 
@@ -104,6 +107,43 @@ def test_example_place_ids_exist():
     known = {p["place_id"] for p in places}
     used = set(re.findall(r'"place_id": "([^"]+)"', _section("v0.2 추가 경로") + CONTRACT))
     assert used <= known, f"places.json 에 없는 장소 ID: {used - known}"
+
+
+def test_score_breakdown_is_optional():
+    # v0.3 필드가 없는 v0.2 응답(고정 응답 샘플 포함)도 그대로 통과하고 빈 목록이 된다
+    sample = (Path(__file__).parents[1] / "app" / "data" / "chat_response.json").read_text(encoding="utf-8")
+    response = ChatResponse.model_validate_json(sample)
+    assert response.score_breakdown == []
+    # 비어 있으면 JSON 에 넣지 않는다 (v0.2 응답과 같은 키)
+    assert "score_breakdown" not in response.model_dump(mode="json")
+    assert "score_breakdown" not in json.loads(response.model_dump_json())
+
+
+def test_score_breakdown_is_serialized_when_present():
+    item = {"place_id": "haeundae-beach", "total": 39.4, "breakdown": {"crowd": 0.0}, "notes": ["crowd:high"]}
+    sample = json.loads((Path(__file__).parents[1] / "app" / "data" / "chat_response.json").read_text(encoding="utf-8"))
+    response = ChatResponse.model_validate({**sample, "score_breakdown": [item]})
+    assert json.loads(response.model_dump_json())["score_breakdown"] == [item]
+
+
+def test_score_breakdown_matches_ranking_output():
+    # 랭킹 엔진 결과를 그대로 옮길 수 있다 (excluded 는 하드 필터용이라 응답에 넣지 않는다)
+    import datetime as dt
+
+    from app.models.plan import Profile
+    from app.ranking import rank_places
+    from tests.guardian_fixtures import make_context
+
+    ctx = make_context()
+    ranked = rank_places(["haeundae-beach", "gamcheon-village"], Profile(language="ja", interests=["sea"]), ctx,
+                         day=dt.date(2026, 11, 21))
+    items = [PlaceScoreBreakdown.model_validate(s.model_dump(exclude={"excluded"})) for s in ranked]
+    assert [i.place_id for i in items] == [s.place_id for s in ranked]
+
+
+def test_score_breakdown_total_range():
+    with pytest.raises(ValidationError):
+        PlaceScoreBreakdown.model_validate({"place_id": "haeundae-beach", "total": 101, "breakdown": {}})
 
 
 def test_error_event_uses_error_format():

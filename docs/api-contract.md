@@ -1,4 +1,6 @@
-# API 계약 v0.2
+# API 계약 v0.3
+
+> v0.3 (11/20): `POST /chat` 응답에 빼도 되는 필드 `score_breakdown` 추가. 아래 「v0.3 추가 필드」. 그 밖의 형식은 v0.2 와 같다.
 
 > **변경 규칙**: 이 문서는 공용 파일이다. 뼈대 담당자 리뷰를 거친 PR로만 바꾼다.
 > 바꿀 때는 `backend/app/models/` 의 모델, `backend/app/data/` 의 샘플, 프론트엔드 mock 복사본을 같은 PR에서 함께 맞춘다.
@@ -101,6 +103,7 @@
 - `plan_changes`: 이번 응답에서 일정에 적용된 변경 (`StopChange` 목록). 변경이 없으면 `[]`.
   `before` 가 `null` 이면 추가, `after` 가 `null` 이면 제거.
 - `plan_changes` 가 비어 있지 않으면 프론트엔드는 `GET /plan/{plan_id}` 로 일정을 다시 읽는다.
+- `score_breakdown` (v0.3): 장소 점수 근거. 랭킹을 쓰지 않은 응답에는 위 예시처럼 키가 없다. 형식은 「v0.3 추가 필드」.
 
 ### 스트리밍
 
@@ -355,6 +358,42 @@ Schedule Guardian 으로 일정을 점검한다. LLM 을 호출하지 않는다.
   시각이 바뀐 Stop 은 모두 `changes` 에 들어 있다.
 - `places`: `repairs` 에 새로 등장하는 장소의 `Place` 목록 (교체 후보 표시용). 없으면 `[]`.
 - 해결안을 적용하려면 프론트엔드가 `changes` 를 일정에 반영해 `PUT /plan/{plan_id}` 로 저장한다.
+
+## v0.3 추가 필드
+
+11/20 멘토 피드백 반영 회의 결정. 경로는 늘지 않는다. 경로 후보 2~3안은 계약에 넣지 않고 `/chat` 답변 문장으로 보여 준다.
+
+### POST /chat score_breakdown
+
+`ChatResponse.score_breakdown`: `PlaceScoreBreakdown` 목록. 랭킹 엔진(`backend/app/ranking/`, D)이 이번 답변의 장소 후보에 매긴 점수다. LLM 을 쓰지 않고 코드로 계산한다.
+스트리밍에서는 `done` 에만 들어 있다. 항목 하나의 예시:
+
+```json
+{
+  "place_id": "gwangalli-beach",
+  "total": 67.5,
+  "breakdown": { "interest": 0.5, "crowd": 1.0, "travel": 0.3, "weather": 1.0, "foreigner": 1.0, "dispersal": 0.0 },
+  "notes": ["interest:sea", "travel_min:42"]
+}
+```
+
+- 빼도 되는 필드다. 랭킹을 쓰지 않은 응답(고정 응답, 데모 캐시, 장소를 고르지 않은 답변)에는 이 키가 없다(v0.2 와 같은 응답). 프론트엔드는 키가 없거나 비어 있으면 칩을 그리지 않는다.
+- 순서는 점수 높은 순. 하드 필터(휴무·운영시간 밖)에 걸린 장소는 들어 있지 않다.
+- `total`: 0~100. 항목 가중치는 `backend/app/ranking/weights.py`.
+- `breakdown`: 항목 → 0~1. 1 이 좋은 쪽이다. 판단할 데이터가 없으면 0.5.
+
+  | 키 | 뜻 |
+  |---|---|
+  | `interest` | 프로필 관심사와 큐레이션 태그 겹침 |
+  | `crowd` | 그날 혼잡. Guardian 혼잡 배지와 같은 판단 (`high`=0, `medium`=0.4, `low`=0.75, 없음=1) |
+  | `travel` | 앞 장소에서 이동 시간 (0분=1, 60분 이상=0) |
+  | `weather` | 체류 시간대 비. 실내는 1 |
+  | `foreigner` | 다국어 관광정보 제공 언어 수 / 3 |
+  | `dispersal` | 원도심·서부산이면 1 (경도 기준 근사 규칙) |
+
+- `notes`: 근거 코드 `종류:값`. `interest:<태그>`, `crowd:<심각도>`, `rain:<심각도>`, `travel_min:<분>`, `dispersal:west`, `no_data:<항목>`.
+  화면 문장은 프론트엔드 번역 사전에서 만든다.
+- 집중률은 장소끼리 비교하는 값이 아니므로 `crowd` 는 "그날 그 장소 기준으로 붐비는가"만 뜻한다. 장소 간 혼잡 순위로 표시하지 않는다.
 
 ## v0.2 추가 경로
 

@@ -136,7 +136,8 @@ def test_chat_through_function_url_event_runs_the_real_agent(monkeypatch, api_st
     status, response, headers = call("POST", "/chat", body, base64_body=True)  # Function URL 은 본문을 base64 로 줄 수 있다
 
     assert status == 200 and len(model.requests) == 3
-    assert set(response) == set(ChatResponse.model_fields)
+    # score_breakdown(v0.3)은 비어 있으면 응답에서 빠진다
+    assert set(response) == set(ChatResponse.model_fields) - {"score_breakdown"}
     assert api_storage.get_plan(response["plan_id"]).stops  # 일정이 저장소에 남았다
     assert not any(h.lower().startswith("access-control-") for h in headers)  # CORS 는 Function URL 이 붙인다
 
