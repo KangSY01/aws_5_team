@@ -53,7 +53,7 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - `station`은 CSV의 `name_en` 그대로이며, `places.json`의 `nearest_station`과 정확히 같은 문자열일 때만 연결합니다. 역 이름을 새로 만들지 않습니다.
 - 환승역 6곳(Seomyeon, Yeonsan, Dongnae, Suyeong, Deokcheon, Minam)은 한 항목으로 합치고 좌표는 행들의 평균입니다. `lines`는 참고용이며 노선·환승을 단정하지 마십시오.
 - 동해선·경전철 역은 없습니다. `nearest_station` 중 표에 없는 값은 `OSIRIA`(해동용궁사) 하나이고, 스크립트가 경고로 출력합니다.
-- CSV의 `name_en` 4개는 따옴표가 깨져 있습니다(`Pusan Nat''''''''l Univ.` 등: 부산대, 교대, 경성대·부경대, 부산대양산캠퍼스). 원본 그대로 옮긴 값입니다.
+- CSV의 `name_en` 5개(교대, 부산대, 경성대부경대, 국제금융센터부산은행, 부산대양산캠퍼스)는 원본의 이중 이스케이프(`Nat''''''''l`)를 작은따옴표 1개로 복원했습니다(`Pusan Nat'l Univ.` 등). 다른 값은 원본 그대로입니다.
 - 도구: `get_return_options` (`backend/app/tools/return_options.py`). 역 사이 시간은 이 표의 좌표와 `travel_times.json`의 `rule`로 계산한 추정이며, 역 혼잡과 혼잡 시간대는 규칙 기반 가정입니다(실측·실시간 아님).
 
 ## 날씨 샘플 (`backend/app/data/weather/`)
