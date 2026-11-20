@@ -1041,9 +1041,6 @@
   }
 }
 
-@media (min-width: 900px) {
-  .travel-tabs [data-tab="translation"] { display: none; }
-}
 @media (max-width: 899px) {
   .travel-header { align-items: flex-start; }
   .travel-brand-column { min-width: 0; flex: 1; }
@@ -1531,7 +1528,7 @@
 .activity-unmatched { overflow-wrap: anywhere; }
 
 .translation-method-popover { display: none; }
-@media (max-width: 899px) {
+@media (min-width: 0) { /* 데스크톱에서도 번역 메뉴 표시 */
   .translation-method-popover {
     position: absolute;
     inset-block-end: calc(100% + 7px);
