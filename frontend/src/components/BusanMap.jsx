@@ -1,3 +1,5 @@
+import { fetchRoute } from "../api/routeClient.js";
+import { hasConfiguredPlanApi } from "../api/planClient.js";
 import { eventName, findStopEvent } from "../lib/stopEvent.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -150,19 +152,40 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
     };
   }, []);
 
+  // 실제 이동 경로 (GET /route): 도보는 OSM 길, 대중교통은 카카오 노선. 받기 전·실패한 구간은 직선 점선
+  const [routes, setRoutes] = useState([]);
+  useEffect(() => {
+    setRoutes([]);
+    if (!visitSegments.length || !hasConfiguredPlanApi()) return;
+    const request = new AbortController();
+    Promise.all(visitSegments.map(([from, to]) => fetchRoute(from, to, request.signal).catch(() => null)))
+      .then((result) => { if (!request.signal.aborted) setRoutes(result); });
+    return () => request.abort();
+  }, [visitSegments]);
+
   useEffect(() => {
     if (!visitSegments.length) return;
-    const line = L.polyline(visitSegments, {
-        className: "busan-visit-line",
-        color: "#387687",
-        weight: 2.5,
-        opacity: 1,
-        dashArray: "2 6",
-        lineCap: "round",
-        interactive: false,
-    }).addTo(mapRef.current);
-    return () => line.remove();
-  }, [visitSegments]);
+    const layer = L.layerGroup().addTo(mapRef.current);
+    visitSegments.forEach((segment, index) => {
+      const route = routes[index];
+      const parts = route?.source !== "straight" && route?.segments?.length
+        ? route.segments.map((part) => ({ path: part.path, walking: part.mode === "WALKING" }))
+        : [{ path: segment, walking: true, straight: true }];
+      for (const part of parts) {
+        L.polyline(part.path, {
+          className: part.walking ? (part.straight ? "busan-visit-line" : "busan-walk-line") : "busan-transit-line",
+          color: part.walking ? "#387687" : "#1c2433",
+          weight: part.walking ? 3 : 5,
+          opacity: 1,
+          dashArray: part.walking ? "2 6" : undefined,
+          lineCap: "round",
+          lineJoin: "round",
+          interactive: false,
+        }).addTo(layer);
+      }
+    });
+    return () => layer.remove();
+  }, [visitSegments, routes]);
 
   useEffect(() => {
     const map = mapRef.current;

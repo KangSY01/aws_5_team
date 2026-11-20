@@ -118,8 +118,20 @@ def _stop_names(properties: dict[str, Any]) -> tuple[str | None, str | None]:
     return _required_string(stops[0], "name"), _required_string(stops[-1], "name")
 
 
-def _parse_leg(step: Any) -> dict[str, Any]:
-    """카카오 step 하나를 경량 leg 형식으로 바꾼다."""
+def _path_points(step: dict[str, Any]) -> list[list[float]]:
+    """step.path.points([[경도, 위도], ...])를 [[위도, 경도], ...]로 바꾼다. 형식이 다르면 빈 목록."""
+    points = (step.get("path") or {}).get("points") if isinstance(step.get("path"), dict) else None
+    if not isinstance(points, list):
+        return []
+    out = []
+    for point in points:
+        if isinstance(point, list) and len(point) == 2 and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in point):
+            out.append([float(point[1]), float(point[0])])
+    return out
+
+
+def _parse_leg(step: Any, include_path: bool = False) -> dict[str, Any]:
+    """카카오 step 하나를 경량 leg 형식으로 바꾼다. include_path 면 지도용 좌표(path)를 더한다."""
     if not isinstance(step, dict) or not isinstance(step.get("properties"), dict):
         raise RouteParseError("step 형식이 올바르지 않습니다.")
     properties = step["properties"]
@@ -127,7 +139,7 @@ def _parse_leg(step: Any) -> dict[str, Any]:
     seconds = _required_nonnegative_int(properties, "time")
     distance = _required_nonnegative_int(properties, "distance")
     from_name, to_name = _stop_names(properties)
-    return {
+    leg = {
         "mode": mode,
         "minutes": _round_minutes(seconds),
         "distance_m": distance,
@@ -135,9 +147,12 @@ def _parse_leg(step: Any) -> dict[str, Any]:
         "from_name": from_name,
         "to_name": to_name,
     }
+    if include_path:
+        leg["path"] = _path_points(step)
+    return leg
 
 
-def _parse_route(route: Any) -> dict[str, Any]:
+def _parse_route(route: Any, include_path: bool = False) -> dict[str, Any]:
     """카카오 route 하나를 호출자가 사용할 경량 경로 형식으로 바꾼다."""
     if not isinstance(route, dict) or not isinstance(route.get("properties"), dict):
         raise RouteParseError("route 형식이 올바르지 않습니다.")
@@ -149,7 +164,7 @@ def _parse_route(route: Any) -> dict[str, Any]:
     steps = route.get("steps")
     if not isinstance(steps, list):
         raise RouteParseError("steps 형식이 올바르지 않습니다.")
-    legs = [_parse_leg(step) for step in steps]
+    legs = [_parse_leg(step, include_path) for step in steps]
     return {
         "route_type": route_type,
         "total_minutes": _round_minutes(_required_nonnegative_int(properties, "totalTime")),
@@ -161,7 +176,7 @@ def _parse_route(route: Any) -> dict[str, Any]:
     }
 
 
-def _parse_routes(data: Any) -> list[dict[str, Any]] | None:
+def _parse_routes(data: Any, include_path: bool = False) -> list[dict[str, Any]] | None:
     """정상 응답을 입력 순서대로 파싱한다. 비정상 상태와 빈 경로는 None이다."""
     if not isinstance(data, dict):
         raise RouteParseError("응답 최상위 형식이 올바르지 않습니다.")
@@ -175,7 +190,7 @@ def _parse_routes(data: Any) -> list[dict[str, Any]] | None:
     if not routes:
         logger.warning("카카오 대중교통 경로 조회 실패: 응답 routes가 비어 있습니다.")
         return None
-    return [_parse_route(route) for route in routes]
+    return [_parse_route(route, include_path) for route in routes]
 
 
 def _request_body(request: urllib.request.Request) -> bytes | None:
@@ -206,6 +221,7 @@ def fetch_routes(
     origin_lng: float,
     dest_lat: float,
     dest_lng: float,
+    include_path: bool = False,
 ) -> list[dict] | None:
     """출발지와 도착지 사이의 카카오 대중교통 경로를 실시간으로 조회한다.
 
@@ -218,6 +234,7 @@ def fetch_routes(
     Returns:
         카카오가 준 순서를 유지한 경로 목록. 각 경로에는 route_type, total_minutes, transfers,
         distance_m, fare, walk_meters, legs가 있다. 조회 또는 파싱에 실패하면 None.
+        include_path 면 leg 마다 지도용 path([[위도, 경도], ...])를 더한다 (GET /route 지도 표시용, 저장하지 않는다).
     """
     if config.USE_MOCK:
         logger.warning("카카오 대중교통 경로 조회 생략: USE_MOCK=1입니다.")
@@ -238,7 +255,7 @@ def fetch_routes(
 
     try:
         data = json.loads(body.decode("utf-8"))
-        return _parse_routes(data)
+        return _parse_routes(data, include_path)
     except (UnicodeDecodeError, json.JSONDecodeError, RouteParseError, TypeError, ValueError) as error:
         # 응답 원문과 예외 메시지는 저장하거나 로그에 남기지 않는다.
         logger.warning("카카오 대중교통 경로 조회 실패: 응답 파싱 오류(%s)입니다.", type(error).__name__)
