@@ -131,6 +131,15 @@ data: {"session_id": "sess-1", "plan_id": "plan-1", "answer": "...", "language":
 - `plan_changes` 는 `done` 에만 들어 있다. 일정 저장도 `done` 을 보내기 직전에 끝낸다.
 - 배포 방식(AgentCore Runtime 또는 Lambda Web Adapter)은 금 12:00 점검 1에서 확인한다. 이벤트 형식은 어느 쪽이든 같다.
 
+## GET /activities?area=해운대&kind=escape_room
+
+일반 채팅의 놀거리 카드에서 카카오 로컬 키워드 검색 결과를 조회한다. 세션이나 일정을 생성하거나 변경하지 않는다.
+
+- `area`: 부산, 해운대, 광안리, 서면, 전포, 남포, 영도, 기장, 송정, 센텀, 부산역 중 하나
+- `kind`: `board_game`, `escape_room`, `animal_cafe`, `scenic_cafe` 중 하나
+- 성공 응답은 `{"places": [...]}`이며, 각 항목은 `id`, `name`, `category`, `address`, `phone`, `url`을 포함한다. 운영시간, 사진, 평점은 이 조회의 응답에 포함되지 않는다.
+- 입력 오류는 `422`, 카카오 검색 실패는 `502`, 서버에서 `KAKAO_REST_API_KEY`가 설정되지 않은 경우는 `503`이다.
+
 ## GET /events?date=YYYY-MM-DD
 
 지도 행사 레이어에 표시할 그날 운영 중인 행사를 돌려준다. `date`가 행사 전체 기간에 포함되면 장기 행사도 매일 포함한다. Guardian의 `get_events`가 혼잡 가중을 위해 7일보다 긴 행사를 개막일에만 돌려주는 규칙과 별개다.

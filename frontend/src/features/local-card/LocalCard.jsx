@@ -10,14 +10,14 @@ import "./local-card.css";
 // - language: 사용자 언어 (en / ja / zh-Hans / zh-Hant). 버튼·안내 문구에 쓴다
 // - onClose: 닫기
 // - speak: 테스트·미리보기용으로 음성 함수를 바꿔 끼운다 (기본 fetchSpeech)
-export default function LocalCard({ textKo, translation, language = "en", onClose, speak = fetchSpeech }) {
+export default function LocalCard({ textKo, translation, language = "en", onClose, returnLabel, speak = fetchSpeech }) {
   const copy = copyFor(language);
   const [status, setStatus] = useState("idle"); // idle | loading | playing | error
   const audioRef = useRef(null);
   const closeRef = useRef(null);
 
   useEffect(() => {
-    closeRef.current?.focus();
+    closeRef.current?.focus({ preventScroll: true });
     const onKey = (e) => e.key === "Escape" && onClose?.();
     window.addEventListener("keydown", onKey);
     return () => {
@@ -45,7 +45,13 @@ export default function LocalCard({ textKo, translation, language = "en", onClos
   const label = { idle: copy.speak, error: copy.speak, loading: copy.loading, playing: copy.speaking }[status];
 
   return (
-    <div className="local-card" role="dialog" aria-modal="true" aria-label={copy.title}>
+    <div className="local-card" role="dialog" aria-modal="true" aria-label={copy.title}
+      onKeyDown={(event) => {
+        if (event.key !== "Escape") return;
+        event.preventDefault();
+        event.stopPropagation();
+        onClose?.();
+      }}>
       <div className="local-card__inner">
         <p className="local-card__title">{copy.title}</p>
         <p className="local-card__ko" lang="ko">{textKo}</p>
@@ -59,7 +65,7 @@ export default function LocalCard({ textKo, translation, language = "en", onClos
             🔊 {label}
           </button>
           <button type="button" className="local-card__close" onClick={onClose} ref={closeRef}>
-            {copy.close}
+            {returnLabel ?? copy.close}
           </button>
         </div>
         {status === "error" && <p className="local-card__error" role="alert">{copy.speakError}</p>}

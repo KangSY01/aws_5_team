@@ -48,7 +48,7 @@ export default function EmergencyHelp({ copy }) {
           <path d="M10.3 4.4 2.6 18a1.8 1.8 0 0 0 1.6 2.7h15.6a1.8 1.8 0 0 0 1.6-2.7L13.7 4.4a2 2 0 0 0-3.4 0Z" />
           <path d="M12 9v4m0 3.5h.01" />
         </svg>
-        {copy.trigger}
+        <span>{copy.trigger}</span>
       </button>
       <dialog
         ref={dialog}

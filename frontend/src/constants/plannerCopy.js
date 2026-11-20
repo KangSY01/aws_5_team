@@ -96,8 +96,89 @@ const foodTransportCopy = {
   "zh-Hant": [["韓式料理","中式料理","日式料理","西式料理","東南亞料理","印度料理","釜山鄉土美食","海鮮","市場小吃","甜點","素食"],["大眾運輸","汽車","以步行為主","無偏好"],["新增飲食偏好","輸入偏好或要避免的食物","新增","移除自訂飲食偏好","該偏好已在清單中。"]],
 };
 
+const emptyRecommendationCopy = {
+  ko: "지금 조건으로 일정을 만들지 못했어요. 지역이나 활동을 줄이거나, 기간만 남겨 다시 시도해 주세요.",
+  en: "We couldn't create an itinerary with these preferences. Try fewer areas or activities, or leave only the duration.",
+  ja: "この条件では旅程を作成できませんでした。エリアやアクティビティを減らすか、滞在期間だけでお試しください。",
+  "zh-Hans": "未能按当前偏好创建行程。请减少地区或活动，或仅保留停留时长后重试。",
+  "zh-Hant": "未能依目前偏好建立行程。請減少地區或活動，或只保留停留時間後再試。",
+};
+
+const planServerErrors = {
+  ko: { generation: "서버에서 일정을 만들지 못했어요. 잠시 후 다시 시도해 주세요.", lookup: "서버에서 저장된 일정을 불러오지 못했어요." },
+  en: { generation: "The server couldn't create the itinerary. Try again shortly.", lookup: "The server couldn't load the saved itinerary." },
+  ja: { generation: "サーバーで旅程を作成できませんでした。少し時間をおいてお試しください。", lookup: "保存された旅程を読み込めませんでした。" },
+  "zh-Hans": { generation: "服务器未能创建行程，请稍后重试。", lookup: "服务器未能读取已保存的行程。" },
+  "zh-Hant": { generation: "伺服器未能建立行程，請稍後再試。", lookup: "伺服器未能讀取已儲存的行程。" },
+};
+
+const chatOutcomeCopy = {
+  ko: ["요청한 변경을 반영하지 못했어요. 기존 일정은 그대로예요.", "일정에 변경 사항을 반영했어요. 일정 탭에서 확인할 수 있어요.", "{place}(으)로 방문 장소를 바꿨어요."],
+  en: ["The requested change couldn't be made. Your itinerary is unchanged.", "Your itinerary was updated. See the itinerary tab for details.", "The stop was replaced with {place}."],
+  ja: ["リクエストを反映できませんでした。旅程は変更されていません。", "旅程を更新しました。日程タブで確認できます。", "訪問先を{place}に変更しました。"],
+  "zh-Hans": ["无法完成请求的更改，原行程保持不变。", "已更新行程，请在行程页面查看。", "已将该地点更换为{place}。"],
+  "zh-Hant": ["無法完成要求的變更，原行程保持不變。", "已更新行程，請在行程頁面查看。", "已將該地點更換為{place}。"],
+};
+
+const generalChatDemo = {
+  ko: "데모에서는 저장된 명소 소개를 볼 수 있어요. 광안대교나 태종대에 대해 물어보세요. 그 밖의 질문에 답하려면 AI 서버 연결이 필요해요.",
+  en: "The demo can share saved landmark descriptions. Ask about Gwangan Bridge or Taejongdae. Other questions need a connection to the AI server.",
+  ja: "デモでは登録済みの名所を紹介できます。広安大橋や太宗台について聞いてみてください。その他の質問にはAIサーバーへの接続が必要です。",
+  "zh-Hans": "演示版可以介绍已收录的地标。试着问问广安大桥或太宗台。其他问题需要连接 AI 服务。",
+  "zh-Hant": "示範版可以介紹已收錄的地標。試著問問廣安大橋或太宗臺。其他問題需要連接 AI 服務。",
+};
+
+const addNeedsItinerary = {
+  ko: "추가할 일정이 아직 없어요. 일정 탭에서 코스를 먼저 만들어 주세요.",
+  en: "There’s no itinerary to add to yet. Create one in the itinerary tab first.",
+  ja: "追加先の旅程がありません。日程タブで旅程を作ってください。",
+  "zh-Hans": "还没有可以添加的行程。请先在行程页面创建行程。",
+  "zh-Hant": "還沒有可以新增的行程。請先在行程頁面建立行程。",
+};
+
+const additionTiming = {
+  ko: "기존 일정을 유지하면 요청한 시간에 이동 여유 30분과 선택한 방문 시간을 확보할 수 없어요.",
+  en: "The requested time doesn’t leave room for a 30-minute travel buffer and the selected visit duration around your existing stops.",
+  ja: "既存の予定を維持すると、ご希望の時刻には移動30分と選んだ滞在時間を確保できません。",
+  "zh-Hans": "在保留原行程的情况下，请求的时间无法留出 30 分钟交通缓冲和 所选游览时长。",
+  "zh-Hant": "在保留原行程的情況下，指定時段無法預留 30 分鐘交通緩衝及 所選遊覽時長。",
+};
+
+const placeCardLabels = {
+  ko: ["장소 추천", "몇 시부터 몇 시까지 일정에 넣을까요?", "시작 시간", "종료 시간", "확인하고 일정에 추가", "일정에 추가했어요.", "다른 가능한 시간을 입력했어요. 확인 전에 바꿀 수 있어요.", "장소 자세히 보기", "종료 시간은 시작 시간보다 늦어야 해요."],
+  en: ["Suggested places", "What time should this visit start and end?", "Start time", "End time", "Confirm and add to itinerary", "Added to your itinerary.", "A different available time is shown. You can change it before confirming.", "Place details", "End time must be after start time."],
+  ja: ["おすすめの場所", "何時から何時まで旅程に入れますか？", "開始時刻", "終了時刻", "確認して旅程に追加", "旅程に追加しました。", "別の空き時間を表示しています。確認前に変更できます。", "場所の詳細", "終了時刻は開始時刻より後にしてください。"],
+  "zh-Hans": ["推荐地点", "想把这次到访安排在几点到几点？", "开始时间", "结束时间", "确认并添加到行程", "已添加到行程。", "已显示另一个可用时段，确认前可以修改。", "地点详情", "结束时间必须晚于开始时间。"],
+  "zh-Hant": ["推薦地點", "想把這次造訪安排在幾點到幾點？", "開始時間", "結束時間", "確認並新增到行程", "已新增到行程。", "已顯示另一個可用時段，確認前可以修改。", "地點詳情", "結束時間必須晚於開始時間。"],
+};
+
+const placeRecommendationCopy = {
+  ko: ["추천 이유", "채팅에서 요청하신 장소예요.", "요청하신 카페를 찾았어요.", "요청하신 공원 유형에 맞아요.", "요청하신 해변 유형에 맞아요."],
+  en: ["Why this place", "This is the place you asked about.", "This café matches your request.", "This park matches your request.", "This beach matches your request."],
+  ja: ["おすすめの理由", "チャットで指定された場所です。", "ご希望に合うカフェです。", "ご希望に合う公園です。", "ご希望に合うビーチです。"],
+  "zh-Hans": ["推荐理由", "这是你在聊天中提到的地点。", "这家咖啡馆符合你的需求。", "这座公园符合你的需求。", "这片海滩符合你的需求。"],
+  "zh-Hant": ["推薦理由", "這是你在聊天中提到的地點。", "這家咖啡館符合你的需求。", "這座公園符合你的需求。", "這片海灘符合你的需求。"],
+};
+
+const activitySearchCopy = {
+  ko: ["조건에 맞는 놀거리를 찾지 못했어요. 다른 지역이나 유형으로 검색해 보세요.", "지금은 놀거리 정보를 불러올 수 없어요. 잠시 후 다시 시도해 주세요."],
+  en: ["No activities matched. Try a different area or type.", "Activity search is unavailable. Please try again shortly."],
+  ja: ["条件に合う体験が見つかりませんでした。別のエリアや種類でお試しください。", "現在、体験を検索できません。しばらくしてからお試しください。"],
+  "zh-Hans": ["没有找到符合条件的活动。请试试其他地区或类型。", "暂时无法搜索活动，请稍后再试。"],
+  "zh-Hant": ["找不到符合條件的活動。請試試其他地區或類型。", "暫時無法搜尋活動，請稍後再試。"],
+};
+
+const placeStationLabel = {
+  ko: "가까운 역", en: "Nearest station", ja: "最寄り駅",
+  "zh-Hans": "最近车站", "zh-Hant": "最近車站",
+};
+
 export function getPlannerCopy(language) {
   const [durations, areasList] = choices[language];
+  const [chatPlanUnchanged, chatPlanUpdated, chatStopReplaced] = chatOutcomeCopy[language];
+  const [searchEmpty, searchUnavailable] = activitySearchCopy[language];
+  const [reasonLabel, name, cafe, park, beach] = placeRecommendationCopy[language];
+  const [results, prompt, start, end, confirm, added, adjusted, details, invalidEnd] = placeCardLabels[language];
   const [addArea, closeArea, removeArea, showAreas, doneAreas, cancelAreas, changeAreas, noAreaSelection] = areaActions[language];
   const [extraNames, extraDescriptions, limitedPlaces] = additionalAreas[language];
   const areaAdded = selectionStatus[language];
@@ -107,9 +188,17 @@ export function getPlannerCopy(language) {
   const doneAreasLabel = (total) => total
     ? `${doneAreas} · ${new Intl.NumberFormat(language).format(total)}`
     : doneAreas;
-  return { ...Object.fromEntries(keys.map((key, i) => [key, labels[language][i]])),
+  const text = Object.fromEntries(keys.map((key, i) => [key, labels[language][i]]));
+  return { ...text,
     durations, areasList: [...areasList, ...extraNames], areaDescriptions: [...areaDescriptions[language], ...extraDescriptions],
     activityCopy: getActivityCopy(language), addArea, areaAdded, closeArea, removeArea, showAreas, doneAreasLabel, cancelAreas, limitedPlaces,
+    planServerError: planServerErrors[language],
+    generalChatDemo: generalChatDemo[language],
+    placeCards: { results, prompt, start, end, confirm, added, adjusted, details, invalidEnd, nearestStation: placeStationLabel[language],
+      searchEmpty, searchUnavailable, reasonLabel, reasons: { name, cafe, park, beach }, noItinerary: addNeedsItinerary[language], stale: text.stale },
+    additionNoTime: additionTiming[language],
+    chatPlanUnchanged, chatPlanUpdated, chatStopReplaced: (place) => chatStopReplaced.replace("{place}", () => place),
+    emptyRecommendation: emptyRecommendationCopy[language],
     requiredAnswer, optionalAnswer, durationRequired, changeAreas, noAreaSelection,
     foodLabels: Object.fromEntries(foodPreferenceIds.map((id, index) => [id, food[index]])),
     transportLabels: Object.fromEntries(transportPreferenceIds.map((id, index) => [id, transport[index]])),

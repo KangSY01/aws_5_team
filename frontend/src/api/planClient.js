@@ -1,4 +1,5 @@
 // Plan_API(GET /plan/{plan_id}) 호출 클라이언트.
+import { withDemo } from "../features/demo-panel/demoStore.js";
 
 
 const DEFAULT_BASE_URL = "http://127.0.0.1:8000";
@@ -10,13 +11,14 @@ const DEFAULT_TIMEOUT_MS = 10000;
  * code / serverMessage: Error_Body 값 (형식이 맞을 때만)
  */
 export class PlanClientError extends Error {
-  constructor(kind, { status, code, serverMessage, message } = {}) {
+  constructor(kind, { status, code, serverMessage, requestId, message } = {}) {
     super(message ?? `Plan 요청 실패: ${kind}`);
     this.name = "PlanClientError";
     this.kind = kind;
     this.status = status;
     this.code = code;
     this.serverMessage = serverMessage;
+    this.requestId = requestId;
   }
 }
 
@@ -35,6 +37,10 @@ function normalizeBaseUrl(value) {
 export function getBaseUrl() {
   const fromEnv = normalizeBaseUrl(import.meta.env?.VITE_API_BASE_URL);
   return fromEnv ?? DEFAULT_BASE_URL;
+}
+
+export function getRequestBaseUrl(baseUrl) {
+  return normalizeBaseUrl(baseUrl) ?? (import.meta.env.DEV && hasConfiguredPlanApi() ? "/__busannow_api" : getBaseUrl());
 }
 
 function createAbortError() {
@@ -59,13 +65,13 @@ function parseErrorBody(body) {
  * 성공 시 { plan, places } 를 반환하고, 실패 시 PlanClientError 를 던진다.
  * 호출자 signal 로 취소하면 AbortError 를 그대로 던진다.
  */
-async function requestJson(
+export async function requestJson(
   path,
   { baseUrl, signal, timeoutMs = DEFAULT_TIMEOUT_MS, request = {} } = {},
 ) {
   if (signal?.aborted) throw createAbortError();
 
-  const base = normalizeBaseUrl(baseUrl) ?? getBaseUrl();
+  const base = getRequestBaseUrl(baseUrl);
   const url = `${base}${path}`;
 
   // 호출자 signal 과 타임아웃을 하나의 컨트롤러로 합친다.
@@ -104,6 +110,7 @@ async function requestJson(
       }
       throw new PlanClientError("http", {
         status: response.status,
+        requestId: response.headers?.get("x-amzn-requestid") ?? undefined,
         message: `HTTP ${response.status}`,
         ...details,
       });
@@ -135,22 +142,55 @@ export async function fetchPlan(planId, options) {
   return { plan: body.plan, places: body.places };
 }
 
-export async function sendTravelMessage(message, language, session) {
+export function hasConfiguredPlanApi() {
+  return Boolean(normalizeBaseUrl(import.meta.env?.VITE_API_BASE_URL));
+}
+
+function jsonRequest(method, body) {
+  return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+}
+
+export async function sendTravelMessage(message, language, session, profile = {}, signal) {
   const chat = await requestJson("/chat", {
-    request: {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message,
-        profile: { language },
-        session_id: session?.session_id ?? null,
-        plan_id: session?.plan_id ?? null,
-      }),
-    },
+    signal,
+    timeoutMs: 60000,
+    request: jsonRequest("POST", withDemo({
+      message,
+      profile: { ...profile, language: language === "ko" ? "en" : language },
+      session_id: session?.session_id ?? null,
+      plan_id: session?.plan_id ?? null,
+    })),
   });
-  if (typeof chat?.plan_id !== "string" || !chat.plan_id) {
+  if (!chat?.plan_id || !chat.session_id || typeof chat.answer !== "string") {
     throw new PlanClientError("invalid_response");
   }
 
   return chat;
+}
+
+export async function checkTravelPlan(planId, signal) {
+  const body = await requestJson("/plan/check", { signal, request: jsonRequest("POST", withDemo({ plan_id: planId })) });
+  if (body?.plan_id !== planId || !Array.isArray(body.issues) || !body.repairs || !Array.isArray(body.places)) {
+    throw new PlanClientError("invalid_response");
+  }
+  return body;
+}
+
+export async function delayTravelPlan(planId, delayMinutes, signal) {
+  const body = await requestJson(`/plan/${encodeURIComponent(planId)}/delay`, {
+    signal,
+    request: jsonRequest("POST", withDemo({ plan_id: planId, delay_min: delayMinutes })),
+  });
+  if (body?.plan_id !== planId || !Array.isArray(body.repairs) || !Array.isArray(body.places)) {
+    throw new PlanClientError("invalid_response");
+  }
+  return body;
+}
+
+export async function saveTravelPlan(plan) {
+  const body = await requestJson(`/plan/${encodeURIComponent(plan.plan_id)}`, { request: jsonRequest("PUT", plan) });
+  if (body?.plan?.plan_id !== plan.plan_id || !Array.isArray(body.plan.stops) || !Array.isArray(body.places)) {
+    throw new PlanClientError("invalid_response");
+  }
+  return body;
 }

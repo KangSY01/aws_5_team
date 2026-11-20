@@ -3,7 +3,10 @@ import { createPortal } from "react-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { buildPlacesById, resolvePlaceName } from "../lib/resolvePlaceName.js";
+import { mapEventName } from "../api/eventsClient.js";
+import { stopDate } from "../lib/itineraryTiming.js";
 import RegionMap from "./RegionMap.jsx";
+import { addLandmarkLayer } from "./mapLandmarkLayer.js";
 
 const tileOverride = import.meta.env.VITE_MAP_TILE_URL;
 const osmTileUrl = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -16,10 +19,10 @@ const eventIcons = {
   festival: "m12 2 2.3 6.7L21 11l-6.7 2.3L12 20l-2.3-6.7L3 11l6.7-2.3z",
   performance: "M10 17V6l10-2v11M10 17a3 2 0 1 1-6 0 3 2 0 0 1 6 0Zm10-2a3 2 0 1 1-6 0 3 2 0 0 1 6 0Z",
   exhibition: "M4 4h16v16H4zM4 16l5-5 4 4 3-2 4 4M15 8h1",
-  market: "M4 10h16l-2-5H6zm2 0v9h12v-9m-7 9v-5h4",
+  event: "M5 5h14v15H5zm3-3v6m8-6v6M5 10h14",
 };
 
-export default function BusanMap({ plan, places, events, onEventSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, focusRequest, regionPicker }) {
+export default function BusanMap({ plan, places, events, onEventSelect, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, focusRequest, regionPicker }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const [locationControl, setLocationControl] = useState(null);
@@ -31,13 +34,13 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
   const markersRef = useRef(new Map());
   const languageRef = useRef(language);
   const updateMapLanguage = useRef(null);
-  const updateBridge = useRef(null);
+  const updateLandmarks = useRef(null);
+  const vectorMapRef = useRef(null);
   const selectingRegions = Boolean(regionPicker);
   const selectingRegionsRef = useRef(selectingRegions);
 
   useEffect(() => {
     selectingRegionsRef.current = selectingRegions;
-    updateBridge.current?.();
   }, [selectingRegions]);
   const mappedStops = useMemo(() => {
     const placesById = buildPlacesById(places);
@@ -52,7 +55,7 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
   const visitSegments = useMemo(() => mappedStops.flatMap(({ coordinates, stop }, index) => {
     const next = mappedStops[index + 1];
     if (!coordinates || !next?.coordinates) return [];
-    if (stop.end?.slice(0, 10) !== next.stop.start?.slice(0, 10)) return [];
+    if (stopDate(stop.start) !== stopDate(next.stop.start)) return [];
     return [[coordinates, next.coordinates]];
   }), [mappedStops]);
 
@@ -108,15 +111,10 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
         }
         updateMapLanguage.current = updateLanguage;
         const vectorMap = layer.getMaplibreMap();
-        const syncBridge = () => {
-          if (vectorMap.getLayer("gwangan-bridge")) {
-            vectorMap.setLayoutProperty("gwangan-bridge", "visibility", selectingRegionsRef.current ? "none" : "visible");
-          }
-        };
-        updateBridge.current = syncBridge;
+        vectorMapRef.current = vectorMap;
+        vectorMap.on("idle", () => updateLandmarks.current?.());
         vectorMap.once("style.load", () => {
           updateLanguage();
-          syncBridge();
         });
       }).catch(() => {
         if (!disposed) addRaster();
@@ -132,7 +130,7 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
       disposed = true;
       styleRequest.abort();
       updateMapLanguage.current = null;
-      updateBridge.current = null;
+      vectorMapRef.current = null;
       observer?.disconnect();
       cancelLocationMove.current?.();
       cancelLocationMove.current = null;
@@ -237,17 +235,19 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
     const map = mapRef.current;
     const layer = L.layerGroup().addTo(map);
     const markers = events.map((event) => {
-      const marker = L.marker([event.place.lat, event.place.lng], {
-        title: event.names[language],
+      const name = mapEventName(event, language);
+      const type = Object.hasOwn(eventIcons, event.type) ? event.type : "event";
+      const marker = L.marker([event.lat, event.lng], {
+        title: name,
         zIndexOffset: -10000,
         icon: L.divIcon({
-          className: `busan-event-pin busan-event-${event.type}`,
+          className: `busan-event-pin busan-event-${type}`,
           iconSize: [44, 44],
           iconAnchor: [22, 22],
-          html: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${eventIcons[event.type]}"/></svg>`,
+          html: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${eventIcons[type]}"/></svg>`,
         }),
       }).addTo(layer);
-      marker.getElement().setAttribute("aria-label", event.names[language]);
+      marker.getElement().setAttribute("aria-label", name);
       marker.getElement().addEventListener("keydown", (key) => {
         if (key.key === " ") {
           key.preventDefault();
@@ -282,12 +282,32 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
   }, [events, language, mappedStops, onEventSelect, onSelect]);
 
   useEffect(() => {
+    if (!onLandmarkSelect) return;
+    const map = mapRef.current;
+    const landmarks = addLandmarkLayer(map, language, onLandmarkSelect);
+    const layout = () => landmarks.layout(vectorMapRef.current, selectingRegionsRef.current);
+    updateLandmarks.current = layout;
+    map.on("moveend resize", layout);
+    return () => {
+      map.off("moveend resize", layout);
+      updateLandmarks.current = null;
+      landmarks.remove();
+    };
+  }, [language, onLandmarkSelect]);
+
+  useEffect(() => {
+    updateLandmarks.current?.();
+  }, [language, onLandmarkSelect, selectingRegions, mappedStops, events, onEventSelect, onSelect]);
+
+  useEffect(() => {
     for (const [id, marker] of markersRef.current) {
       const active = id === selectedId;
       const element = marker.getElement();
       element?.setAttribute("aria-pressed", String(active));
       element?.toggleAttribute("data-next-stop", id === nextStopId);
-      marker.setZIndexOffset(active || id === nextStopId ? 1000 : 0);
+      if (id === nextStopId) element?.setAttribute("aria-current", "true");
+      else element?.removeAttribute("aria-current");
+      marker.setZIndexOffset(id === nextStopId ? 2000 : active ? 1000 : 0);
     }
   }, [selectedId, nextStopId, plan, places, language, onSelect]);
 
@@ -346,6 +366,7 @@ export default function BusanMap({ plan, places, events, onEventSelect, language
       } else {
         locationMarker.current.setLatLng(position);
       }
+      updateLandmarks.current?.();
 
       const pin = locationMarker.current.getElement();
       pin.setAttribute("aria-hidden", "true");

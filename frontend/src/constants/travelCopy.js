@@ -30,6 +30,14 @@ const itineraryActions = {
   "zh-Hant": ["收合行程", "關閉行程"],
 };
 
+const itineraryResetCopy = {
+  ko: ["일정 옵션", "일정 초기화", "현재 일정을 비울까요?", "현재 코스와 수정한 방문 시간·순서가 삭제돼요.", "취소", "일정 비우기"],
+  en: ["Itinerary options", "Reset itinerary", "Clear your current itinerary?", "Your current route and any edits to visit times or order will be cleared.", "Cancel", "Clear itinerary"],
+  ja: ["旅程のオプション", "旅程をリセット", "現在の旅程を消去しますか？", "現在のコースと、変更した訪問時間や順序が消去されます。", "キャンセル", "旅程を消去"],
+  "zh-Hans": ["行程选项", "重置行程", "要清空当前行程吗？", "当前路线及修改过的游览时间和顺序将被清空。", "取消", "清空行程"],
+  "zh-Hant": ["行程選項", "重設行程", "要清空目前行程嗎？", "目前路線及修改過的遊覽時間和順序將被清空。", "取消", "清空行程"],
+};
+
 const profileCopy = {
   ko: ["프로필", "게스트로 이용 중", "계정 관리", "현재 로그인과 계정 관리 기능을 제공하지 않습니다."],
   en: ["Profile", "Browsing as a guest", "Account management", "Sign-in and account management are currently unavailable."],
@@ -39,11 +47,11 @@ const profileCopy = {
 };
 
 const tripCopy = {
-  ko: ["여행 시작", "여행 종료", "여행 중", "다음 장소", "AI에게 코스 추천받기"],
-  en: ["Start trip", "End trip", "Trip in progress", "Next stop", "Ask AI for an itinerary"],
-  ja: ["旅行を始める", "旅行を終了", "旅行中", "次の行き先", "AIにコースを提案してもらう"],
-  "zh-Hans": ["开始旅行", "结束旅行", "旅行中", "下一站", "让 AI 推荐行程"],
-  "zh-Hant": ["開始旅行", "結束旅行", "旅行中", "下一站", "請 AI 推薦行程"],
+  ko: ["여행 시작", "여행 종료", "여행 중", "현재 장소", "AI에게 코스 추천받기"],
+  en: ["Start trip", "End trip", "Trip in progress", "Current stop", "Ask AI for an itinerary"],
+  ja: ["旅行を始める", "旅行を終了", "旅行中", "現在の訪問先", "AIにコースを提案してもらう"],
+  "zh-Hans": ["开始旅行", "结束旅行", "旅行中", "当前站点", "让 AI 推荐行程"],
+  "zh-Hant": ["開始旅行", "結束旅行", "旅行中", "目前站點", "請 AI 推薦行程"],
 };
 
 const emergencyCopy = {
@@ -87,20 +95,101 @@ const locationLabels = {
   "zh-Hant": ["尋找我的位置", "正在取得位置…", "位置權限已遭拒絕。", "無法取得目前位置。"],
 };
 
+const guardianLabels = {
+  ko: ["일정 점검", "확인된 문제가 없어요.", "적용", "시간 이동", "순서 변경", "장소 교체", "제외"],
+  en: ["Check itinerary", "No issues found.", "Apply", "Move time", "Reorder", "Replace", "Remove"],
+  ja: ["日程を確認", "問題は見つかりませんでした。", "適用", "時間変更", "順序変更", "場所変更", "除外"],
+  "zh-Hans": ["检查行程", "未发现问题。", "应用", "调整时间", "调整顺序", "替换地点", "移除"],
+  "zh-Hant": ["檢查行程", "未發現問題。", "套用", "調整時間", "調整順序", "替換地點", "移除"],
+};
+
+const guardianReasonCopy = {
+  ko: ["대체 장소", "{day}에는 혼잡이 예상돼요.", "요일 기준으로 혼잡이 예상돼요.", "근처에서 {event} 행사가 열려요.", "방문 시간에 비가 예보돼요.", "방문 시간이 운영시간과 맞지 않아요.", "이전 장소에서 이동할 시간이 부족해요."],
+  en: ["Alternative places", "Crowds are expected on {day}.", "Crowds are expected based on the day of the week.", "{event} is taking place nearby.", "Rain is forecast during this visit.", "This visit falls outside opening hours.", "There is too little time to get here from the previous stop."],
+  ja: ["代替の訪問先", "{day}は混雑が予想されます。", "曜日による傾向から混雑が予想されます。", "近くで「{event}」が開催されます。", "訪問時間帯に雨の予報があります。", "訪問時間が営業時間と合いません。", "前の訪問先からの移動時間が足りません。"],
+  "zh-Hans": ["备选地点", "预计{day}人流较多。", "根据每周人流规律，预计会比较拥挤。", "附近将举办{event}。", "预计到访时段有雨。", "到访时间与营业时间不符。", "从上一站到这里的时间不足。"],
+  "zh-Hant": ["備選地點", "預計{day}人流較多。", "根據每週人流規律，預計會比較擁擠。", "附近將舉辦{event}。", "預計到訪時段有雨。", "到訪時間與營業時間不符。", "從上一站到這裡的時間不足。"],
+};
+
+const guardianReplacementCopy = {
+  ko: ["현재 일정", "이곳으로 변경", "{place}으로 변경"],
+  en: ["Current stop", "Switch here", "Switch to {place}"],
+  ja: ["現在の訪問先", "ここに変更", "{place}に変更"],
+  "zh-Hans": ["当前行程", "改为此处", "改为{place}"],
+  "zh-Hant": ["目前行程", "改為此處", "改為{place}"],
+};
+
+const guardianActions = {
+  ko: ["대안 보기", "대안 닫기", "가능한 대안이 없어요.", "되돌리기", "일정 고정", "일정 고정 해제", "혼잡도 높음", "일정 주의", "지연 시간(분)", "지연 대안 보기"],
+  en: ["View alternatives", "Close alternatives", "No alternatives available.", "Undo", "Lock stop", "Unlock stop", "High crowding", "Itinerary warning", "Delay in minutes", "View delay alternatives"],
+  ja: ["代替案を見る", "代替案を閉じる", "代替案がありません。", "元に戻す", "予定を固定", "固定を解除", "混雑度が高い", "日程に注意", "遅延時間（分）", "遅延の代替案を見る"],
+  "zh-Hans": ["查看备选方案", "关闭备选方案", "没有可用的备选方案。", "撤销", "锁定行程", "解锁行程", "拥挤程度高", "行程提醒", "延迟分钟数", "查看延迟方案"],
+  "zh-Hant": ["查看替代方案", "關閉替代方案", "沒有可用的替代方案。", "復原", "鎖定行程", "解鎖行程", "擁擠程度高", "行程提醒", "延遲分鐘數", "查看延遲方案"],
+};
+
+const stopLockCopy = {
+  ko: ["고정한 일정은 AI가 수정하지 않아요.", "{place} 일정 고정", "{place} 일정 고정 해제"],
+  en: ["AI leaves locked stops unchanged.", "Lock stop · {place}", "Unlock stop · {place}"],
+  ja: ["固定した予定はAIが変更しません。", "{place}の予定を固定", "{place}の固定を解除"],
+  "zh-Hans": ["AI 会保留已锁定的行程。", "锁定{place}行程", "解锁{place}行程"],
+  "zh-Hant": ["AI 會保留已鎖定的行程。", "鎖定{place}行程", "解鎖{place}行程"],
+};
+
+const runningLate = {
+  ko: "늦었어요", en: "I’m running late", ja: "遅れそうです", "zh-Hans": "我要迟到了", "zh-Hant": "我要遲到了",
+};
+const delayFormCopy = {
+  ko: ["얼마나 늦어지나요?", "직접 입력", "분", "1~240 사이의 분을 정수로 입력해 주세요.", "닫기"],
+  en: ["How late will you be?", "Enter minutes", "min", "Enter a whole number from 1 to 240 minutes.", "Close"],
+  ja: ["何分遅れそうですか？", "分数を入力", "分", "1〜240の整数を入力してください。", "閉じる"],
+  "zh-Hans": ["预计会晚多久？", "手动输入", "分钟", "请输入 1 到 240 之间的整数分钟数。", "关闭"],
+  "zh-Hant": ["預計會晚多久？", "手動輸入", "分鐘", "請輸入 1 到 240 之間的整數分鐘數。", "關閉"],
+};
+const delayAlternativeCopy = {
+  ko: ["지연 대안", "시간 변경", "일정 제외", "변경 적용", "제외"],
+  en: ["Delay alternatives", "Time change", "Remove from itinerary", "Apply change", "Remove"],
+  ja: ["遅延時の代替案", "時間変更", "予定から除外", "変更を適用", "除外"],
+  "zh-Hans": ["延迟备选方案", "调整时间", "从行程移除", "应用更改", "移除"],
+  "zh-Hant": ["延遲替代方案", "調整時間", "從行程移除", "套用變更", "移除"],
+};
+
 export function getTravelCopy(language) {
   const [intro, prompt, example, submit, title, edit, itinerary, map, schematic, locked, languageLabel, night, loading, empty, network, timeout, http, invalidResponse, retry] = copy[language];
   const [ask, send, close, expand, reduce, ready, messageLabel, sampleTitle, home, chat, navigation] = chatCopy[language];
   const [greeting, placeholder, collapse, suggestions] = starterCopy[language];
   const [collapseItinerary, closeItinerary] = itineraryActions[language];
+  const [resetMenu, resetAction, resetTitle, resetDescription, resetCancel, resetConfirm] = itineraryResetCopy[language];
   const [profile, guest, account, accountUnavailable] = profileCopy[language];
-  const [startTrip, endTrip, traveling, nextPlace, askForRoute] = tripCopy[language];
+  const [startTrip, endTrip, traveling, currentPlace, askForRoute] = tripCopy[language];
+  const [check, clear, apply, move_time, reorder, replace, remove] = guardianLabels[language];
+  const [currentStop, switchPlace, switchPlaceLabel] = guardianReplacementCopy[language];
+  const [replacementPlaces, crowdDay, crowdWeekday, nearbyEvent, rain, closed, tightTransfer] = guardianReasonCopy[language];
+  const [options, closeOptions, noOptions, undo, lock, unlock, crowdingWarning, warning, delayMinutes, delay] = guardianActions[language];
+  const [lockHint, lockStop, unlockStop] = stopLockCopy[language];
+  const [delayQuestion, delayCustom, delayUnit, delayInvalid, delayClose] = delayFormCopy[language];
+  const [delayTitle, delayTimeChange, delayRemove, delayApplyTime, delayApplyRemove] = delayAlternativeCopy[language];
   const [find, pending, denied, unavailable] = locationLabels[language];
+  const switchLabel = (place) => {
+    const last = place.charCodeAt(place.length - 1) - 0xac00;
+    const ending = last % 28;
+    const label = language === "ko" && last >= 0 && last <= 11171 && (ending === 0 || ending === 8)
+      ? switchPlaceLabel.replace("으로", "로") : switchPlaceLabel;
+    return label.replace("{place}", () => place);
+  };
   return {
     location: { find, pending, denied, unavailable },
+    guardian: { check, clear, apply, options, close: closeOptions, noOptions, undo, lock, unlock, crowdingWarning, warning, delayMinutes, delay, late: runningLate[language],
+      delayQuestion, delayCustom, delayUnit, delayInvalid, delayClose,
+      delayTitle, delayTimeChange, delayRemove, delayApplyTime, delayApplyRemove,
+      currentStop, switchPlace, switchPlaceLabel: switchLabel,
+      replacementPlaces, reasons: { crowdDay, crowdWeekday, nearbyEvent, rain, closed, tight_transfer: tightTransfer },
+      actions: { move_time, reorder, replace, remove } },
+    stopLock: { hint: lockHint, label: (place, locked) => (locked ? unlockStop : lockStop).replace("{place}", () => place) },
     emergency: emergencyCopy[language],
-    startTrip, endTrip, traveling, nextPlace, askForRoute,
+    startTrip, endTrip, traveling, currentPlace, askForRoute,
     profile, guest, account, accountUnavailable,
     collapseItinerary, closeItinerary,
+    resetItinerary: { menu: resetMenu, action: resetAction, title: resetTitle, description: resetDescription, cancel: resetCancel, confirm: resetConfirm },
     greeting, placeholder, collapse, suggestions,
     ask, send, close, expand, reduce, ready, messageLabel, sampleTitle, home, chat, navigation,
     intro, prompt, example, submit, title, edit, itinerary, map, schematic, locked,

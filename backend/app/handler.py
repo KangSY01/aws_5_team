@@ -21,7 +21,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from app import agent, storage
+from app import agent, config, storage
+from app.tools.activities import ACTIVITIES, AREAS, ActivitiesResponse, find_activities
 from app.guardian import service as guardian
 from app.guardian.context import WeatherPresetNotFound
 from app.models.api import (
@@ -193,6 +194,19 @@ def _route(event: dict) -> BaseModel:
                 raise ApiError(422, "validation_error", "본문의 plan_id 가 경로와 다릅니다.")
             plan = storage.get_plan(plan_id)
             return _guardian(lambda: guardian.run_delay(plan, request.delay_min, request.demo))
+
+        case "GET", ["activities"]:
+            query = event.get("queryStringParameters") or {}
+            area, kind = query.get("area"), query.get("kind")
+            if area not in AREAS or kind not in ACTIVITIES:
+                raise ApiError(422, "validation_error", "지원하는 지역과 놀거리 유형을 선택해 주세요.")
+            if not config.KAKAO_REST_API_KEY:
+                raise ApiError(503, "activities_unavailable", "장소 검색을 사용할 수 없습니다.")
+            try:
+                return ActivitiesResponse.model_validate({"places": find_activities(area, kind)})
+            except (OSError, ValueError, KeyError):
+                logger.warning("Kakao activity search failed", exc_info=False)
+                raise ApiError(502, "activities_unavailable", "장소 검색에 실패했습니다.")
 
         case "GET", ["events"]:
             date = ((event.get("queryStringParameters") or {}).get("date") or "").strip()

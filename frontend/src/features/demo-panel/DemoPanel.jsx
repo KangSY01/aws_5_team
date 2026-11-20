@@ -46,7 +46,10 @@ export default function DemoPanel({ defaultOpen = false }) {
             <input
               type="checkbox"
               checked={demo.enabled}
-              onChange={(e) => setDemo({ enabled: e.target.checked })}
+              onChange={(event) => setDemo({
+                enabled: event.target.checked,
+                now: event.target.checked ? demo.now ?? SCENES[0].now : demo.now,
+              })}
             />
             <span>데모 스위치 켜기</span>
           </label>

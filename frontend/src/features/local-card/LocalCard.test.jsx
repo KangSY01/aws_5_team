@@ -117,11 +117,22 @@ describe("LocalCardPicker", () => {
     render(<LocalCardPicker language="zh-Hant" speak={vi.fn()} />);
 
     expect(screen.getAllByRole("listitem")).toHaveLength(PHRASES.length);
-    await user.click(screen.getByRole("button", { name: /可以做得不那麼辣嗎/ }));
+    expect(screen.getByRole("heading", { name: "用餐與付款" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "旅行求助" })).toBeVisible();
+    const phrase = screen.getByRole("button", { name: /可以做得不那麼辣嗎/ });
+    await user.click(phrase);
     const dialog = screen.getByRole("dialog", { name: "給當地人看" });
     expect(within(dialog).getByText("덜 맵게 해 주실 수 있나요?")).toBeVisible();
 
-    await user.click(within(dialog).getByRole("button", { name: "關閉" }));
+    await user.click(within(dialog).getByRole("button", { name: "返回短句列表" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(phrase).toHaveFocus();
+  });
+
+  it("displays each Korean phrase once in the Korean list", () => {
+    render(<LocalCardPicker language="ko" />);
+    expect(screen.getByRole("heading", { name: "식당·결제" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "여행 중 도움" })).toBeVisible();
+    expect(screen.getAllByText(PHRASES[0].ko)).toHaveLength(1);
   });
 });

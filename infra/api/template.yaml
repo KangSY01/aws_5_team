@@ -44,7 +44,7 @@ Parameters:
     Type: String
     NoEcho: true
     Default: ""
-    Description: 카카오 REST API 키 (귀가 경로의 대중교통 실시간 조회, B 의 tools/kakao_route.py). 비어 있으면 역 좌표 추정으로 대체한다. Lambda 환경 변수로만 들어간다
+    Description: 카카오 REST API 키. 귀가 경로와 놀거리 장소 검색에 사용하며 Lambda 환경 변수로만 전달한다.
   DemoNow:
     Type: String
     Default: ""

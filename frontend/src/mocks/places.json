@@ -1,5 +1,14 @@
 [
   {
+    "place_id": "busan-citizens-park",
+    "names": { "ko": "부산시민공원", "en": "Busan Citizens Park", "ja": "釜山市民公園", "zh-Hans": "釜山市民公园", "zh-Hant": "釜山市民公園" },
+    "lat": 35.16667,
+    "lng": 129.05667,
+    "category": "park",
+    "indoor": false,
+    "nearest_station": null
+  },
+  {
     "place_id": "haeundae-beach",
     "names": { "ko": "해운대해수욕장", "en": "Haeundae Beach", "ja": "海雲台海水浴場", "zh-Hans": "海云台海水浴场", "zh-Hant": "海雲臺海水浴場" },
     "lat": 35.1587,

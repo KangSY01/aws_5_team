@@ -32,10 +32,20 @@ const textPanelCopy = {
   "zh-Hant": ["文字翻譯", "自動偵測", "譯文將顯示在這裡。"],
 };
 
+const photoResultCopy = {
+  ko: ["매워요", "맵지 않아요", "맵기 여부를 확인할 수 없어요.", "JPEG 또는 PNG 사진을 선택해 주세요.", "사진을 업로드하지 못했어요. 다시 시도해 주세요.", "업로드한 사진을 찾을 수 없어요. 다시 시도해 주세요.", "사진 번역 서버에서 오류가 발생했어요. 잠시 후 다시 시도해 주세요.", "사진 번역 응답이 지연되고 있어요. 다시 시도해 주세요."],
+  en: ["Spicy", "Not spicy", "Spiciness could not be confirmed.", "Choose a JPEG or PNG photo.", "Could not upload the photo. Try again.", "The uploaded photo could not be found. Try again.", "The photo translation server encountered an error. Try again shortly.", "Photo translation timed out. Try again."],
+  ja: ["辛い", "辛くない", "辛さは確認できません。", "JPEGまたはPNGの写真を選んでください。", "写真をアップロードできませんでした。もう一度お試しください。", "アップロードした写真が見つかりません。もう一度お試しください。", "写真翻訳サーバーでエラーが発生しました。しばらくしてからお試しください。", "写真翻訳がタイムアウトしました。もう一度お試しください。"],
+  "zh-Hans": ["辣", "不辣", "无法确认是否辛辣。", "请选择 JPEG 或 PNG 照片。", "照片上传失败，请重试。", "找不到已上传的照片，请重试。", "图片翻译服务器出错，请稍后重试。", "图片翻译超时，请重试。"],
+  "zh-Hant": ["辣", "不辣", "無法確認是否辛辣。", "請選擇 JPEG 或 PNG 照片。", "照片上傳失敗，請重試。", "找不到已上傳的照片，請重試。", "圖片翻譯伺服器發生錯誤，請稍後重試。", "圖片翻譯逾時，請重試。"],
+};
+
 export function getTranslationCopy(language) {
   const [close, speakingLanguage, detectVoiceFailed] = voicePanelCopy[language];
   const labels = Object.fromEntries(fields.map((field, index) => [field, translations[language][index]]));
   const [photoTarget, detected, correctSource, chooseSource, detectFailed] = photoLanguageCopy[language];
   const [text, autoDetect, resultPlaceholder] = textPanelCopy[language];
-  return { ...labels, text, autoDetect, resultPlaceholder, close, speakingLanguage, detectVoiceFailed, photoTarget, detected, correctSource, chooseSource, detectFailed };
+  const [spicyYes, spicyNo, spicyUnknown, photoInvalid, photoUploadFailed, photoMissing, photoServerError, photoTimeout] = photoResultCopy[language];
+  return { ...labels, text, autoDetect, resultPlaceholder, close, speakingLanguage, detectVoiceFailed, photoTarget, detected, correctSource, chooseSource, detectFailed,
+    spicyYes, spicyNo, spicyUnknown, photoInvalid, photoUploadFailed, photoMissing, photoServerError, photoTimeout };
 }

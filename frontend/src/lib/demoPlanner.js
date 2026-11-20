@@ -15,6 +15,43 @@ const areas = {
 
 const catalog = new Map([...places, ...regionalPlaces].filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng))
   .map((place) => [place.place_id, place]));
+
+export function findStopAddition(message, itineraryPlaces) {
+  const query = activityTextKey(message);
+  const adding = /추가|넣어|\b(?:add|insert|append)\b|追加|加えて|添加|加入|新增|插入/u.test(query);
+  if ((!adding && !/가고 싶|추천|알려|\b(?:recommend|visit|where|tell me about)\b|行きたい|おすすめ|想去|推荐|推薦/u.test(query)) ||
+      /추가하지|넣지|말고|\b(?:not|without|instead)\b|追加しない|不要添加|不要加入/u.test(query)) return null;
+  if (/앞에|이전에|내일|\bbefore\b|\btomorrow\b|の前に|明日|之前|明天/u.test(query)) {
+    return adding ? { places: [] } : null;
+  }
+  const times = [...query.matchAll(
+    /(?<!\d)(?:(오전|오후)\s*)?(\d{1,2})\s*시(?:\s*(반|(\d{1,2})\s*분))?|(?<!\d)(\d{1,2}):(\d{2})(?!\d)/gu
+  )];
+  const suppliedTimes = [...query.matchAll(/\d{1,2}(?::\d{2}|\s*(?:시|時|点|點|am\b|pm\b))/gu)];
+  if (times.length > 1 || suppliedTimes.length !== times.length || /\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/u.test(query)) {
+    return adding ? { places: [] } : null;
+  }
+  let startMinutes;
+  if (times.length === 1) {
+    const [, period, koreanHour, half, koreanMinute, clockHour, clockMinute] = times[0];
+    const hour = Number(koreanHour ?? clockHour);
+    const minute = half === "반" ? 30 : Number(koreanMinute ?? clockMinute ?? 0);
+    if (hour > 23 || minute > 59 || (period && (hour < 1 || hour > 12))) return { places: [] };
+    const baseHour = period ? hour % 12 + (period === "오후" ? 12 : 0) : hour;
+    startMinutes = [baseHour * 60 + minute];
+    if (!period && koreanHour && hour >= 1 && hour < 12) startMinutes.push((hour + 12) * 60 + minute);
+  }
+  const compact = query.replace(/\s/g, "");
+  const candidates = new Map([...catalog, ...itineraryPlaces.map((place) => [place.place_id, place])]);
+  const matches = [...candidates.values()].filter((place) =>
+    Object.values(place.names).some((name) => compact.includes(activityTextKey(name).replace(/\s/g, ""))) ||
+    (place.place_id === "busan-citizens-park" && compact.includes("시민공원")));
+  const category = /카페|\bcaf[eé]s?\b|カフェ|咖啡/u.test(query) ? "cafe"
+    : /공원|\bparks?\b|公園|公园/u.test(query) ? "park"
+    : /해수욕장|해변|\bbeach(?:es)?\b|ビーチ|海滩|海灘/u.test(query) ? "beach" : null;
+  const results = matches.length ? matches : [...candidates.values()].filter((place) => place.category === category);
+  return results.length || adding ? { places: results.slice(0, 6), startMinutes, adding, match: matches.length ? "name" : category } : null;
+}
 const distance = (a, b) => Math.hypot((a.lat - b.lat) * 111, (a.lng - b.lng) * 91);
 const demoResponse = () => new Promise((resolve) => setTimeout(resolve, 180));
 const aliases = [

@@ -85,10 +85,10 @@ describe("DemoPanel", () => {
     render(<DemoPanel defaultOpen />);
     await user.click(screen.getByRole("checkbox", { name: "데모 스위치 켜기" }));
     await user.selectOptions(screen.getByLabelText("날씨"), "rain-afternoon");
-    expect(getDemoOverride()).toEqual({ weather_preset: "rain-afternoon" });
+    expect(getDemoOverride()).toEqual({ now: "2026-11-28T09:00:00+09:00", weather_preset: "rain-afternoon" });
 
     await user.selectOptions(screen.getByLabelText("날씨"), "");
-    expect(getDemoOverride()).toBeNull();
+    expect(getDemoOverride()).toEqual({ now: "2026-11-28T09:00:00+09:00" });
 
     await user.click(screen.getByRole("button", { name: "장면 7 귀가" }));
     await user.click(screen.getByRole("checkbox", { name: "데모 스위치 켜기" }));
