@@ -60,6 +60,16 @@ def _return_route(data: dict) -> tuple[str, str] | None:
     return None
 
 
+def _transit_route(data: dict) -> tuple[str, str] | None:
+    """get_transit_info 결과의 (출발역, 도착역). 계산 결과가 아니면(오류 dict 등) None. 역 이름은 도구가 준 영어 이름 그대로다."""
+    start, end = data.get("from"), data.get("to")
+    origin = start.get("station") if isinstance(start, dict) else None
+    destination = end.get("station") if isinstance(end, dict) else None
+    if isinstance(origin, str) and origin and isinstance(destination, str) and destination:
+        return origin, destination
+    return None
+
+
 def build_sources(outputs: list[ToolOutput], referenced: set[str], language: Language) -> list[Source]:
     """성공한 도구 결과에서 답변의 근거를 만든다. 같은 (tool, id) 는 처음 한 번만, 나온 순서대로 넣는다.
 
@@ -98,6 +108,17 @@ def build_sources(outputs: list[ToolOutput], referenced: set[str], language: Lan
             add("get_travel_time", f"{origin}>{destination}", title)
         elif out.name == "get_events" and isinstance(data, dict) and data.get("events"):
             add("get_events", data.get("date", ""), message("source_events", language, date=data.get("date", "")))
+        elif out.name == "get_transit_info" and isinstance(data, dict) and _transit_route(data):
+            origin, destination = _transit_route(data)
+            title = message("source_transit", language, origin=origin, destination=destination)
+            add("get_transit_info", f"{origin}>{destination}", title)
+        elif out.name == "get_restaurants" and isinstance(data, dict) and data.get("restaurants"):
+            # 음식점이 하나라도 있을 때만 근거다. id 는 검색한 장소(place_id) 또는 역(station:<역 이름>)
+            pid, station = data.get("place_id"), data.get("station")
+            if isinstance(pid, str) and pid:
+                add("get_restaurants", pid, message("source_restaurants", language, area=name_of(pid)))
+            elif isinstance(station, str) and station:
+                add("get_restaurants", f"station:{station}", message("source_restaurants", language, area=station))
         elif out.name == "get_return_options" and isinstance(data, dict) and _return_route(data):
             origin, destination = _return_route(data)
             title = message("source_return", language, origin=origin, destination=destination)

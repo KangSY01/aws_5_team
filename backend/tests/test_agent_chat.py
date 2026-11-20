@@ -24,7 +24,7 @@ from scripts.local_invoke import make_event
 
 PLAN_ID = "plan-1"  # 샘플 일정(conftest): s1 감천 · s2 자갈치(고정) · s3 부산타워 · s4 해운대
 LOOKUP = {"search_places", "get_place_info", "get_crowd", "get_weather", "get_hours", "get_travel_time", "get_events",
-          "get_return_options"}
+          "get_return_options", "get_transit_info", "get_restaurants"}
 EDITING = {"replace_stop", "add_stop", "remove_stop", "move_stop"}
 IDS = ["gamcheon-village", "jagalchi-market", "busan-tower", "haeundae-beach"]
 NOW_1128 = {"now": "2026-11-28T09:00:00+09:00"}
@@ -170,6 +170,28 @@ def test_event_return_question_calls_get_return_options_and_grounds_its_places(c
     assert "[place:" not in response.answer and place_name(load_places()["sea-life-busan"], language) in response.answer
     assert ("get_return_options", "2026-11-28:Haeundae>Seomyeon") in [(s.tool, s.id) for s in response.sources]
     assert response.plan_changes == [] and api_storage.get_plan(response.plan_id).stops == []  # 질문만 했으니 일정은 비어 있다
+
+
+def test_transit_and_restaurant_questions_call_the_new_tools_and_cite_them(chat, api_storage):
+    # 일정 수정 모드에서 "해운대에서 자갈치까지 지하철로 얼마나 걸리고, 해운대 근처 식당은?" (B 의 실제 도구 결과)
+    model = ScriptedModel([
+        tool_turn(("get_transit_info", {"from_place_id": "haeundae-beach", "to_place_id": "jagalchi-market"}),
+                  ("get_restaurants", {"place_id": "haeundae-beach", "limit": 3})),
+        text_turn("From [place:haeundae-beach] to [place:jagalchi-market] it takes about 72 minutes. "
+                  "There are restaurants within a short walk; please ask them about dietary needs."),
+    ])
+
+    response = chat(model, session_id=linked_session(api_storage), plan_id=PLAN_ID)
+
+    assert {"get_transit_info", "get_restaurants"} <= model.tool_names
+    results = model.tool_results()
+    assert [status for status, _ in results] == ["success", "success"]
+    assert '"total_min": 72' in results[0][1] and '"restaurant_id": "kto-' in results[1][1]
+    assert "[place:" not in response.answer and "Haeundae Beach" in response.answer
+    assert [(s.tool, s.id) for s in response.sources if s.tool in ("get_transit_info", "get_restaurants")] == [
+        ("get_transit_info", "Haeundae>Jagalchi"), ("get_restaurants", "haeundae-beach"),
+    ]
+    assert response.plan_changes == []  # 질문만 했으니 일정은 그대로다
 
 
 def test_return_options_error_is_passed_to_the_model_and_the_chat_continues(chat):
