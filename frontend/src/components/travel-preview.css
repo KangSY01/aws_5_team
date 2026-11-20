@@ -1009,3 +1009,66 @@
   .translation-method-popover button:is(:hover, :focus-visible) { background: var(--color-selected); }
   .translation-method-popover svg { width: 17px; height: 17px; flex: none; }
 }
+
+.busan-map .busan-location-control {
+  position: relative;
+  margin: 0 max(12px, env(safe-area-inset-right)) 6px 0;
+}
+.busan-location-control button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid #e5e5e7;
+  border-radius: 50%;
+  background: #fff;
+  color: #171717;
+  box-shadow: 0 2px 8px #17171724;
+}
+.busan-location-control button[aria-disabled="true"] { cursor: wait; }
+.busan-location-control svg { width: 22px; height: 22px; }
+.busan-location-status:not(:empty) {
+  position: absolute;
+  right: calc(100% + 8px);
+  bottom: 0;
+  width: max-content;
+  max-width: min(200px, calc(100vw - 80px));
+  padding: 6px 8px;
+  border: 1px solid #e5e5e7;
+  border-radius: 8px;
+  background: #fff;
+  color: #171717;
+  font-size: 13px;
+}
+.travel-preview[data-region-picker="true"] .busan-location-control { display: none; }
+@media (max-width: 899px) {
+  .travel-preview[data-sheet="closed"] .busan-map .busan-location-control {
+    margin-bottom: calc(var(--nav-bottom) + var(--mobile-nav-height) + 6px);
+  }
+}
+
+.busan-location-pin { pointer-events: none; }
+.busan-location-pin svg { position: relative; display: block; width: 44px; height: 44px; }
+.busan-location-pin path { fill: #d94b4b; }
+.busan-location-pin circle { fill: #fff; }
+.busan-location-ring {
+  position: absolute;
+  left: 22px;
+  top: 42px;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #d94b4b;
+  border-radius: 50%;
+  background: #d94b4b24;
+  opacity: 0;
+}
+.busan-location-pin[data-pulse] .busan-location-ring { animation: busan-location-pulse 720ms ease-out; }
+.busan-location-pin[data-pulse] .busan-location-ring:nth-child(2) { animation-delay: 120ms; }
+@keyframes busan-location-pulse {
+  from { opacity: .55; transform: translate(-50%, -50%) scale(.2); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .busan-location-pin[data-pulse] .busan-location-ring { animation: none; }
+}

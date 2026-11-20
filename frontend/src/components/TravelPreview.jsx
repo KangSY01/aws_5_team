@@ -496,7 +496,7 @@ export default function TravelPreview({ night = false } = {}) {
       data-compact-itinerary={!showTranslation && !showChat && !showPreferences && !stops.length} data-region-picker={regionDraft !== null} lang={language}>
       <div className="travel-shell" inert={!isMap} aria-hidden={!isMap}>
         <BusanMap plan={plan} places={places} events={sampleEvents} onEventSelect={setEvent}
-          language={language} label={copy.map}
+          language={language} label={copy.map} locationCopy={copy.location}
           selectedId={selectedId} nextStopId={nextStop?.stop_id} onSelect={setSelectedId} focusRequest={mapFocus}
           regionPicker={regionDraft && {
             selected: regionDraft, onChange: setRegionDraft, copy: plannerCopy,
