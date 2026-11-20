@@ -224,24 +224,24 @@ Schedule Guardian 으로 일정을 점검한다. LLM 을 호출하지 않는다.
   "checked_at": "2026-11-21T09:00:00+09:00",
   "issues": [
     {
-      "issue_id": "i1",
-      "type": "crowded",
-      "stop_id": "s1",
-      "severity": "medium",
-      "detail": "토요일 혼잡 예상(요일 규칙)"
-    },
-    {
-      "issue_id": "i2",
+      "issue_id": "s4-rain",
       "type": "rain",
       "stop_id": "s4",
       "severity": "high",
-      "detail": "15:00-18:00 강수확률 80%, 실외 장소"
+      "detail": "15:30-17:00 최대 강수확률 80%, 강수 시간 100%, 실외 장소"
+    },
+    {
+      "issue_id": "s1-crowded",
+      "type": "crowded",
+      "stop_id": "s1",
+      "severity": "medium",
+      "detail": "토요일 요일 규칙, 집중률 데이터 없음"
     }
   ],
   "repairs": {
-    "i1": [
+    "s1-crowded": [
       {
-        "action": "move_time",
+        "action": "remove",
         "changes": [
           {
             "stop_id": "s1",
@@ -252,19 +252,13 @@ Schedule Guardian 으로 일정을 점검한다. LLM 을 호출하지 않는다.
               "end": "2026-11-21T11:30:00+09:00",
               "locked": false
             },
-            "after": {
-              "stop_id": "s1",
-              "place_id": "gamcheon-village",
-              "start": "2026-11-21T09:00:00+09:00",
-              "end": "2026-11-21T10:30:00+09:00",
-              "locked": false
-            }
+            "after": null
           }
         ],
-        "metrics": { "changed": 0, "kept": 4, "extra_travel_min": 0, "locked_kept": true }
+        "metrics": { "changed": 1, "kept": 3, "extra_travel_min": -15, "locked_kept": true }
       }
     ],
-    "i2": [
+    "s4-rain": [
       {
         "action": "replace",
         "changes": [
@@ -311,9 +305,12 @@ Schedule Guardian 으로 일정을 점검한다. LLM 을 호출하지 않는다.
 
 - 요청에 `demo`(「데모 스위치」)를 넣을 수 있다.
 - `checked_at`: 점검 기준 시각. `demo.now`, `DEMO_NOW`, 현재 시각 순으로 정한다.
+- `issue_id`: `{stop_id}-{type}` (예: `s4-rain`). 같은 일정·같은 문제면 항상 같은 값이다. `GET /alerts` 도 같은 값을 쓴다.
 - `issues`: `Issue` 목록. `type` 은 `crowded` / `rain` / `closed` / `tight_transfer`, `severity` 는 `low` / `medium` / `high`. 문제가 없으면 `[]`.
 - `repairs`: `issue_id` → `RepairOption` 목록. 변경이 작은 순서 (시간 이동 → 순서 변경 → 교체 → 제외).
   `action` 은 `move_time` / `reorder` / `replace` / `remove`.
+- `crowded` 는 집중률·요일 규칙이 하루 단위라, 행사 시간대처럼 시간대 근거가 있을 때만 `move_time` 해결안이 나온다.
+  위 예시의 `s1-crowded`(요일 규칙)은 시간 이동·같은 분류 교체 후보가 없어 `remove` 만 나온 경우다.
 - `metrics.changed` 는 장소가 교체·제거된 Stop 수다. 시각·순서만 바뀐 Stop 은 세지 않는다 (시간만 옮긴 해결안은 `changed: 0`).
   시각이 바뀐 Stop 은 모두 `changes` 에 들어 있다.
 - `places`: `repairs` 에 새로 등장하는 장소의 `Place` 목록 (교체 후보 표시용). 없으면 `[]`.
@@ -396,11 +393,11 @@ Schedule Guardian 으로 일정을 점검한다. LLM 을 호출하지 않는다.
   "checked_at": "2026-11-21T11:10:00+09:00",
   "issues": [
     {
-      "issue_id": "i2",
+      "issue_id": "s4-rain",
       "type": "rain",
       "stop_id": "s4",
       "severity": "high",
-      "detail": "15:00-18:00 강수확률 80%, 실외 장소"
+      "detail": "15:30-17:00 최대 강수확률 80%, 강수 시간 100%, 실외 장소"
     }
   ]
 }
