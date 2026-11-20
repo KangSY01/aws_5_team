@@ -424,7 +424,10 @@ def get_events(date: str) -> dict:
     Returns:
         {"date": "YYYY-MM-DD", "events": [{"name": 행사 이름, "start": ISO 시각, "end": ISO 시각,
         "period_start": ISO 시각, "period_end": ISO 시각,
-        "place_ids": [행사 장소 1km 이내의 장소 ID], "kind": "short" | "opening_day"}]}.
+        "place_ids": [행사 장소 1km 이내의 장소 ID], "main_place_id": 장소 ID 또는 null,
+        "kind": "short" | "opening_day"}]}.
+        main_place_id is the event's main place: the place in place_ids closest to the event location,
+        or null when place_ids is empty.
         kind 가 "short" 면 7일 이하 행사의 기간 중 하루, "opening_day" 면 7일보다 긴 행사의 개막일이다.
         start·end 는 요청한 날짜의 행사 시간대다(+09:00). 진행 시간을 아는 행사는 그 시간(예: 18:00~23:00),
         모르는 행사는 그날 00:00~23:59 로 나온다. 00:00~23:59 이면 진행 시간을 말하지 않는다.
@@ -446,6 +449,7 @@ def get_events(date: str) -> dict:
                 "period_start": event["start"],
                 "period_end": event["end"],
                 "place_ids": event["place_ids"],
+                "main_place_id": event.get("main_place_id"),
                 "kind": kind,
             })
     return {"date": day.isoformat(), "events": events}

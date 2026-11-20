@@ -43,9 +43,18 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - `start`·`end`는 행사 기간의 첫날 00:00, 마지막 날 23:59입니다. 행사 목록 API는 날짜만 주므로 하루 중 진행 시간은 모릅니다.
 - 행사 시간을 따로 확인한 행사(`fetch_events.PLAYTIME_CONTENT_IDS`, 지금은 해운대 빛축제)는 `detailIntro2`(`contentTypeId=15`)의 `playtime` 원문을 `playtime_raw`에 둡니다. 원문이 `18:00~23:00` 같은 한 구간이면 `start`는 첫날 18:00, `end`는 마지막 날 23:00으로 씁니다(기간 중 매일 그 시간). 애매하면 시각은 바꾸지 않습니다.
 - `place_ids`는 행사 좌표에서 직선거리 1km 이내인 `places.json` 장소입니다.
+- `main_place_id`(행사 대표 장소)는 `place_ids` 중 행사 좌표와 직선거리가 가장 가까운 장소입니다. 거리가 같으면 `place_id` 사전순이고, `place_ids`가 비면 `null`입니다. `get_events`도 이 값을 돌려줍니다.
 - `events.json`에는 받은 행사를 모두 둡니다(행사 레이어 표시용).
 - 도구: `get_events(date)`. 행사일만 돌려줍니다. 기간이 7일 이하(첫날·마지막 날 포함)인 행사는 기간 전체(`kind: "short"`), 7일보다 긴 행사는 개막일에만(`kind: "opening_day"`) 나옵니다. 상설 행사가 매일 행사 가중을 받지 않게 하기 위한 규칙입니다. 반환값의 `start`·`end`는 요청한 날짜의 행사 시간대입니다(행사 시간을 아는 행사는 그 시간, 모르면 그날 00:00~23:59). 원래 기간은 `period_start`·`period_end`로 함께 돌려줍니다. `kind`는 원래 기간으로 정합니다.
 - 목록에 없는 행사는 있다고 말하지 마십시오.
+
+## 역 표 (부산교통공사 도시철도 역 정보)
+- `uv run python -m scripts.build_stations`가 `backend/scripts/busan_stations.csv`(1~4호선, 데이터 114행)에서 `backend/app/data/stations.json`(108곳)을 만듭니다. API를 부르지 않습니다. CSV나 `places.json`이 바뀌면 다시 만드십시오.
+- `station`은 CSV의 `name_en` 그대로이며, `places.json`의 `nearest_station`과 정확히 같은 문자열일 때만 연결합니다. 역 이름을 새로 만들지 않습니다.
+- 환승역 6곳(Seomyeon, Yeonsan, Dongnae, Suyeong, Deokcheon, Minam)은 한 항목으로 합치고 좌표는 행들의 평균입니다. `lines`는 참고용이며 노선·환승을 단정하지 마십시오.
+- 동해선·경전철 역은 없습니다. `nearest_station` 중 표에 없는 값은 `OSIRIA`(해동용궁사) 하나이고, 스크립트가 경고로 출력합니다.
+- CSV의 `name_en` 4개는 따옴표가 깨져 있습니다(`Pusan Nat''''''''l Univ.` 등: 부산대, 교대, 경성대·부경대, 부산대양산캠퍼스). 원본 그대로 옮긴 값입니다.
+- 도구: `get_return_options` (`backend/app/tools/return_options.py`). 역 사이 시간은 이 표의 좌표와 `travel_times.json`의 `rule`로 계산한 추정이며, 역 혼잡과 혼잡 시간대는 규칙 기반 가정입니다(실측·실시간 아님).
 
 ## 날씨 샘플 (`backend/app/data/weather/`)
 - 파일 형식은 `get_weather` 반환값과 같습니다(`{"date", "hourly"}`, 설명용 `note`는 선택). 파일 이름은 소문자·숫자·하이픈만 씁니다.

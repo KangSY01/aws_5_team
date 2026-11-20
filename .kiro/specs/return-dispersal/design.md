@@ -39,7 +39,7 @@ backend/
 - 현재 `events.json` 14개 행사로 확인한 값: 빛축제의 가장 가까운 장소는 `sea-life-busan`(약 0.05km)이고 `haeundae-beach`(약 0.11km)가 그다음입니다. 둘 다 `nearest_station`이 `Haeundae`라 장면 7 결과는 같습니다. 행사 1개는 `place_ids`가 비어 `null`이 됩니다.
 
 ### 역 표 `stations.json`
-`busan_stations.csv`(부산 도시철도 1~4호선 115행)에서 만듭니다. API를 부르지 않습니다.
+`busan_stations.csv`(부산 도시철도 1~4호선, 데이터 114행)에서 만듭니다. 환승역을 합쳐 108곳입니다. API를 부르지 않습니다.
 ```
 {"note": "...", "stations": [{"station": "Haeundae", "name_ko": "해운대역", "lines": ["2"], "lat": 35.163672, "lng": 129.158908}]}
 ```
@@ -112,7 +112,7 @@ get_return_options(date, place_id=None, event_name=None, destination_station=Non
 | 해운대 (시각만 변경) | 0 | 39 | 0 |
 | 동백 | 18 | 36 | +15 |
 | 중동 | 17 | 42 | +20 |
-장산역(약 31분)과 시립미술관역(약 33분)은 도보 20분을 넘어 빠집니다. 동백역은 서면 쪽이라 지하철이 3분 줄어 중동역보다 `extra_min`이 작습니다. 이 값은 노선·방향을 반영하지 않은 거리 추정입니다.
+장산역(약 31분)과 시립미술관역(약 34분)은 도보 20분을 넘어 빠집니다. 동백역은 서면 쪽이라 지하철이 3분 줄어 중동역보다 `extra_min`이 작습니다. 이 값은 노선·방향을 반영하지 않은 거리 추정입니다.
 
 ## 반환 형식
 Guardian·프론트가 필드를 그대로 쓰도록 평평한 dict로 돌려줍니다. 시각은 `+09:00` ISO 문자열이며 자정을 넘으면 다음 날 날짜가 붙습니다.

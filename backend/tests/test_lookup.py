@@ -409,7 +409,8 @@ def test_get_events_기간에_날짜가_포함된_행사만_돌려준다(monkeyp
     def event(name, start, end, place_ids, playtime=None):
         opens, closes = playtime or ("00:00:00", "23:59:59")
         return {"name": name, "start": f"{start}T{opens}+09:00", "end": f"{end}T{closes}+09:00",
-                "place_ids": place_ids, "contentid": "1", "addr1": "부산", "lat": 35.1, "lng": 129.1,
+                "place_ids": place_ids, "main_place_id": place_ids[0] if place_ids else None,
+                "contentid": "1", "addr1": "부산", "lat": 35.1, "lng": 129.1,
                 **({"playtime_raw": "18:00~23:00"} if playtime else {})}
 
     monkeypatch.setattr(lookup, "DATA_DIR", _events_dir(tmp_path, [
@@ -429,14 +430,14 @@ def test_get_events_기간에_날짜가_포함된_행사만_돌려준다(monkeyp
         # 행사 시간을 아는 행사: start·end 는 요청한 날짜의 그 시간대, 원래 기간은 period_start·period_end
         {"name": "빛축제", "start": "2026-11-28T18:00:00+09:00", "end": "2026-11-28T23:00:00+09:00",
          "period_start": "2026-11-28T18:00:00+09:00", "period_end": "2027-01-10T23:00:00+09:00",
-         "place_ids": ["haeundae-beach"], "kind": "opening_day"},
+         "place_ids": ["haeundae-beach"], "main_place_id": "haeundae-beach", "kind": "opening_day"},
         # 행사 시간을 모르는 행사: 그날 00:00~23:59
         {"name": "하루", "start": "2026-11-28T00:00:00+09:00", "end": "2026-11-28T23:59:59+09:00",
          "period_start": "2026-11-28T00:00:00+09:00", "period_end": "2026-11-28T23:59:59+09:00",
-         "place_ids": ["busan-tower"], "kind": "short"},
+         "place_ids": ["busan-tower"], "main_place_id": "busan-tower", "kind": "short"},
         {"name": "7일", "start": "2026-11-28T00:00:00+09:00", "end": "2026-11-28T23:59:59+09:00",
          "period_start": "2026-11-22T00:00:00+09:00", "period_end": "2026-11-28T23:59:59+09:00",
-         "place_ids": [], "kind": "short"},
+         "place_ids": [], "main_place_id": None, "kind": "short"},  # place_ids 가 비면 대표 장소도 없다
     ]}
     events = TypeAdapter(list[Event]).validate_python(result["events"])  # Guardian 의 Event 모델로 읽힌다 (period_* 는 무시)
     assert all(e.start.date() == e.end.date() == dt.date(2026, 11, 28) and e.start < e.end for e in events)
@@ -456,6 +457,7 @@ def test_get_events_실제_데이터_데모일에는_빛축제_개막만_나온�
     events = lookup.get_events(date="2026-11-28")["events"]
     assert [(e["name"], e["kind"], e["start"][:10]) for e in events] == [("해운대 빛축제", "opening_day", "2026-11-28")]
     assert "haeundae-beach" in events[0]["place_ids"]
+    assert events[0]["main_place_id"] == "sea-life-busan"  # 행사 좌표에서 가장 가까운 장소 (요구사항 1)
     assert lookup.get_events(date="2026-11-29")["events"] == []
     all_events = json.loads((lookup.DATA_DIR / "events.json").read_text(encoding="utf-8"))["events"]
     assert len(all_events) == 14 and "kind" not in all_events[0]  # 파일에는 모든 행사가 그대로 있다
@@ -483,6 +485,9 @@ def test_events_json은_Event_형식이고_place_ids는_places_json_에_있다()
     known = {p["place_id"] for p in json.loads((lookup.DATA_DIR / "places.json").read_text(encoding="utf-8"))}
     events = TypeAdapter(list[Event]).validate_python(data["events"])
     assert all(e.start <= e.end and set(e.place_ids) <= known for e in events)
+    # main_place_id: place_ids 가 비면 null, 아니면 place_ids 안의 값 (return-dispersal 요구사항 1)
+    assert all(e["main_place_id"] in e["place_ids"] if e["place_ids"] else e["main_place_id"] is None for e in data["events"])
+    assert [e["name"] for e in data["events"] if e["main_place_id"] is None] == ["부락페스타"]
     assert "serviceKey" not in json.dumps(data)
 
 
@@ -497,9 +502,9 @@ def test_fetch_events_build_events():
     ]
     events = fetch_events.build_events(items, places)
     assert [e["name"] for e in events] == ["좌표 없는 행사", "빛축제"]  # 시작일 순, 읽을 수 없는 항목은 뺀다
-    assert events[0]["place_ids"] == [] and events[0]["lat"] is None
+    assert events[0]["place_ids"] == [] and events[0]["lat"] is None and events[0]["main_place_id"] is None
     assert events[1] == {"name": "빛축제", "start": "2026-11-28T00:00:00+09:00", "end": "2027-01-17T23:59:59+09:00",
-                         "place_ids": ["near"], "contentid": "1", "addr1": "부산광역시 해운대구", "lat": 35.165, "lng": 129.1604}
+                         "place_ids": ["near"], "main_place_id": "near", "contentid": "1", "addr1": "부산광역시 해운대구", "lat": 35.165, "lng": 129.1604}
     assert json.loads(fetch_events.dump_events({"api": "x"}, events)) == {"source": {"api": "x"}, "events": events}
 
     # 행사 시간 원문이 단순한 한 구간이면 첫날 시작 시각·마지막 날 종료 시각으로 쓰고, 원문을 playtime_raw 에 둔다
@@ -514,6 +519,12 @@ def test_fetch_events_build_events():
         assert (event["start"], event["end"], event["playtime_raw"]) == (
             "2026-11-28T00:00:00+09:00", "2027-01-17T23:59:59+09:00", vague)
     assert json.loads(fetch_events.dump_events({}, [])) == {"source": {}, "events": []}
+    # main_place_id: place_ids 중 행사 좌표와 가장 가까운 장소. 같은 거리면 place_id 사전순. 1km 밖은 대표가 되지 않는다
+    spots = [{"place_id": "b-same", "lat": 35.1660, "lng": 129.1604}, {"place_id": "a-same", "lat": 35.1660, "lng": 129.1604},
+             {"place_id": "nearer", "lat": 35.1652, "lng": 129.1604}, *places]
+    assert fetch_events.build_events(items, spots)[1]["main_place_id"] == "nearer"
+    tied = fetch_events.build_events(items, spots[:2] + places)[1]
+    assert (tied["place_ids"], tied["main_place_id"]) == (["b-same", "a-same", "near"], "a-same")
     one = {"response": {"body": {"items": {"item": items[0]}}}}
     assert fetch_events.festival_items(one) == [items[0]]
     assert fetch_events.festival_items({"response": {"body": {"items": ""}}}) == []
