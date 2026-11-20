@@ -1,6 +1,6 @@
 // 장소명 결정 유틸리티: 표시 언어 → en → names 의 첫 유효 값 → place_id 순서
 
-const SUPPORTED = ['en', 'ja', 'zh-Hans', 'zh-Hant'];
+const SUPPORTED = ['ko', 'en', 'ja', 'zh-Hans', 'zh-Hant'];
 const DEFAULT_LANGUAGE = 'en';
 
 // 공백만 있는 문자열은 빈 값으로 취급한다

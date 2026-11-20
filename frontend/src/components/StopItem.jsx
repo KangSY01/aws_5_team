@@ -3,7 +3,7 @@ import { formatTime } from '../lib/formatTime.js';
 import { resolvePlaceName } from '../lib/resolvePlaceName.js';
 import { LOCKED_LABEL, PLACE_NAME_FALLBACK_NOTE } from '../constants/messages.js';
 
-const SUPPORTED_LANGUAGES = ['en', 'ja', 'zh-Hans', 'zh-Hant'];
+const SUPPORTED_LANGUAGES = ['ko', 'en', 'ja', 'zh-Hans', 'zh-Hant'];
 
 // 잠금 아이콘 (장식용이므로 보조기기에서 숨긴다)
 function LockIcon() {
@@ -22,7 +22,7 @@ function LockIcon() {
   );
 }
 
-export default function StopItem({ stop, place, language, number, active, onSelect, lockedLabel = LOCKED_LABEL }) {
+export default function StopItem({ stop, place, language, number, active, onSelect, lockedLabel = LOCKED_LABEL, onEdit, editLabel, dayLabel }) {
   // resolvePlaceName 은 Map 을 받으므로 단일 장소를 Map 으로 감싸 전달한다
   const placesById = place ? new Map([[stop.place_id, place]]) : new Map();
   const { name, isFallbackToId } = resolvePlaceName(stop, placesById, language);
@@ -32,6 +32,7 @@ export default function StopItem({ stop, place, language, number, active, onSele
     <>
       {number != null && <span className="stop-number" aria-hidden="true">{number}</span>}
       <span className="stop-item__time">
+        {dayLabel && <small className="stop-day">{dayLabel}</small>}
         <time dateTime={stop.start}>{formatTime(stop.start)}</time>
         {' – '}
         <time dateTime={stop.end}>{formatTime(stop.end)}</time>
@@ -61,6 +62,7 @@ export default function StopItem({ stop, place, language, number, active, onSele
           {content}
         </button>
       ) : content}
+      {onEdit && <button type="button" className="stop-edit" aria-label={editLabel + " · " + name} onClick={onEdit}>{editLabel}</button>}
     </li>
   );
 }

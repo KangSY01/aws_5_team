@@ -21,7 +21,7 @@ function buildKeys(stops) {
   });
 }
 
-export default function PlanList({ plan, places, displayLanguage, selected, onSelect, lockedLabel }) {
+export default function PlanList({ plan, places, displayLanguage, selected, onSelect, lockedLabel, onEdit, editLabel, formatStopDate }) {
   const stops = Array.isArray(plan?.stops) ? plan.stops : [];
   const placesById = buildPlacesById(places);
   const language = displayLanguage ?? plan?.profile?.language;
@@ -46,6 +46,9 @@ export default function PlanList({ plan, places, displayLanguage, selected, onSe
             active={selected === index}
             onSelect={onSelect ? () => onSelect(index) : undefined}
             lockedLabel={lockedLabel}
+            onEdit={onEdit && !stop.locked ? () => onEdit(index) : undefined}
+            editLabel={editLabel}
+            dayLabel={formatStopDate && stop.start.slice(0, 10) !== date ? formatStopDate(stop.start.slice(0, 10)) : undefined}
           />
         ))}
       </ol>

@@ -10,8 +10,14 @@ const tileOverrideAttribution = import.meta.env.VITE_MAP_TILE_ATTRIBUTION;
 const pinSize = 44;
 const pinAnchor = [22, 42];
 const pinGap = pinSize + 4;
+const eventIcons = {
+  festival: "m12 2 2.3 6.7L21 11l-6.7 2.3L12 20l-2.3-6.7L3 11l6.7-2.3z",
+  performance: "M10 17V6l10-2v11M10 17a3 2 0 1 1-6 0 3 2 0 0 1 6 0Zm10-2a3 2 0 1 1-6 0 3 2 0 0 1 6 0Z",
+  exhibition: "M4 4h16v16H4zM4 16l5-5 4 4 3-2 4 4M15 8h1",
+  market: "M4 10h16l-2-5H6zm2 0v9h12v-9m-7 9v-5h4",
+};
 
-export default function BusanMap({ plan, places, language, label, visitOrderLabel, selectedId, nextStopId, onSelect, focusRequest }) {
+export default function BusanMap({ plan, places, events, onEventSelect, language, label, selectedId, nextStopId, onSelect, focusRequest }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const fittedPlan = useRef(null);
@@ -28,9 +34,11 @@ export default function BusanMap({ plan, places, language, label, visitOrderLabe
       return { stop, coordinates };
     });
   }, [plan, places]);
-  const visitSegments = useMemo(() => mappedStops.flatMap(({ coordinates }, index) => {
-    const next = mappedStops[index + 1]?.coordinates;
-    return coordinates && next ? [[coordinates, next]] : [];
+  const visitSegments = useMemo(() => mappedStops.flatMap(({ coordinates, stop }, index) => {
+    const next = mappedStops[index + 1];
+    if (!coordinates || !next?.coordinates) return [];
+    if (stop.end?.slice(0, 10) !== next.stop.start?.slice(0, 10)) return [];
+    return [[coordinates, next.coordinates]];
   }), [mappedStops]);
 
   useEffect(() => {
@@ -45,7 +53,8 @@ export default function BusanMap({ plan, places, language, label, visitOrderLabe
       maxZoom: 19,
       zoomControl: false,
       attributionControl: false,
-    }).setView([35.145, 129.075], 12);
+    });
+    map.setView([35.135, 129.085], map.getSize().x < 900 ? 11 : 12);
     mapRef.current = map;
 
     L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
@@ -99,13 +108,13 @@ export default function BusanMap({ plan, places, language, label, visitOrderLabe
   useEffect(() => {
     if (!visitSegments.length) return;
     const line = L.polyline(visitSegments, {
-      className: "busan-visit-line",
-      color: "#387687",
-      weight: 2.5,
-      opacity: 1,
-      dashArray: "2 6",
-      lineCap: "round",
-      interactive: false,
+        className: "busan-visit-line",
+        color: "#387687",
+        weight: 2.5,
+        opacity: 1,
+        dashArray: "2 6",
+        lineCap: "round",
+        interactive: false,
     }).addTo(mapRef.current);
     return () => line.remove();
   }, [visitSegments]);
@@ -185,6 +194,55 @@ export default function BusanMap({ plan, places, language, label, visitOrderLabe
   }, [plan, places, mappedStops, language, onSelect]);
 
   useEffect(() => {
+    if (!events?.length) return;
+    const map = mapRef.current;
+    const layer = L.layerGroup().addTo(map);
+    const markers = events.map((event) => {
+      const marker = L.marker([event.place.lat, event.place.lng], {
+        title: event.names[language],
+        zIndexOffset: -10000,
+        icon: L.divIcon({
+          className: `busan-event-pin busan-event-${event.type}`,
+          iconSize: [44, 44],
+          iconAnchor: [22, 22],
+          html: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${eventIcons[event.type]}"/></svg>`,
+        }),
+      }).addTo(layer);
+      marker.getElement().setAttribute("aria-label", event.names[language]);
+      marker.getElement().addEventListener("keydown", (key) => {
+        if (key.key === " ") {
+          key.preventDefault();
+          key.stopPropagation();
+          onEventSelect(event);
+        }
+      });
+      marker.on("click", () => onEventSelect(event));
+      return marker;
+    });
+    function updateVisibility() {
+      const itinerary = [...markersRef.current.values()].map((marker) => {
+        const [x, y] = marker.getElement().style.translate.split(" ").map(parseFloat);
+        return map.project(marker.getLatLng()).add([x || 0, (y || 0) - 20]);
+      });
+      const visible = [];
+      const zoom = map.getZoom();
+      for (const marker of markers) {
+        const point = map.project(marker.getLatLng());
+        const overlaps = (points, radius) => points.some((other) => point.distanceTo(other) < radius);
+        const show = !overlaps(itinerary, 48) && !overlaps(visible, zoom < 12 ? 85 : 44);
+        marker.getElement().hidden = !show;
+        if (show) visible.push(point);
+      }
+    }
+    updateVisibility();
+    map.on("zoomend", updateVisibility);
+    return () => {
+      map.off("zoomend", updateVisibility);
+      layer.remove();
+    };
+  }, [events, language, mappedStops, onEventSelect, onSelect]);
+
+  useEffect(() => {
     for (const [id, marker] of markersRef.current) {
       const active = id === selectedId;
       const element = marker.getElement();
@@ -206,14 +264,11 @@ export default function BusanMap({ plan, places, language, label, visitOrderLabe
     const panelBounds = panel.getBoundingClientRect();
     const panelOverlapsMap = !panel.hidden && panelBounds.width > 0 && panelBounds.left < mapBounds.right;
     const visibleHeight = panelOverlapsMap ? panelBounds.top - mapBounds.top : size.y;
-    const targetY = Math.max(35, visibleHeight / 2);
-    const center = map.project(marker.getLatLng()).add([0, size.y / 2 - targetY]);
+    const [offsetX, offsetY] = marker.getElement().style.translate.split(" ").map(parseFloat);
+    const targetY = Math.max(70, visibleHeight / 2 + 20);
+    const center = map.project(marker.getLatLng()).add([offsetX || 0, size.y / 2 - targetY + (offsetY || 0)]);
     map.panTo(map.unproject(center), { animate: !window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches });
   }, [focusRequest]);
 
-  return (
-    <div ref={container} className="busan-map" role="region" aria-label={label}>
-      {visitSegments.length > 0 && <span className="busan-visit-legend">{visitOrderLabel}</span>}
-    </div>
-  );
+  return <div ref={container} className="busan-map" role="region" aria-label={label} />;
 }

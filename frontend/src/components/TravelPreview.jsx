@@ -1,16 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getTravelCopy, languages } from "../constants/travelCopy.js";
+import { getPlannerCopy } from "../constants/plannerCopy.js";
+import { recommendDemo, suggestDemo } from "../lib/demoPlanner.js";
 import koreanFlag from "../assets/flags/kr.svg";
 import englishFlag from "../assets/flags/gb.svg";
 import japaneseFlag from "../assets/flags/jp.svg";
 import simplifiedChineseFlag from "../assets/flags/cn.svg";
 import traditionalChineseFlag from "../assets/flags/tw.svg";
 import EmptyState from "./EmptyState.jsx";
-import samplePlan from "../mocks/sample_plan.json";
-import samplePlaces from "../mocks/places.json";
+import sampleEvents from "../mocks/events.js";
 import { buildPlacesById, resolvePlaceName } from "../lib/resolvePlaceName.js";
 import BusanMap from "./BusanMap.jsx";
 import PlanList from "./PlanList.jsx";
+import TravelPreferences from "./TravelPreferences.jsx";
 import "./travel-preview.css";
 
 const localeFlags = {
@@ -42,13 +44,27 @@ function LanguageTrigger({ className, label }) {
 
 const languageStorageKey = "busannow.language";
 const activeTripStorageKey = "busannow.activeTrip";
-const samplePlacesById = buildPlacesById(samplePlaces);
+const courseStorageKey = "busannow.course";
+const preferencesStorageKey = "busannow.preferences";
+const emptyPlan = { stops: [] };
+const emptyPlaces = [];
+const defaultPreferences = {
+  duration: "day", regions: [], activities: [], food: "", transport: "", origin: "", less_walking: false, lodging: false,
+};
 
-function hasSavedTrip() {
+function loadSaved(key) {
   try {
-    return window.localStorage.getItem(activeTripStorageKey) === samplePlan.plan_id;
+    return JSON.parse(window.localStorage.getItem(key));
   } catch {
-    return false;
+    return null;
+  }
+}
+
+function save(key, value) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // The session still works when browser storage is unavailable.
   }
 }
 
@@ -77,7 +93,7 @@ function LanguageOptions({ language, onSelect }) {
   ));
 }
 
-function ProfilePage({ copy, language, onLanguageChange }) {
+function ProfilePage({ copy, plannerCopy, language, onLanguageChange }) {
   const [languageOpen, setLanguageOpen] = useState(false);
   const heading = useRef(null);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, []);
@@ -87,7 +103,7 @@ function ProfilePage({ copy, language, onLanguageChange }) {
       <div className="profile-content">
         <header>
           <h1 id="profile-heading" ref={heading} tabIndex={-1}>{copy.profile}</h1>
-          <p>{copy.guest}</p>
+          <p>{plannerCopy.demoAccount}</p>
         </header>
         <div className="profile-settings">
           <button type="button" className="profile-language-row" aria-expanded={languageOpen}
@@ -125,12 +141,30 @@ export default function TravelPreview({ night = false } = {}) {
   const [language, setLanguage] = useState(getSavedLanguage);
   const [profile, setProfile] = useState(() => window.location.hash === "#profile");
   const [open, setOpen] = useState(false);
-  const [tripStarted, setTripStarted] = useState(hasSavedTrip);
+  const [course, setCourse] = useState(() => {
+    const saved = loadSaved(courseStorageKey);
+    return Array.isArray(saved?.plan?.stops) && Array.isArray(saved?.places) ? saved : null;
+  });
+  const [tripStarted, setTripStarted] = useState(() => {
+    try {
+      return Boolean(course && window.localStorage.getItem(activeTripStorageKey) === course.plan.plan_id);
+    } catch {
+      return false;
+    }
+  });
+  const [preferences, setPreferences] = useState(() => ({ ...defaultPreferences, ...loadSaved(preferencesStorageKey) }));
+  const [showPreferences, setShowPreferences] = useState(false);
+  const [event, setEvent] = useState(null);
+  const [editId, setEditId] = useState(null);
+  const [reviewStatus, setReviewStatus] = useState(null);
+  const [planError, setPlanError] = useState(null);
+  const [pending, setPending] = useState(null);
+  const requestInProgress = useRef(false);
   const [panel, setPanel] = useState("chat");
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState([]);
-  const [selectedId, setSelectedId] = useState(samplePlan.stops[0]?.stop_id ?? null);
+  const [selectedId, setSelectedId] = useState(() => course?.plan.stops[0]?.stop_id ?? null);
   const [mapFocus, setMapFocus] = useState(null);
   const dragStart = useRef(null);
   const root = useRef(null);
@@ -140,12 +174,16 @@ export default function TravelPreview({ night = false } = {}) {
   const composer = useRef(null);
   const languageMenu = useRef(null);
   const copy = getTravelCopy(language);
+  const plannerCopy = getPlannerCopy(language);
   const languageLabel = copy.languageLabel + ": " + languages[language];
-  const plan = samplePlan;
+  const plan = course?.plan ?? emptyPlan;
+  const places = course?.places ?? emptyPlaces;
+  const placesById = useMemo(() => buildPlacesById(places), [places]);
   const stops = plan.stops;
-  // The sample itinerary does not track visits yet.
   const nextStop = tripStarted ? stops[0] : null;
-  const nextPlace = nextStop ? resolvePlaceName(nextStop, samplePlacesById, language).name : null;
+  const nextPlace = nextStop ? resolvePlaceName(nextStop, placesById, language).name : null;
+  const editIndex = stops.findIndex((stop) => stop.stop_id === editId);
+  const editStop = stops[editIndex];
   const selected = Math.max(0, stops.findIndex((stop) => stop.stop_id === selectedId));
   const tab = profile ? "profile" : open ? panel : "home";
   const showChat = panel === "chat";
@@ -163,8 +201,12 @@ export default function TravelPreview({ night = false } = {}) {
   }, []);
 
   useEffect(() => {
-    if (open && log.current) log.current.scrollTop = log.current.scrollHeight;
-  }, [open, messages, tab]);
+    if (open && tab === "chat" && log.current) log.current.scrollTop = log.current.scrollHeight;
+  }, [open, messages, tab, pending, reviewStatus]);
+
+  useEffect(() => {
+    if (tab === "itinerary" && log.current) log.current.scrollTop = 0;
+  }, [tab, showPreferences]);
 
   useEffect(() => {
     if (open) chatHeading.current?.focus();
@@ -209,7 +251,7 @@ export default function TravelPreview({ night = false } = {}) {
     tabBar.current?.querySelector(`[data-tab="${panel}"]`)?.focus();
   }
 
-  function changeTrip(active) {
+  function changeTrip(active, closePanel = true) {
     if (active && !stops.length) return;
     setTripStarted(active);
     try {
@@ -218,13 +260,15 @@ export default function TravelPreview({ night = false } = {}) {
     } catch {
       // Travel mode remains available in the current session without storage.
     }
-    setOpen(false);
-    setExpanded(false);
+    if (closePanel) {
+      setOpen(false);
+      setExpanded(false);
+      tabBar.current?.querySelector('[data-tab="home"]')?.focus();
+    }
     if (active) {
       setSelectedId(stops[0].stop_id);
       setMapFocus({ id: stops[0].stop_id });
     }
-    tabBar.current?.querySelector('[data-tab="home"]')?.focus();
   }
 
   function selectStop(index) {
@@ -233,13 +277,91 @@ export default function TravelPreview({ night = false } = {}) {
     setMapFocus({ id });
   }
 
-  function submit(event) {
+  function updatePreferences(next) {
+    setPreferences(next);
+    save(preferencesStorageKey, next);
+  }
+
+  async function recommendCourse(event) {
+    event.preventDefault();
+    if (requestInProgress.current) return;
+    const values = { ...preferences, lodging: ["overnight", "long"].includes(preferences.duration) && preferences.lodging };
+    requestInProgress.current = true;
+    setPending("recommend");
+    setPlanError(null);
+    try {
+      const result = await recommendDemo(values, language);
+      if (!result?.plan?.plan_id || !result.plan.stops?.length || !Array.isArray(result.places)) throw new Error();
+      const next = { ...result, preferences: values };
+      setCourse(next);
+      save(courseStorageKey, next);
+      if (tripStarted) changeTrip(false, false);
+      setSelectedId(result.plan.stops[0].stop_id);
+      setMapFocus(null);
+      setEditId(null);
+      setShowPreferences(false);
+    } catch (error) {
+      setPlanError(error.message === "noPlaces" ? "noPlaces" : "requestFailed");
+    } finally {
+      requestInProgress.current = false;
+      setPending(null);
+    }
+  }
+
+  function openEdit(index) {
+    setEditId(stops[index].stop_id);
+    setReviewStatus(null);
+    setPanel("chat");
+  }
+
+  async function submit(event) {
     event.preventDefault();
     const message = draft.trim();
-    if (!message) return;
+    if (!message || !editStop || editStop.locked || requestInProgress.current) return;
+    requestInProgress.current = true;
+    setPending("edit");
+    setReviewStatus(null);
     setMessages((previous) => [...previous, { text: message, lang: language, role: "user" }]);
     setDraft("");
+    try {
+      const result = await suggestDemo({
+        plan, stop_id: editId, preferences: course.preferences, message, language,
+      });
+      if ((!result?.place && !result?.reason_code) ||
+        (result.place && (!Number.isFinite(result.place.lat) || !Number.isFinite(result.place.lng) ||
+          typeof result.place.place_id !== "string" || stops.some((stop) => stop.place_id === result.place.place_id)))) {
+        throw new Error();
+      }
+      setMessages((previous) => [...previous, {
+        result, lang: language, snapshot: course, target: editStop, index: editIndex,
+      }]);
+    } catch {
+      setDraft((current) => current || message);
+      setReviewStatus("requestFailed");
+    } finally {
+      requestInProgress.current = false;
+      setPending(null);
+    }
+  }
 
+  function applySuggestion(message) {
+    if (requestInProgress.current) return;
+    if (message.snapshot !== course) {
+      setReviewStatus("stale");
+      return;
+    }
+    const { place } = message.result;
+    const next = {
+      ...course,
+      plan: { ...plan, stops: stops.map((stop) => stop === message.target ? { ...stop, place_id: place.place_id } : stop) },
+      places: [...places.filter((item) => item.place_id !== place.place_id), place],
+    };
+    setCourse(next);
+    save(courseStorageKey, next);
+    setSelectedId(message.target.stop_id);
+    setMapFocus({ id: message.target.stop_id });
+    setMessages((previous) => previous.map((entry) => entry === message ? { ...entry, applied: true } : entry));
+    setReviewStatus("applied");
   }
 
   function endDrag(event) {
@@ -254,9 +376,11 @@ export default function TravelPreview({ night = false } = {}) {
   }
 
   return (
-    <main ref={root} className="travel-preview" data-night={night} data-page={profile ? "profile" : "map"} data-sheet={open ? "open" : "closed"} data-expanded={expanded} lang={language}>
+    <main ref={root} className="travel-preview" data-night={night} data-page={profile ? "profile" : "map"} data-sheet={open ? "open" : "closed"} data-expanded={expanded}
+      data-compact-itinerary={!showChat && !showPreferences && !stops.length} lang={language}>
       <div className="travel-shell" inert={profile} aria-hidden={profile}>
-        <BusanMap plan={plan} places={samplePlaces} language={language} label={copy.map} visitOrderLabel={copy.visitOrder}
+        <BusanMap plan={plan} places={places} events={sampleEvents} onEventSelect={setEvent}
+          language={language} label={copy.map}
           selectedId={selectedId} nextStopId={nextStop?.stop_id} onSelect={setSelectedId} focusRequest={mapFocus} />
         <header className="travel-header">
           <div className="travel-brand-group">
@@ -272,6 +396,15 @@ export default function TravelPreview({ night = false } = {}) {
             }} />
           </div>
         </header>
+        {tab === "home" && event && (
+          <section className="map-event-card" aria-label={event.names[language]}>
+            <button type="button" aria-label={plannerCopy.closeEvent} onClick={() => setEvent(null)}>×</button>
+            <small>{plannerCopy.sampleEvent}</small>
+            <h2>{event.names[language]}</h2>
+            <p>{formatDate(event.from, language)}{event.from !== event.to && " – " + formatDate(event.to, language)}</p>
+            <p>{event.place.names[language] ?? event.place.names.en}</p>
+          </section>
+        )}
       </div>
       {tab === "home" && nextPlace && (
         <div className="trip-next">
@@ -279,7 +412,7 @@ export default function TravelPreview({ night = false } = {}) {
           <strong>{nextPlace}</strong>
         </div>
       )}
-      {profile && <ProfilePage copy={copy} language={language} onLanguageChange={changeLanguage} />}
+      {profile && <ProfilePage copy={copy} plannerCopy={plannerCopy} language={language} onLanguageChange={changeLanguage} />}
       <aside id="travel-chat" className="travel-chat" hidden={!open} inert={!open} aria-hidden={!open} aria-labelledby="travel-panel-title"
         onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
         <div className="chat-grab" aria-hidden="true"
@@ -300,49 +433,75 @@ export default function TravelPreview({ night = false } = {}) {
         <div className="chat-content" ref={log}>
           <div className="chat-messages" role="log" hidden={!showChat}>
             <p className="chat-bubble">{copy.greeting}</p>
-            {!messages.length && (
-              <div className="chat-suggestions">
-                {copy.suggestions.map((question) => (
-                  <button key={question} type="button" aria-pressed={draft === question} onClick={() => {
-                    setDraft(question);
-                    composer.current?.focus();
-                  }}>{question}</button>
-                ))}
-              </div>
-            )}
-            {messages.map((message, index) => (
-              <p key={index} className="chat-bubble" data-role={message.role} lang={message.lang}>{message.text}</p>
-            ))}
+            {!editStop && <p className="chat-bubble">{plannerCopy.pickStop}</p>}
+            {messages.map((message, index) => {
+              if (!message.result) return <p key={index} className="chat-bubble" data-role={message.role} lang={message.lang}>{message.text}</p>;
+              const { result, target, snapshot } = message;
+              const original = snapshot.places.find((place) => place.place_id === target.place_id);
+              const failure = { locked: "lockedStop", catalog_limit: "catalogLimit", no_candidate: "noCandidate" };
+              return (
+                <article key={index} className="chat-bubble planner-suggestion">
+                  {result.demo && <small>{plannerCopy.demoSuggestion}</small>}
+                  {result.place ? (
+                    <>
+                      <dl>
+                        <div><dt>{plannerCopy.before}</dt><dd>{original?.names[language] ?? original?.names.en ?? target.place_id}</dd></div>
+                        <div><dt>{plannerCopy.after}</dt><dd>{result.place.names[language] ?? result.place.names.en}</dd></div>
+                      </dl>
+                      {result.reason && <p lang={message.lang}>{result.reason}</p>}
+                      {message.applied ? <p>{plannerCopy.applied}</p> : snapshot === course ? (
+                        <button type="button" disabled={Boolean(pending)} onClick={() => applySuggestion(message)}>{plannerCopy.apply}</button>
+                      ) : <p>{plannerCopy.stale}</p>}
+                    </>
+                  ) : <p>{result.reason ? <span lang={message.lang}>{result.reason}</span> : plannerCopy[failure[result.reason_code]]}</p>}
+                </article>
+              );
+            })}
+            {pending === "edit" && <p role="status">{plannerCopy.editing}</p>}
+            {reviewStatus && <p role={reviewStatus === "applied" ? "status" : "alert"}>{plannerCopy[reviewStatus]}</p>}
           </div>
 
-          {(!showChat || messages.length > 0) && (
+          {!showChat && (showPreferences ? (
+            <TravelPreferences value={preferences} onChange={updatePreferences} onSubmit={recommendCourse} copy={plannerCopy}
+              busy={Boolean(pending)} error={plannerCopy[planError]} backLabel={copy.itinerary} onBack={() => setShowPreferences(false)} />
+          ) : (
             <section className="travel-panel" aria-label={copy.itinerary}>
-              <h2>{copy.sampleTitle}</h2>
+              {course?.demo && <small>{plannerCopy.demoCourse}</small>}
               {plan.date && <time dateTime={plan.date}>{formatDate(plan.date, language)}</time>}
-              {stops.length ? <PlanList plan={plan} places={samplePlaces} displayLanguage={language}
-                selected={selected} onSelect={selectStop} lockedLabel={copy.locked} /> : <EmptyState message={copy.empty} />}
+              {stops.length ? <PlanList plan={plan} places={places} displayLanguage={language}
+                selected={selected} onSelect={selectStop} lockedLabel={copy.locked} onEdit={openEdit} editLabel={plannerCopy.editStop}
+                formatStopDate={(date) => formatDate(date, language)} /> : <EmptyState message={copy.empty} />}
+              {course?.lodging_unavailable && <p>{plannerCopy.lodgingUnavailable}</p>}
+              {stops.length > 1 && <small>{plannerCopy.schematicRoute}</small>}
             </section>
-          )}
+          ))}
         </div>
+        {showChat && editStop && (
+          <div className="edit-target">
+            <strong>{editIndex + 1} · {resolvePlaceName(editStop, placesById, language).name}</strong>
+            <button type="button" aria-label={plannerCopy.clearTarget} onClick={() => { setEditId(null); setReviewStatus(null); }}>×</button>
+          </div>
+        )}
         <form className="chat-compose" hidden={!showChat} onSubmit={submit}>
           <textarea ref={composer} aria-label={copy.messageLabel} placeholder={copy.placeholder} rows={1}
-            value={draft} onChange={(event) => setDraft(event.target.value)}
+            value={draft} maxLength={1000} onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) submit(event);
             }} />
-          <button type="submit" aria-label={copy.send} disabled={!draft.trim()}>
+          <button type="submit" aria-label={copy.send} disabled={!draft.trim() || !editStop || Boolean(pending)}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg>
           </button>
         </form>
-        {!showChat && (
+        {!showChat && !showPreferences && (
           <div className="trip-actions">
-            {stops.length > 0 ? (
-              <button type="button" onClick={() => changeTrip(!tripStarted)}>
+            {stops.length > 0 && (
+              <button type="button" disabled={Boolean(pending)} onClick={() => changeTrip(!tripStarted)}>
                 {tripStarted ? copy.endTrip : copy.startTrip}
               </button>
-            ) : (
-              <button type="button" onClick={() => setPanel("chat")}>{copy.askForRoute}</button>
             )}
+            <button type="button" disabled={Boolean(pending)} onClick={() => setShowPreferences(true)}>
+              {stops.length ? plannerCopy.newCourse : plannerCopy.recommend}
+            </button>
           </div>
         )}
       </aside>
@@ -355,6 +514,7 @@ export default function TravelPreview({ night = false } = {}) {
             aria-controls={name === "chat" || name === "itinerary" ? "travel-chat" : undefined}
             aria-expanded={name === "chat" || name === "itinerary" ? tab === name : undefined}
             onClick={() => {
+              if (name !== "home") setEvent(null);
               if (name === "profile") {
                 setOpen(false);
                 setExpanded(false);
