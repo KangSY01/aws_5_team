@@ -26,8 +26,9 @@ FESTIVAL_NAME = "해운대 빛축제"  # events.json 의 행사 이름 (한국�
 FESTIVAL_STOP_ID = "s4"
 # (stop_id, place_id, 시작, 끝). 빛축제 자리(s4)는 처음에 고정하지 않는다. 발표자가 화면에서 누른다
 STOPS: tuple[tuple[str, str, str, str], ...] = (
-    ("s1", "huinnyeoul-village", "10:00", "11:30"),
-    ("s2", "jagalchi-market", "12:00", "13:00"),
+    # 11/20 결정: 발표 범위를 해운대 권역 파일럿으로 좁혀 일정 전체를 해운대 권역으로 바꿈 (동백섬 → 로데오거리 점심)
+    ("s1", "dongbaekseom", "10:00", "11:30"),
+    ("s2", "haeundae-rodeo-street", "12:00", "13:00"),
     ("s3", "haeundae-beach", "14:30", "16:00"),
     (FESTIVAL_STOP_ID, "haeundae-beach", "17:30", "19:30"),
 )

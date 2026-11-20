@@ -206,7 +206,7 @@ it("opens the offline demo course at a demo time and restores the normal course 
   expect(screen.getByRole("button", { name: "1. Ordinary stop" })).toBeInTheDocument();
   click(/^DEMO/);
   fireEvent.click(screen.getByRole("checkbox", { name: "데모 스위치 켜기" }));
-  await screen.findByRole("button", { name: "1. Huinnyeoul Culture Village" });
+  await screen.findByRole("button", { name: "1. Haeundae Dongbaekseom Island" });
   expect(screen.queryByRole("button", { name: "1. Ordinary stop" })).not.toBeInTheDocument();
   click("Itinerary");
   click("Start trip");
