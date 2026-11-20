@@ -71,7 +71,9 @@ def test_카카오_성공은_출발역별_한번씩_병렬_조회하고_ranked�
         return kakao_routes(station, LIVE_MINUTES[station])
 
     monkeypatch.setattr(ro, "fetch_routes", fake_fetch)
-    monkeypatch.setattr(ro, "last_train_warnings", lambda *args: ["last_train_missed"])
+    # 막차는 모든 항목에서 비교하므로, 자정에 떠나는 shift_later 만 놓치게 한다
+    monkeypatch.setattr(ro, "last_train_warnings",
+                        lambda day, station, toward, at: ["last_train_missed"] if at.day == 29 else [])
     started = time.perf_counter()
     result = scene7()
     elapsed = time.perf_counter() - started
