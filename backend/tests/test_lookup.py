@@ -333,7 +333,8 @@ def test_weather_폴더_파일은_이름_규칙과_get_weather_형식을_따른�
 def test_rain_afternoon_프리셋은_13_15시만_비이고_Guardian이_읽는다():
     hourly = guardian_context.load_weather_preset("rain-afternoon")
     assert [h.time.hour for h in hourly] == list(range(9, 22)) and hourly[0].time.date() == dt.date(2026, 11, 28)
-    assert all((h.pop, h.pty) == ((80, 1) if 13 <= h.time.hour <= 15 else (20, 0)) for h in hourly)
+    # 13:00~15:00 비: 13시·14시 칸만 비다. 15시 칸(15~16시)은 맑음이라 15:30 으로 옮긴 일정에 비가 남지 않는다
+    assert all((h.pop, h.pty) == ((80, 1) if h.time.hour in (13, 14) else (20, 0)) for h in hourly)
 
 
 def test_get_weather_샘플은_날짜_이름_파일만_읽는다(mock_mode):
