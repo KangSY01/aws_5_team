@@ -106,8 +106,13 @@ propose_repairs(plan, issue, ctx) -> list[RepairOption]
 화면 문구 예: `changed=0`이고 시각만 바뀌면 "변경 0곳 · 시간만 조정"으로 표시합니다.
 
 ## 지연 재조정 (요구사항 7)
-- 입력: 일정, 지연 시간(분), `context`. 기준 시각(`context.now`) 이후의 비고정 Stop만 대상으로 합니다.
-- 탐색: `propose_repairs`와 같은 단계 순서를 씁니다. 먼저 남은 비고정 Stop을 지연만큼 뒤로 미루고, 고정 일정과 겹치면 `MIN_DWELL_MIN`까지 체류 시간을 줄입니다. 그래도 안 되면 순서 변경 → 교체 → 제외로 넘어갑니다.
+- 입력: 일정, 지연 시간(분), `context`. 대상은 기준 시각(`context.now`)에 아직 끝나지 않은(`end > now`) 비고정 Stop입니다. 이미 끝난 Stop과 고정 Stop은 그대로 둡니다.
+- 탐색 단계 순서는 `propose_repairs`와 같습니다(시간 이동 → 순서 변경 → 교체 → 제외). 어느 안이든 바꾼 뒤 시각은 `move_time`과 같은 미루기 규칙(`delay_shift`)으로 다시 배치합니다.
+  - `move_time`: 첫 대상 Stop을 지연만큼 미루고, 뒤 Stop은 이동 시간 + 여유가 모자랄 때만 필요한 만큼 미룹니다. 고정 일정 앞에서 모자라면 고정 일정에 가까운 Stop부터 `MIN_DWELL_MIN`까지 체류 시간을 줄입니다.
+  - `reorder`·`replace`: `move_time`이 안 될 때만 찾습니다. 이웃한 대상 Stop 순서 바꾸기, 같은 `category` 장소로 바꾸기. 이동 시간을 모르거나 증가가 `REPLACE_MAX_EXTRA_MIN`을 넘으면 뺍니다.
+  - `remove`: 대상 Stop 하나를 뺍니다. **`move_time`이 되더라도 함께 제시합니다** (노션 데모 대본 장면 6: 체류를 줄이는 안(변경 0곳) 다음에 1곳 빼는 안(변경 1곳)). `propose_repairs`의 "제외는 다른 해결안이 없을 때만"(요구사항 4.9)과 다른 점입니다. 이동 시간을 모르는 구간이 생기면 뺍니다.
+- 공통 조건: 고정 일정 유지, 재배치 후 원래 없던 `high` Issue(운영시간 밖 등)가 없을 것, 방문일 안.
+- 정렬: `changed` → `extra_travel_min` → 단계 순서, 상위 `MAX_REPAIRS`개.
 - 출력: `RepairOption` 목록과 보전 지표. API는 `POST /plan/{plan_id}/delay`(`DelayRequest` → `DelayResponse`, `docs/api-contract.md`)입니다.
 - 함수: `guardian/delay.py`의 `propose_delay_repairs(plan, delay_min, ctx) -> list[RepairOption]`. `handler.py` 연결은 A와 따로 PR로 올립니다.
 
