@@ -86,7 +86,7 @@ it("opens a walking path from a structured return option in chat", async () => {
   expect(pathRequest).toHaveBeenCalledWith(expect.objectContaining({
     destination: { lat: 35.161484, lng: 129.147897 },
   }));
-  expect(document.querySelector(".leaflet-control-attribution")).toHaveTextContent("© TMAP");
+  await waitFor(() => expect(document.querySelector(".leaflet-control-attribution")).toHaveTextContent("© TMAP"));
 });
 
 it("answers a known landmark question in demo chat without a selected stop", async () => {
@@ -419,27 +419,13 @@ it("confirms itinerary reset, preserves preferences, and permits a new course wi
   expect(document.querySelectorAll(".busan-map-pin").length).toBeGreaterThan(0);
 });
 
-it("shows API events on the map and falls back to their Korean names", async () => {
+it("does not load the event layer on the home map", () => {
   vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
-  localStorage.setItem("busannow.language", "ja");
-  const fetchEvents = vi.fn(async (url) => {
-    const date = new URL(url, "https://api.example.test").searchParams.get("date");
-    return Response.json({ date, events: [{
-      contentid: "2048902", name: "해운대 빛축제", names: { ko: "해운대 빛축제", en: "Haeundae Light Festival" },
-      type: "festival", lat: 35.1592056511, lng: 129.1615365475,
-      main_place_id: null, place_ids: [],
-      start: date + "T18:00:00+09:00", end: date + "T23:00:00+09:00",
-      period_start: "2026-11-28T18:00:00+09:00", period_end: "2027-01-10T23:00:00+09:00",
-    }] });
-  });
+  const fetchEvents = vi.fn();
   vi.stubGlobal("fetch", (url) => String(url).includes("/events?") ? fetchEvents(url) : Promise.reject(new Error()));
   render(<App />);
-  const marker = await screen.findByLabelText("해운대 빛축제");
-  expect(marker).toHaveClass("busan-event-festival");
-  expect(fetchEvents).toHaveBeenCalledWith(expect.stringMatching(/\/events\?date=\d{4}-\d{2}-\d{2}$/));
-  fireEvent.click(marker);
-  expect(screen.getByRole("heading", { name: "해운대 빛축제" })).toBeVisible();
-  expect(screen.getByText("18:00 – 23:00")).toBeVisible();
+  expect(document.querySelector(".busan-event-pin")).toBeNull();
+  expect(fetchEvents).not.toHaveBeenCalled();
 });
 
 it("turns grounded chat recommendations into cards and keeps weather guidance in the reply", async () => {

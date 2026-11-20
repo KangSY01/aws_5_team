@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { buildPlacesById, resolvePlaceName } from "../lib/resolvePlaceName.js";
-import { mapEventName } from "../api/eventsClient.js";
 import { stopDate } from "../lib/itineraryTiming.js";
 import RegionMap from "./RegionMap.jsx";
 import { addLandmarkLayer } from "./mapLandmarkLayer.js";
@@ -18,19 +17,13 @@ const pinAnchor = [22, 42];
 // 일정 마커는 둥근 사각 타일이라 가운데가 장소 위치다 (디자인 실험)
 const stopPinAnchor = [22, 22];
 const pinGap = pinSize + 4;
-const eventIcons = {
-  festival: "m12 2 2.3 6.7L21 11l-6.7 2.3L12 20l-2.3-6.7L3 11l6.7-2.3z",
-  performance: "M10 17V6l10-2v11M10 17a3 2 0 1 1-6 0 3 2 0 0 1 6 0Zm10-2a3 2 0 1 1-6 0 3 2 0 0 1 6 0Z",
-  exhibition: "M4 4h16v16H4zM4 16l5-5 4 4 3-2 4 4M15 8h1",
-  event: "M5 5h14v15H5zm3-3v6m8-6v6M5 10h14",
-};
 
 // 마커 이름표에 넣는 장소 이름을 HTML 로 안전하게 만든다 (디자인 실험)
 function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
 
-export default function BusanMap({ plan, places, events, onEventSelect, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, focusRequest, regionPicker, crowdLevels = null, liveRoutes, returnPaths }) {
+export default function BusanMap({ plan, places, onLandmarkSelect, language, label, locationCopy, selectedId, nextStopId, onSelect, focusRequest, regionPicker, crowdLevels = null, liveRoutes, returnPaths }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const [locationControl, setLocationControl] = useState(null);
@@ -279,58 +272,6 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
   }, [plan, places, mappedStops, language, onSelect]);
 
   useEffect(() => {
-    if (!events?.length) return;
-    const map = mapRef.current;
-    const layer = L.layerGroup().addTo(map);
-    const markers = events.map((event) => {
-      const name = mapEventName(event, language);
-      const type = Object.hasOwn(eventIcons, event.type) ? event.type : "event";
-      const marker = L.marker([event.lat, event.lng], {
-        title: name,
-        zIndexOffset: -10000,
-        icon: L.divIcon({
-          className: `busan-event-pin busan-event-${type}`,
-          iconSize: [44, 44],
-          iconAnchor: [22, 22],
-          html: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${eventIcons[type]}"/></svg>`,
-        }),
-      }).addTo(layer);
-      marker.getElement().setAttribute("aria-label", name);
-      marker.getElement().addEventListener("keydown", (key) => {
-        if (key.key === " ") {
-          key.preventDefault();
-          key.stopPropagation();
-          onEventSelect(event);
-        }
-      });
-      marker.on("click", () => onEventSelect(event));
-      return marker;
-    });
-    function updateVisibility() {
-      const itinerary = [...markersRef.current.values()].map((marker) => {
-        const [x, y] = marker.getElement().style.translate.split(" ").map(parseFloat);
-        // 일정 마커는 타일 가운데가 장소 위치다 (디자인 실험, 예전 물방울 핀은 20px 위가 가운데)
-        return map.project(marker.getLatLng()).add([x || 0, y || 0]);
-      });
-      const visible = [];
-      const zoom = map.getZoom();
-      for (const marker of markers) {
-        const point = map.project(marker.getLatLng());
-        const overlaps = (points, radius) => points.some((other) => point.distanceTo(other) < radius);
-        const show = !overlaps(itinerary, 48) && !overlaps(visible, zoom < 12 ? 85 : 44);
-        marker.getElement().hidden = !show;
-        if (show) visible.push(point);
-      }
-    }
-    updateVisibility();
-    map.on("zoomend", updateVisibility);
-    return () => {
-      map.off("zoomend", updateVisibility);
-      layer.remove();
-    };
-  }, [events, language, mappedStops, onEventSelect, onSelect]);
-
-  useEffect(() => {
     if (!onLandmarkSelect) return;
     const map = mapRef.current;
     const landmarks = addLandmarkLayer(map, language, onLandmarkSelect);
@@ -346,7 +287,7 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
 
   useEffect(() => {
     updateLandmarks.current?.();
-  }, [language, onLandmarkSelect, selectingRegions, mappedStops, events, onEventSelect, onSelect]);
+  }, [language, onLandmarkSelect, selectingRegions, mappedStops, onSelect]);
 
   useEffect(() => {
     for (const [id, marker] of markersRef.current) {

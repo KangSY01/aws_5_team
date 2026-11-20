@@ -11,8 +11,6 @@ import { activityTextKey, normalizeActivities } from "../lib/activityPreferences
 import { getTripStop, insertStopAfter, insertUnselectedStop, suggestLaterStop } from "../lib/itineraryTiming.js";
 import { localeFlags } from "../constants/localeFlags.js";
 import EmptyState from "./EmptyState.jsx";
-import { mapEventName } from "../api/eventsClient.js";
-import { useMapEvents } from "../hooks/useMapEvents.js";
 import { useChatVoice } from "../hooks/useChatVoice.js";
 import { activitySearch, fetchActivities } from "../api/activitiesClient.js";
 import { formatTime } from "../lib/formatTime.js";
@@ -43,17 +41,8 @@ import "./travel-preview.css";
 // jsdom 처럼 matchMedia 가 없으면 false 라 기존 동작과 같다.
 // 임시 로고 (디자인 실험). public/brand/ 의 SVG
 const brandLogo = import.meta.env.BASE_URL + "brand/busannow-logo.svg";
-const brandSymbol = import.meta.env.BASE_URL + "brand/busannow-symbol.svg";
 
 const WIDE_QUERY = "(min-width: 900px)";
-// 모바일 검색 알약 문구 (레퍼런스 "Search or ask Giljabi" 방식, 이름은 BusanNow)
-const ASK_COPY = {
-  ko: "BusanNow에게 물어보세요",
-  en: "Search or ask BusanNow",
-  ja: "BusanNowに聞いてみる",
-  "zh-Hans": "向 BusanNow 提问",
-  "zh-Hant": "向 BusanNow 提問",
-};
 // 데스크톱 사이드바 접기·펼치기 버튼 이름
 const SIDEBAR_TOGGLE_COPY = {
   ko: ["패널 접기", "패널 펼치기"],
@@ -136,19 +125,6 @@ const tabIcons = {
   translation: "M3 5h12M9 3v2m4 0c-1 5-4 8-9 10m2-7c1 3 3 5 6 7m2 5 4-10 4 10m-7-3h6",
   profile: "M16 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2",
 };
-function LanguageTrigger({ className, label }) {
-  return (
-    <button type="button" className={className} popoverTarget="travel-language-menu" aria-label={label}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65"
-        strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" />
-        <ellipse cx="12" cy="12" rx="4" ry="9" />
-        <path d="M3 12h18" />
-      </svg>
-    </button>
-  );
-}
-
 const languageStorageKey = "busannow.language";
 const activeTripStorageKey = "busannow.activeTrip";
 const courseStorageKey = "busannow.course";
@@ -284,7 +260,7 @@ function formatDate(date, language) {
   }).format(day);
 }
 
-export default function TravelPreview({ night = false, demoMode = false, traveler = {}, onTravelerSave } = {}) {
+export default function TravelPreview({ night = false, demoMode = false, traveler = {}, onTravelerSave, demoSettings } = {}) {
   const suffix = demoMode ? ".demo" : "";
   const courseKey = courseStorageKey + suffix;
   const activeTripKey = activeTripStorageKey + suffix;
@@ -314,7 +290,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
   const [archiveError, setArchiveError] = useState(false);
   const [preferences, setPreferences] = useState(() => loadPreferences(preferencesKey));
   const [showPreferences, setShowPreferences] = useState(false);
-  const [selectedMapDetail, setMapDetail] = useState(null);
+  const [mapDetail, setMapDetail] = useState(null);
   const [regionDraft, setRegionDraft] = useState(null);
   const regionSession = useRef(null);
   const restorePreferencesScroll = useRef(null);
@@ -353,28 +329,20 @@ export default function TravelPreview({ night = false, demoMode = false, travele
   const chatHeading = useRef(null);
   const log = useRef(null);
   const composer = useRef(null);
-  const languageMenu = useRef(null);
   const copy = getTravelCopy(language);
   const localCardCopy = localCardCopyFor(language);
   const plannerCopy = getPlannerCopy(language);
-  const languageLabel = copy.languageLabel + ": " + languages[language];
   const plan = course?.plan ?? emptyPlan;
   const liveCourse = liveApi && Boolean(course?.session_id);
   const places = course?.places ?? emptyPlaces;
   const placesById = useMemo(() => buildPlacesById(places), [places]);
   const stops = plan.stops;
-  const showDemoCourse = demoMode && !tripStarted && (!stops.length || (liveApi && demo.now === SCENES[0].now));
   const rainIssue = guardian?.plan === plan && guardian.demo === demo
     ? guardian.issues?.find((issue) => issue.type === "rain" && guardian.repairs[issue.issue_id]?.length)
     : null;
   const rainStop = rainIssue && stops.find((stop) => stop.stop_id === rainIssue.stop_id);
   const demoTime = demoMode ? Date.parse(demo.now ?? SCENES[0].now) : NaN;
-  const events = useMapEvents(liveApi, demoTime, placesById);
-  const mapDetail = selectedMapDetail?.contentid
-    ? events.find((event) => event.contentid === selectedMapDetail.contentid)
-    : selectedMapDetail;
-  const mapDetailName = mapDetail && mapEventName(mapDetail, language);
-  const eventHours = mapDetail?.contentid && [formatTime(mapDetail.start), formatTime(mapDetail.end)];
+  const mapDetailName = mapDetail?.names[language] ?? mapDetail?.names.ko;
   const travelTime = Number.isFinite(demoTime) ? demoTime : tripTime;
   const nextStop = tripStarted ? getTripStop(stops, travelTime) : null;
   const currentPlace = nextStop && Date.parse(nextStop.start) <= travelTime
@@ -1128,19 +1096,13 @@ export default function TravelPreview({ night = false, demoMode = false, travele
       return [stop.stop_id, issue?.severity === "high" ? "busy" : issue?.severity === "medium" ? "moderate" : "calm"];
     }))
     : null;
-
-  function openChat() {
-    navigatePage("map");
-    setShowPreferences(false);
-    setPanel("chat");
-    setOpen(true);
-  }
+  const showCrowdLegend = crowdLevels && stops.length > 0 && !regionDraft;
 
   return (
     <main ref={root} className="travel-preview" data-trip-active={tripStarted} data-night={night} data-page={page} data-sheet={sheetOpen ? "open" : "closed"} data-expanded={sheetExpanded}
       data-compact-itinerary={!showTranslation && !showChat && !showPreferences && !stops.length} data-region-picker={regionDraft !== null} data-sidebar={sidebar} lang={language}>
       <div className="travel-shell" inert={!isMap} aria-hidden={!isMap}>
-        <BusanMap plan={plan} places={places} events={events} onEventSelect={setMapDetail} onLandmarkSelect={setMapDetail}
+        <BusanMap plan={plan} places={places} onLandmarkSelect={setMapDetail}
           language={language} label={copy.map} locationCopy={copy.location}
           liveRoutes={liveCourse} returnPaths={returnPaths}
           selectedId={selectedId} nextStopId={nextStop?.stop_id} onSelect={setSelectedId} focusRequest={mapFocus} crowdLevels={crowdLevels}
@@ -1148,12 +1110,8 @@ export default function TravelPreview({ night = false, demoMode = false, travele
             selected: regionDraft, onChange: setRegionDraft, copy: plannerCopy,
             onDone: () => finishRegions(true), onCancel: () => finishRegions(false),
           }} />
-        {crowdLevels && stops.length > 0 && !regionDraft && <CrowdLegend language={language} />}
+        {wide && showCrowdLegend && <CrowdLegend language={language} />}
         <header className="travel-header">
-          <button type="button" className="travel-ask" aria-controls="travel-chat" onClick={openChat}>
-            <img className="travel-ask__mark" src={brandSymbol} alt="" aria-hidden="true" />
-            <span className="travel-ask__text">{ASK_COPY[language] ?? ASK_COPY.en}</span>
-          </button>
           <div className="travel-brand-column">
             <div className="travel-brand-group">
               <span className="travel-brand"><img className="travel-brand__logo" src={brandLogo} alt="BusanNow" /></span>
@@ -1168,32 +1126,30 @@ export default function TravelPreview({ night = false, demoMode = false, travele
                   </div>
                 )}
                 {mapDetail && (
-                  <section id="busan-map-detail" className="map-event-card" data-landmark={Boolean(mapDetail.description)} aria-label={mapDetailName}>
-                    <button type="button" aria-label={mapDetail.description ? closeLandmark[language] : plannerCopy.closeEvent} onClick={() => setMapDetail(null)}>×</button>
+                  <section id="busan-map-detail" className="map-landmark-card" aria-label={mapDetailName}>
+                    <button type="button" aria-label={closeLandmark[language]} onClick={() => setMapDetail(null)}>×</button>
                     <h2>{mapDetailName}</h2>
-                    {mapDetail.description ? <p>{mapDetail.description[language]}</p> : (
-                      <>
-                        <p>{formatDate(mapDetail.period_start.slice(0, 10), language)}{mapDetail.period_start.slice(0, 10) !== mapDetail.period_end.slice(0, 10) &&
-                          " – " + formatDate(mapDetail.period_end.slice(0, 10), language)}</p>
-                        {eventHours && !eventHours.includes("--:--") && eventHours.join() !== "00:00,23:59" && <p>{eventHours.join(" – ")}</p>}
-                        {mapDetail.place && <p>{mapDetail.place.names[language] ?? mapDetail.place.names.ko ?? mapDetail.place.names.en}</p>}
-                      </>
-                    )}
+                    <p>{mapDetail.description[language]}</p>
                   </section>
                 )}
               </div>
             )}
           </div>
-          <div className="travel-map-tools">
-            <EmergencyHelp copy={copy.emergency} />
-            <button type="button" className="travel-phrases" aria-haspopup="dialog" onClick={() => setShowLocalCard(true)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d={tabIcons.chat} />
-              </svg>
-              <span>{localCardCopy.trigger}</span>
-            </button>
+          <div className="travel-map-actions">
+            <div className="travel-map-tools">
+              <EmergencyHelp copy={copy.emergency} />
+              <button type="button" className="travel-phrases" aria-haspopup="dialog" onClick={() => setShowLocalCard(true)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d={tabIcons.chat} />
+                </svg>
+                <span>{localCardCopy.trigger}</span>
+              </button>
+            </div>
+            {!wide && <div className="travel-map-context">
+              {demoSettings}
+              {showCrowdLegend && <CrowdLegend language={language} />}
+            </div>}
           </div>
-          <LanguageTrigger className="travel-language-trigger" label={languageLabel} />
           {!regionDraft && <div className="travel-rain-notice">
             <RainNotice key={demo.weatherPreset} language={language}
               placeName={rainStop && resolvePlaceName(rainStop, placesById, language).name}
@@ -1203,13 +1159,6 @@ export default function TravelPreview({ night = false, demoMode = false, travele
                 setAlternative(issueAlternative(guardian, plan, demo, rainIssue, rainStop));
               } : undefined} />
           </div>}
-          <div id="travel-language-menu" className="travel-language-menu" ref={languageMenu}
-            popover="auto" role="group" aria-label={copy.languageLabel}>
-            <LanguageOptions language={language} onSelect={(code) => {
-              changeLanguage(code);
-              languageMenu.current.hidePopover();
-            }} />
-          </div>
         </header>
       </div>
       {profile && <ProfilePage copy={copy} language={language} onLanguageChange={changeLanguage}
@@ -1338,14 +1287,6 @@ export default function TravelPreview({ night = false, demoMode = false, travele
               busy={Boolean(pending)} error={planError} backLabel={copy.itinerary} onBack={() => setShowPreferences(false)} />
           ) : (
             <section className="travel-panel" aria-label={copy.itinerary}>
-              {showDemoCourse && (
-                <div className="guardian-review">
-                  <button type="button" disabled={Boolean(pending)} onClick={(event) => recommendCourse(event, true)}>
-                    {pending === "recommend" ? copy.loading : "장면 1·2 데모 일정 만들기"}
-                  </button>
-                  {planError && <p role="alert">{planError}</p>}
-                </div>
-              )}
               {course?.demo && <small>{plannerCopy.demoCourse}</small>}
               {stops.length ? <PlanList plan={plan} places={places} displayLanguage={language}
                 selected={selected} tripStopId={nextStop?.stop_id} onSelect={selectStop} lockedLabel={copy.locked} onEdit={openEdit} editLabel={plannerCopy.editStop}
@@ -1467,7 +1408,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
         </TravelActionDialog>
       )}
       {alternative && alternative.plan === plan && alternative.demo === demo && (
-        <GuardianAlternatives alternative={alternative} copy={copy.guardian} placeCopy={plannerCopy.placeCards} language={language} events={events}
+        <GuardianAlternatives alternative={alternative} copy={copy.guardian} placeCopy={plannerCopy.placeCards} language={language}
           placesById={buildPlacesById([...places, ...alternative.places])} busy={Boolean(pending)}
           error={guardianActionError ? plannerCopy.requestFailed : undefined}
           onApply={applyRepair} onClose={() => setAlternative(null)} />
@@ -1539,6 +1480,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
           </div>
         )}
       </nav>
+      {wide && demoSettings}
     </main>
   );
 }
