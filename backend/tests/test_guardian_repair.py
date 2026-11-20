@@ -249,9 +249,9 @@ def test_replace_rain_with_indoor_place_like_contract_example():
 
 
 def test_replace_crowded_with_same_category_only():
-    # 토요일 해운대 집중률 96 → crowded high. 같은 beach 인 광안리로만 바꾼다 (실내 장소는 비 문제일 때만)
+    # 토요일 해운대 집중률 99 → crowded high. 같은 beach 인 광안리로만 바꾼다 (실내 장소는 비 문제일 때만)
     ctx = make_context(
-        crowd={"jagalchi-market": 60.0, "busan-tower": 50.0, "haeundae-beach": 96.0},
+        crowd={"jagalchi-market": 60.0, "busan-tower": 50.0, "haeundae-beach": 99.0},
         travel_min=travel_with(gwangalli_beach=30, shinsegae_centum_city=45),
     )
     issue = issue_of(PLAN, ctx, "s4-crowded")
@@ -267,7 +267,7 @@ def test_replace_excludes_over_limit_and_unknown_travel():
     # 광안리 +45분(상한 40분 초과), 신세계 이동 시간 모름 → 후보 없음
     ctx = make_context(
         weather=hourly_weather(rain_hours=range(15, 18)),
-        crowd={"jagalchi-market": 60.0, "busan-tower": 50.0, "haeundae-beach": 96.0},
+        crowd={"jagalchi-market": 60.0, "busan-tower": 50.0, "haeundae-beach": 99.0},
         travel_min=travel_with(gwangalli_beach=85),
     )
     assert try_replace(PLAN, issue_of(PLAN, ctx, "s4-crowded"), ctx) == []
@@ -278,7 +278,7 @@ def test_replace_limit_is_40_minutes():
     # 데모 장면 2: 해운대 → 송정은 +37분. 상한 40분 안이라 후보가 된다 (+41분이면 빠진다)
     # 해운대를 17:00 으로 옮겨 간격(150분)을 넉넉히 둔다. 이동이 간격보다 길면 빠듯한 이동(high)이 새로 생겨 빠지기 때문
     plan = with_stop(PLAN, "s4", start=at(17), end=at(18, 30))
-    crowd = {"jagalchi-market": 60.0, "busan-tower": 50.0, "haeundae-beach": 96.0}
+    crowd = {"jagalchi-market": 60.0, "busan-tower": 50.0, "haeundae-beach": 99.0}
     ok = make_context(crowd=crowd, travel_min=travel_with(gwangalli_beach=77))  # 15+10+77=102, +37
     over = make_context(crowd=crowd, travel_min=travel_with(gwangalli_beach=81))  # +41
     assert [o.metrics.extra_travel_min for o in try_replace(plan, issue_of(plan, ok, "s4-crowded"), ok)] == [37]

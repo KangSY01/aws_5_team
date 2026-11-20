@@ -1,6 +1,8 @@
 """Guardian 기반 코드(스펙 작업 1) 확인: 기준값, CheckContext, 테스트용 고정 데이터."""
 
 import datetime as dt
+import json
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -24,6 +26,13 @@ def test_threshold_place_ids_exist():
     assert th.WEEKDAY_RULE_PLACES <= set(load_places())
 
 
+def test_weekday_rule_places_are_places_without_concentration():
+    # data-rules.md 「혼잡도」: congestion.json 에 없는 장소는 모두 요일 규칙 대상이다
+    path = Path(__file__).resolve().parents[1] / "app" / "data" / "congestion.json"
+    with_rate = set(json.loads(path.read_text(encoding="utf-8"))["places"])
+    assert th.WEEKDAY_RULE_PLACES == set(load_places()) - with_rate
+
+
 def test_fixture_matches_sample_plan():
     plan = load_sample_plan()
     ctx = make_context()
@@ -33,8 +42,8 @@ def test_fixture_matches_sample_plan():
     # 고정 데이터의 장소 ID도 places.json 값이다
     ids = {i for pair in BASE_TRAVEL_MIN for i in pair} | set(BASE_CROWD)
     assert ids <= set(ctx.places)
-    # 요일 규칙 대상(감천)은 집중률에 넣지 않는다
-    assert not th.WEEKDAY_RULE_PLACES & set(ctx.crowd)
+    # 요일 규칙 대상은 집중률에 넣지 않는다. 부산타워만 예외로 가상의 집중률을 두어 기본 상태에서 s3 에 문제가 없게 한다
+    assert th.WEEKDAY_RULE_PLACES & set(ctx.crowd) == {"busan-tower"}
 
 
 def test_fixture_has_enough_transfer_buffer():
