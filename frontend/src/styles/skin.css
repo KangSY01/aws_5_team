@@ -299,9 +299,10 @@
   .sidebar-brand .travel-brand { padding: 0; border: 0; background: transparent; box-shadow: none; font-size: 1.5rem; }
 
   .travel-preview[data-sidebar="true"] .travel-brand-group > .travel-brand { display: none; }
-  .travel-preview[data-sidebar="true"] .travel-tabs { left: calc(380px + (100% - 380px) / 2); }
-  body:has(.travel-preview[data-sidebar="true"]) .demo-panel { left: 396px; bottom: 120px; }
-  .travel-preview[data-sidebar="true"] .crowd-legend { left: 396px; }
+  /* 하단 탭·DEMO·혼잡도 범례는 사이드바가 열려 있든 접혀 있든 같은 자리 (홈 탭에서 위치가 바뀌지 않도록) */
+  .travel-preview[data-sidebar] .travel-tabs { left: calc(380px + (100% - 380px) / 2); }
+  body:has(.travel-preview[data-sidebar]) .demo-panel { left: 396px; bottom: 120px; }
+  .travel-preview[data-sidebar] .crowd-legend { left: 396px; }
 
 }
 
