@@ -316,7 +316,7 @@
   },
   {
     "place_id": "haeundae-rodeo-street",
-    "names": { "ja": "海雲台ロデオ通り", "zh-Hans": "海云台罗德奥街", "zh-Hant": "海雲臺羅德奧街" },
+    "names": { "en": "Haeundae Rodeo Street", "ja": "海雲台ロデオ通り", "zh-Hans": "海云台罗德奥街", "zh-Hant": "海雲臺羅德奧街" },
     "lat": 35.1633725822,
     "lng": 129.1696136869,
     "category": "street",
