@@ -2056,16 +2056,50 @@
 .transit-leg__total { margin-inline-start: auto; font-weight: 650; color: var(--color-text); }
 .transit-leg__ride { margin-top: 2px; }
 
-/* 여행 진행도 (여행 시작 후 일정 목록 위) */
-.trip-progress { display: grid; gap: 6px; margin: 0 0 12px; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-bg); }
-.trip-progress p { margin: 0; }
-.trip-progress__count { font-size: .85rem; font-weight: 700; }
-.trip-progress__bar { height: 6px; overflow: hidden; border-radius: 999px; background: var(--color-surface); }
-.trip-progress__bar > span { display: block; height: 100%; border-radius: inherit; background: var(--trip-green); transition: width .3s; }
-.trip-progress__next { color: var(--color-muted); font-size: .8rem; }
-.trip-progress__next strong { color: var(--color-text); }
 /* 끝난 일정: 번호 초록, 이름 흐리게, 세로선 초록 */
-.stop-item[data-done] .stop-number { background: var(--trip-green); }
+.stop-item[data-done] .stop-number { background: var(--trip-progress); }
 .stop-item[data-done] :is(.stop-item__name, .stop-item__time, .stop-time) { opacity: .6; }
 .stop-item[data-done] .stop-track::before,
-.plan-list__stops > .stop-item[data-done]:has(> .transit-leg)::before { background: var(--trip-green); }
+.plan-list__stops > .stop-item[data-done]:has(> .transit-leg)::before { background: var(--trip-progress); }
+
+/* 여행 진행 커서: 세로선 맨 위에서 현재 위치까지 초록 선, 끝에 사각형 */
+.travel-preview { --trip-progress: #2f6f64; } /* 진행 표시 색: 레퍼런스 초록 */
+.plan-list { position: relative; }
+.trip-progress-line {
+  position: absolute;
+  z-index: 2;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--trip-progress);
+  transform: translateX(-50%);
+  transition: height .4s ease;
+  pointer-events: none;
+}
+.trip-cursor {
+  position: absolute;
+  z-index: 3;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-bg);
+  border-radius: 4px;
+  background: var(--trip-progress);
+  box-shadow: 0 0 0 1px var(--trip-progress), 0 1px 4px rgb(0 0 0 / 25%);
+  transform: translate(-50%, -50%);
+  transition: top .4s ease;
+  pointer-events: none;
+}
+.travel-preview .trip-actions button[aria-pressed="true"] { border-color: var(--trip-progress); color: var(--trip-progress); }
+
+/* 여행 종료 평가 */
+.trip-review-summary { display: grid; gap: 6px; margin: 0 0 14px; padding: 12px 14px; border-radius: 10px; background: var(--color-surface); list-style: none; font-weight: 650; }
+.trip-review-summary small { display: block; color: var(--color-muted); font-weight: 400; }
+.trip-review-rating, .trip-review-tags { margin: 0 0 14px; padding: 0; border: 0; }
+.trip-review-rating legend, .trip-review-tags legend { margin-bottom: 6px; font-size: .85rem; font-weight: 700; }
+.trip-review-rating { display: flex; gap: 4px; }
+.trip-review-rating button { width: 40px; height: 40px; border: 0; background: transparent; color: var(--color-border); font-size: 1.7rem; line-height: 1; }
+.trip-review-rating button[data-filled] { color: #d9a441; }
+.trip-review-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.trip-review-tags button { padding: 6px 12px; border: 1.5px solid var(--color-border); border-radius: 999px; background: var(--color-bg); color: var(--color-text); font-size: .85rem; }
+.trip-review-tags button[aria-pressed="true"] { border-color: var(--trip-progress); background: var(--trip-progress); color: #fff; }
+.trip-review-save:disabled { opacity: .5; }
+.trip-album-rating { color: #d9a441; letter-spacing: 1px; }

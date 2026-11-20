@@ -1,6 +1,7 @@
 import { eventName, findStopEvent } from "../lib/stopEvent.js";
 // 일정 목록: 날짜 제목과 stops 순서 그대로의 <ol>
-import { useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { tripCursorY } from '../lib/tripCursor.js';
 import StopItem from './StopItem.jsx';
 import StopTimeEditor from './StopTimeEditor.jsx';
 import { buildPlacesById, resolvePlaceName } from '../lib/resolvePlaceName.js';
@@ -48,8 +49,36 @@ export default function PlanList({ plan, places, displayLanguage, selected, trip
 
   const { drag, handleProps, cancel } = useStopDrag(list, stops, onSaveStops && !busy ? move : undefined);
 
+  // 여행 진행 커서: 왼쪽 세로선 맨 위에서 현재 시각 위치까지 내려오는 사각형 (doneBefore = 여행 기준 시각)
+  const section = useRef(null);
+  const [cursor, setCursor] = useState(null);
+  useLayoutEffect(() => {
+    if (doneBefore === undefined || !stops.length) {
+      setCursor(null);
+      return undefined;
+    }
+    function measure() {
+      const root = section.current?.getBoundingClientRect();
+      const numbers = [...(list.current?.children ?? [])].map((item) => item.querySelector('.stop-number')?.getBoundingClientRect());
+      if (!root || numbers.length !== stops.length || numbers.some((rect) => !rect?.height)) {
+        setCursor(null);
+        return;
+      }
+      const points = numbers.map((rect) => rect.top + rect.height / 2 - root.top);
+      const y = tripCursorY(stops, points, doneBefore);
+      setCursor(y === null ? null : { x: numbers[0].left + numbers[0].width / 2 - root.left, top: points[0], y });
+    }
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(list.current);
+    return () => observer.disconnect();
+  }, [stops, doneBefore, legs]);
+
   return (
-    <section className="plan-list">
+    <section className="plan-list" ref={section} data-trip-cursor={cursor ? '' : undefined}>
+      {cursor && <span className="trip-progress-line" aria-hidden="true" style={{ left: cursor.x, top: cursor.top, height: cursor.y - cursor.top }} />}
+      {cursor && <span className="trip-cursor" aria-hidden="true" style={{ left: cursor.x, top: cursor.y }} />}
       {/* plan.date 는 변환 없이 그대로 표시한다 */}
       {!onSelect && typeof date === 'string' && date !== '' && (
         <h2 className="plan-list__date">{date}</h2>

@@ -222,6 +222,8 @@ export default function TripAlbum({ language, demoMode, revision, archiveError, 
       {entries.filter(({ kind }) => kind === "trip").map((entry) => (
         <div className="trip-album-record" key={entry.id}>
           <time dateTime={entry.date}>{formatDate(entry.date)}</time>
+          {entry.review?.rating > 0 && <span className="trip-album-rating" aria-label={entry.review.rating + "/5"}>
+            {"★".repeat(entry.review.rating)}{"☆".repeat(5 - entry.review.rating)}</span>}
           <button type="button" onClick={() => setOpened(entry)}>{make}</button>
         </div>
       ))}

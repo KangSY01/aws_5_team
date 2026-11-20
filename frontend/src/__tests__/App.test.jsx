@@ -390,6 +390,7 @@ it("confirms itinerary reset, preserves preferences, and permits a new course wi
   click("Itinerary");
   expect(screen.queryByLabelText("Itinerary options")).not.toBeInTheDocument();
   click("End trip");
+  click("End without rating");
   click("Itinerary");
 
   click("Select stops");
@@ -561,4 +562,33 @@ it("remembers skipping traveler setup and lets the traveler edit their optional 
   expect(screen.getByText("New nickname")).toBeVisible();
   expect(screen.queryByText("Prefer not to answer")).not.toBeInTheDocument();
   expect(JSON.parse(localStorage.getItem("busannow.traveler-profile")).name).toBe("New nickname");
+});
+
+it("pauses a trip in place of a new itinerary and asks for a route rating before ending", async () => {
+  const preferences = { regions: ["oldtown"], duration: "half", activities: ["mural_village"] };
+  const course = await recommendDemo(preferences, "en");
+  localStorage.setItem("busannow.course", JSON.stringify({ ...course, preferences }));
+  localStorage.setItem("busannow.language", "en");
+  localStorage.setItem("busannow.activeTrip", course.plan.plan_id);
+  render(<App />);
+  const click = (name) => fireEvent.click(screen.getByRole("button", { name, exact: true }));
+  click("Itinerary");
+  expect(screen.queryByRole("button", { name: "Create a new itinerary" })).not.toBeInTheDocument();
+  click("Pause trip");
+  expect(screen.getByRole("button", { name: "Resume trip", pressed: true })).toBeVisible();
+  expect(JSON.parse(localStorage.getItem("busannow.activeTrip.paused")).plan_id).toBe(course.plan.plan_id);
+  click("Resume trip");
+  expect(localStorage.getItem("busannow.activeTrip.paused")).toBeNull();
+
+  click("End trip");
+  const dialog = within(screen.getByRole("dialog", { name: "Rate today's route" }));
+  expect(dialog.getByText(new RegExp(`of ${course.plan.stops.length} stops visited`))).toBeVisible();
+  expect(dialog.getByRole("button", { name: "Save rating and end trip" })).toBeDisabled();
+  fireEvent.click(dialog.getByRole("button", { name: "4 stars" }));
+  fireEvent.click(dialog.getByRole("button", { name: "Would go again" }));
+  fireEvent.click(dialog.getByRole("button", { name: "Save rating and end trip" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(localStorage.getItem("busannow.activeTrip")).toBeNull();
+  click("Itinerary");
+  expect(screen.getByRole("button", { name: "Start trip" })).toBeVisible();
 });
