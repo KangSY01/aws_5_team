@@ -214,7 +214,8 @@ def test_handler_plan_check_with_real_lookup(monkeypatch):
     assert status == 200
     response = CheckResponse.model_validate_json(body)
     assert response.checked_at == at(9)
-    assert [i.issue_id for i in response.issues] == ["s1-crowded", "s4-tight_transfer"]
+    # 집중률(congestion.json, 11/21 토)이 들어와 s4 해운대 97.18 → high, s2 자갈치 94.56 → 고정이라 low 가 추가됐다
+    assert [i.issue_id for i in response.issues] == ["s4-crowded", "s1-crowded", "s4-tight_transfer", "s2-crowded"]
     assert "replace" not in {o.action for o in response.repairs["s1-crowded"]}
 
 

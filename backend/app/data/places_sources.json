@@ -11,7 +11,13 @@
       "zh-Hans": "331260",
       "zh-Hant": "332578"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "NA",
+      "lclsSystm2": "NA02",
+      "lclsSystm3": "NA020900"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "zh-Hans": 300,
       "zh-Hant": 300
@@ -38,7 +44,13 @@
       "zh-Hans": "331259",
       "zh-Hant": "332597"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "NA",
+      "lclsSystm2": "NA02",
+      "lclsSystm3": "NA020900"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
       "zh-Hans": 300,
@@ -61,7 +73,13 @@
     "contentids": {
       "ko": "1997221"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE04",
+      "lclsSystm3": "VE040200"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {},
     "match_kind": {},
     "names_overridden": [],
@@ -82,7 +100,13 @@
       "zh-Hans": "2658292",
       "zh-Hant": "1550800"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "38",
+      "lclsSystm1": "SH",
+      "lclsSystm2": "SH06",
+      "lclsSystm3": "SH060200"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "ja": 300,
       "zh-Hans": 300,
@@ -107,7 +131,13 @@
       "ko": "132191",
       "ja": "615146"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "38",
+      "lclsSystm1": "SH",
+      "lclsSystm2": "SH06",
+      "lclsSystm3": "SH060200"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "ja": 300
     },
@@ -132,7 +162,13 @@
       "zh-Hans": "1984125",
       "zh-Hant": "2009731"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "HS",
+      "lclsSystm2": "HS02",
+      "lclsSystm3": "HS020100"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "ja": 300,
       "zh-Hans": 300,
@@ -157,7 +193,13 @@
       "ko": "126848",
       "ja": "281852"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "HS",
+      "lclsSystm2": "HS03",
+      "lclsSystm3": "HS030100"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "ja": 300
     },
@@ -176,7 +218,13 @@
     "contentids": {
       "ko": "126658"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "NA",
+      "lclsSystm2": "NA02",
+      "lclsSystm3": "NA020800"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {},
     "match_kind": {},
     "names_overridden": [],
@@ -191,7 +239,13 @@
     "contentids": {
       "ko": "767084"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "SH",
+      "lclsSystm2": "SH01",
+      "lclsSystm3": "SH010100"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {},
     "match_kind": {},
     "names_overridden": [],
@@ -206,7 +260,13 @@
     "contentids": {
       "ko": "126148"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "HS",
+      "lclsSystm2": "HS03",
+      "lclsSystm3": "HS030100"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {},
     "match_kind": {},
     "names_overridden": [],
@@ -229,7 +289,13 @@
       "zh-Hans": "1877873",
       "zh-Hant": "1802432"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "NA",
+      "lclsSystm2": "NA02",
+      "lclsSystm3": "NA020500"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
       "ja": 300,
@@ -256,7 +322,13 @@
       "ko": "2350092",
       "en": "2357538"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE01",
+      "lclsSystm3": "VE010100"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300
     },
@@ -283,7 +355,13 @@
       "zh-Hans": "3300569",
       "zh-Hant": "3314964"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE04",
+      "lclsSystm3": "VE040100"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
       "ja": 300,
@@ -304,18 +382,28 @@
     "provider": "한국관광공사 TourAPI (공공데이터포털)",
     "apis": {
       "ko": "KorService2",
-      "en": "EngService2"
+      "en": "EngService2",
+      "ja": "JpnService2"
     },
     "contentids": {
       "ko": "995455",
-      "en": "1468918"
+      "en": "1468918",
+      "ja": "1920279"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "38",
+      "lclsSystm1": "SH",
+      "lclsSystm2": "SH06",
+      "lclsSystm3": "SH060200"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
-      "en": 300
+      "en": 300,
+      "ja": 300
     },
     "match_kind": {
-      "en": "keyword_en"
+      "en": "keyword_en",
+      "ja": "keyword_ja"
     },
     "names_overridden": [],
     "station_source": "busan_stations.csv",
@@ -337,7 +425,13 @@
       "zh-Hans": "2813472",
       "zh-Hant": "2731092"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE02",
+      "lclsSystm3": "VE020100"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
       "ja": 300,
@@ -368,7 +462,13 @@
       "ja": "2946811",
       "zh-Hans": "2949347"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE01",
+      "lclsSystm3": "VE010200"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
       "ja": 300,
@@ -397,7 +497,13 @@
       "zh-Hans": "2816119",
       "zh-Hant": "2731077"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE01",
+      "lclsSystm3": "VE010200"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
       "zh-Hans": 300,
@@ -424,7 +530,13 @@
       "en": "2666408",
       "zh-Hans": "331340"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "14",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE02",
+      "lclsSystm3": "VE020400"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
       "zh-Hans": 300
@@ -453,7 +565,13 @@
       "zh-Hans": "331315",
       "zh-Hant": "332609"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "NA",
+      "lclsSystm2": "NA02",
+      "lclsSystm3": "NA020900"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
       "ja": 300,
@@ -486,7 +604,13 @@
       "zh-Hans": "1056808",
       "zh-Hant": "1075357"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "14",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE07",
+      "lclsSystm3": "VE070600"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
       "ja": 300,
@@ -515,7 +639,13 @@
       "en": "2503886",
       "zh-Hans": "2503888"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "14",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE12",
+      "lclsSystm3": "VE120300"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
       "zh-Hans": 300
@@ -542,7 +672,13 @@
       "zh-Hans": "1865457",
       "zh-Hant": "1669673"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE03",
+      "lclsSystm3": "VE030500"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "ja": 300,
       "zh-Hans": 1000,
@@ -571,7 +707,13 @@
       "zh-Hans": "2949389",
       "zh-Hant": "2949015"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE02",
+      "lclsSystm3": "VE020100"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
       "zh-Hans": 300,
@@ -596,7 +738,13 @@
       "ko": "1993017",
       "zh-Hant": "1993137"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "38",
+      "lclsSystm1": "SH",
+      "lclsSystm2": "SH02",
+      "lclsSystm3": "SH020200"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "zh-Hant": 300
     },
@@ -623,7 +771,13 @@
       "zh-Hans": "331344",
       "zh-Hant": "332645"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "NA",
+      "lclsSystm2": "NA04",
+      "lclsSystm3": "NA040500"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
       "ja": 300,
@@ -656,7 +810,13 @@
       "zh-Hans": "2949382",
       "zh-Hant": "2762965"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "EX",
+      "lclsSystm2": "EX03",
+      "lclsSystm3": "EX030100"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 1000,
       "ja": 1000,
@@ -668,6 +828,33 @@
       "ja": "exact",
       "zh-Hans": "exact",
       "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "songdo-cable-car": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2"
+    },
+    "contentids": {
+      "ko": "2504464",
+      "en": "2657034"
+    },
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "EX",
+      "lclsSystm2": "EX07",
+      "lclsSystm3": "EX070200"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
+    "match_radius_m": {
+      "en": 300
+    },
+    "match_kind": {
+      "en": "keyword_en"
     },
     "names_overridden": [],
     "station_source": "busan_stations.csv",
@@ -689,7 +876,13 @@
       "zh-Hans": "1827139",
       "zh-Hant": "1826464"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "14",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE07",
+      "lclsSystm3": "VE070100"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
       "ja": 300,
@@ -722,7 +915,13 @@
       "zh-Hans": "3504093",
       "zh-Hant": "3507612"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "14",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE07",
+      "lclsSystm3": "VE070100"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
       "ja": 300,
@@ -751,7 +950,13 @@
       "ja": "2656787",
       "zh-Hant": "2353130"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE04",
+      "lclsSystm3": "VE040100"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "ja": 300,
       "zh-Hant": 300
@@ -778,7 +983,13 @@
       "ja": "282095",
       "zh-Hant": "332774"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE05",
+      "lclsSystm3": "VE050100"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
       "ja": 300,
@@ -803,7 +1014,13 @@
       "ko": "2663341",
       "zh-Hant": "2986556"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE03",
+      "lclsSystm3": "VE030100"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "zh-Hant": 300
     },
@@ -828,7 +1045,13 @@
       "zh-Hans": "1052096",
       "zh-Hant": "569377"
     },
-    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 영문만 없으면 searchKeyword2(시드 keywords.en) 300m 이내 최근접(keyword_en)",
+    "kor_class": {
+      "contenttypeid": "14",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE07",
+      "lclsSystm3": "VE070100"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
     "match_radius_m": {
       "en": 300,
       "zh-Hans": 300,

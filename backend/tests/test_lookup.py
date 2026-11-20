@@ -67,6 +67,7 @@ def kma(rows, code="00"):
 def test_조회_도구는_Strands_도구이고_입력_설명이_있다():
     for fn, args in [(lookup.search_places, {"query", "category", "indoor"}), (lookup.get_crowd, {"place_id", "date"}),
                      (lookup.get_weather, {"date"}), (lookup.get_hours, {"place_id"}),
+                     (lookup.get_place_info, {"place_id"}),
                      (lookup.get_travel_time, {"from_place_id", "to_place_id"}), (lookup.get_events, {"date"})]:
         props = fn.tool_spec["inputSchema"]["json"]["properties"]
         assert set(props) == args and all(p.get("description") for p in props.values())
@@ -107,18 +108,33 @@ def test_search_places_파일을_못_읽으면_오류_dict(monkeypatch, tmp_path
 
 # ---------- get_crowd ----------
 
-def test_get_crowd_요일_규칙_장소와_데이터_없는_장소는_ratio_null():
-    for place_id in [*WEEKDAY_RULE_PLACES, "haeundae-beach"]:  # 집중률 파일이 아직 없다
+def test_get_crowd_집중률이_없는_장소는_ratio_null_weekday_rule():
+    for place_id in [*WEEKDAY_RULE_PLACES, "busan-tower"]:  # congestion.json 에 없는 장소
         assert lookup.get_crowd(place_id=place_id, date="2026-11-21") == {
             "place_id": place_id, "date": "2026-11-21", "ratio": None, "source": "weekday_rule"}
 
 
-def test_get_crowd_집중률이_있으면_concentration_요일_규칙_장소는_그대로(monkeypatch):
-    monkeypatch.setattr(lookup, "_concentration", lambda place_id, day: 87.5)
-    result = lookup.get_crowd(place_id="haeundae-beach", date="2026-11-21")
-    assert (result["ratio"], result["source"]) == (87.5, "concentration")
-    result = lookup.get_crowd(place_id="gamcheon-village", date="2026-11-21")
-    assert (result["ratio"], result["source"]) == (None, "weekday_rule")
+def test_get_crowd_congestion_json_에_값이_있으면_concentration(monkeypatch, tmp_path):
+    (tmp_path / "places.json").write_text('[{"place_id": "a"}, {"place_id": "b"}]', encoding="utf-8")
+    (tmp_path / "congestion.json").write_text('{"meta": {}, "places": {"a": {"2026-11-21": 87.5}}}', encoding="utf-8")
+    monkeypatch.setattr(lookup, "DATA_DIR", tmp_path)
+    assert lookup.get_crowd(place_id="a", date="2026-11-21") == {
+        "place_id": "a", "date": "2026-11-21", "ratio": 87.5, "source": "concentration"}
+    for place_id, date in (("a", "2026-11-22"), ("b", "2026-11-21")):  # 기간 밖 날짜, 표에 없는 장소
+        result = lookup.get_crowd(place_id=place_id, date=date)
+        assert (result["ratio"], result["source"]) == (None, "weekday_rule")
+    (tmp_path / "congestion.json").unlink()
+    assert error_code(lookup.get_crowd(place_id="a", date="2026-11-21")) == "data_unavailable"
+
+
+def test_get_crowd_실제_데이터_기간_안은_값_기간_밖은_weekday_rule():
+    data = json.loads((lookup.DATA_DIR / "congestion.json").read_text(encoding="utf-8"))
+    result = lookup.get_crowd(place_id="haeundae-beach", date="2026-11-28")
+    assert result["source"] == "concentration" and result["ratio"] == data["places"]["haeundae-beach"]["2026-11-28"]
+    assert 0 <= result["ratio"] <= 100
+    for date in ("2026-11-17", "2026-12-18", "2027-06-01"):  # 받아 둔 기간(11/18~12/17) 밖
+        result = lookup.get_crowd(place_id="haeundae-beach", date=date)
+        assert (result["ratio"], result["source"]) == (None, "weekday_rule")
 
 
 def test_get_crowd_잘못된_입력은_오류_dict():
@@ -250,11 +266,54 @@ def test_get_weather_키가_없으면_호출하지_않고_오류_dict(real_mode,
 
 # ---------- get_hours ----------
 
-def test_get_hours_모르는_값을_돌려준다():
-    result = lookup.get_hours(place_id="busan-tower")
-    assert result == {"place_id": "busan-tower", "opens": None, "closes": None, "closed_weekdays": [], "closed_dates": []}
-    OpeningHours.model_validate({k: v for k, v in result.items() if k != "place_id"})
+HOURS_KEYS = {"place_id", "opens", "closes", "closed_weekdays", "closed_dates", "raw_text"}
+
+
+def test_get_hours_hours_json_의_값을_돌려준다():
+    tower = lookup.get_hours(place_id="busan-tower")
+    assert tower == {"place_id": "busan-tower", "opens": "10:00", "closes": "22:00", "closed_weekdays": [],
+                     "closed_dates": [], "raw_text": "이용시간: 10:00~22:00 (발권 마감 21:30)\n쉬는날: 연중무휴"}
+    museum = lookup.get_hours(place_id="busan-museum")
+    assert (museum["opens"], museum["closes"], museum["closed_weekdays"]) == ("09:00", "18:00", [0])
+    # 계절별 시간처럼 한 구간으로 쓸 수 없으면 원문만 준다
+    seasonal = lookup.get_hours(place_id="blueline-park")
+    assert seasonal["opens"] is None and seasonal["closes"] is None and "동절기" in seasonal["raw_text"]
     assert error_code(lookup.get_hours(place_id="no-such-place")) == "place_not_found"
+
+
+def test_get_hours_모든_장소가_OpeningHours_로_읽힌다():
+    for place in lookup._load_places():
+        result = lookup.get_hours(place_id=place["place_id"])
+        assert set(result) == HOURS_KEYS
+        OpeningHours.model_validate(result)  # Guardian 은 place_id·raw_text 를 무시한다
+
+
+def test_get_hours_파일에_없는_장소는_모르는_값(monkeypatch, tmp_path):
+    (tmp_path / "places.json").write_text('[{"place_id": "a"}]', encoding="utf-8")
+    (tmp_path / "hours.json").write_text('{"hours": {}}', encoding="utf-8")
+    monkeypatch.setattr(lookup, "DATA_DIR", tmp_path)
+    assert lookup.get_hours(place_id="a") == {"place_id": "a", "opens": None, "closes": None, "closed_weekdays": [],
+                                              "closed_dates": [], "raw_text": None}
+    (tmp_path / "hours.json").unlink()
+    assert error_code(lookup.get_hours(place_id="a")) == "data_unavailable"
+
+
+# ---------- get_place_info ----------
+
+def test_get_place_info_Place와_큐레이션과_운영시간을_한_번에_돌려준다():
+    info = lookup.get_place_info(place_id="haeundae-beach")
+    place = {k: v for k, v in info.items() if k not in ("curation", "hours")}
+    assert [place] == lookup.search_places(query="haeundae-beach")  # Place 필드는 search_places 와 같다
+    Place.model_validate(place)
+    assert set(info["curation"]) == {"tags", "foreigner_friendly", "crowd_alternatives", "rain_alternatives", "source"}
+    assert info["curation"]["tags"] == ["sea", "nature"] and info["curation"]["foreigner_friendly"] == 3
+    hours = lookup.get_hours(place_id="haeundae-beach")
+    assert info["hours"] == {k: v for k, v in hours.items() if k != "place_id"}
+    assert error_code(lookup.get_place_info(place_id="no-such-place")) == "place_not_found"
+
+
+def test_search_places_결과에는_큐레이션을_넣지_않는다():
+    assert all(set(p) == set(Place.model_fields) for p in lookup.search_places(query=""))
 
 
 # ---------- get_weather 샘플 폴더 (app/data/weather/) ----------

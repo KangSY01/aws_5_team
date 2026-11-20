@@ -4,6 +4,9 @@
     uv run --env-file .env python -m scripts.fetch_places --stations scripts/busan_stations.csv
     uv run --env-file .env python -m scripts.fetch_places --baseline <예전 places.json>
     uv run python -m scripts.fetch_places --offline      (API 호출 없이 raw 응답으로 다시 만든다)
+    uv run --env-file .env python -m scripts.fetch_places --reuse-raw --baseline <예전 places.json>
+        (raw 에 같은 요청의 응답이 있으면 다시 부르지 않고, 없는 요청만 호출한다.
+         시드에 장소·검색어를 더했을 때 쓴다. 끝에 실제 호출 수를 출력한다)
 
 조회 방식
   국문   KorService2/searchKeyword2 로 좌표·contentid 를 얻는다.
@@ -17,10 +20,12 @@
          names 에는 한국어를 모두 뺀 이름("海云台海水浴场")을 쓴다(strip_korean).
          300m 에 일치 항목이 없으면 radius=1000 으로 한 번 더 찾고, 그래도 없으면 그 언어만
          review 에 남긴다. contenttypeid 는 국문과 번호 체계가 달라서(쇼핑 국문 38, 영문 79) 거르지 않는다.
-         영문만: 위 방식이 no_korean_match 이고 기존 영문 값이 없으면 시드 keywords.en 으로
-         EngService2/searchKeyword2 를 호출해 국문 좌표 300m 이내에서 가장 가까운 title 을 쓴다(match_kind=keyword_en).
+         키워드 보충: 위 방식이 no_korean_match 이고 기존 값이 없으며 시드 keywords.<언어> 가 있으면 그 언어 서비스의
+         searchKeyword2 를 1회 호출해 국문 좌표 300m 이내에서 가장 가까운 title 을 쓴다(match_kind=keyword_en, keyword_ja).
   기존 장소 보호: --baseline 파일(기본 places.json)에 이미 값이 있는 언어는 exact 일치일 때만 덮어쓴다.
-         contains·keyword_en 이면 기존 값을 유지하고, 값이 다르면 review 에 kept_existing 으로 남긴다.
+         contains·keyword_* 이면 기존 값을 유지하고, 값이 다르면 review 에 kept_existing 으로 남긴다.
+         주의: 기본값(places.json 자신)으로 다시 돌리면 keyword_* 로 찾은 이름의 출처가 places_sources.json 에서 빠진다.
+         지금 파일은 수집 전 10곳짜리 파일을 기준으로 만들었다: git show 83e285c^:backend/app/data/places.json
          place_id 는 시드 값을 그대로 쓴다(바꾸지 않는다).
   새 장소는 좌표 + 외국어 이름 1개 이상이면 places.json 에 넣는다. 빠진 언어는 review 에 남는다.
   review 사유  no_korean_match      반경 1000m 안에 일치하는 항목이 없음 (0건 포함)
@@ -31,11 +36,11 @@
                api_error: ...       그 언어 호출이 실패함
 
 입력
-  scripts/place_seeds.json   [{place_id, name_ko, query, category, indoor, keywords{en}, (선택) contentid, names}]
+  scripts/place_seeds.json   [{place_id, name_ko, query, category, indoor, keywords{en, ja}, (선택) contentid, names}]
   scripts/busan_stations.csv 부산교통공사 역 좌표. 열 이름은 아래 _STATION_COLUMNS 의 별칭 중 하나.
 출력
   app/data/places.json          Place 모델로 검증한 결과
-  app/data/places_sources.json  장소별 출처(contentid, API, 수집일)
+  app/data/places_sources.json  장소별 출처(contentid, 국문 관광타입·분류 kor_class, API, 수집일)
   app/data/raw/<place_id>/      API 원본 응답 (serviceKey 는 저장하지 않는다)
   app/data/places_review.csv    사람이 골라야 하는 항목
 
@@ -78,6 +83,8 @@ KEYWORD_ROWS = 300  # searchKeyword2 는 제목순이라 입점 매장이 많은
 TIMEOUT_SEC = 5
 RETRIES = 1  # 첫 시도 외 재시도 횟수
 OFFLINE = False  # --offline: API 를 부르지 않고 raw 에 저장된 응답으로 다시 만든다
+REUSE_RAW = False  # --reuse-raw: raw 에 같은 요청의 응답이 있으면 그것을 쓰고, 없는 요청만 호출한다
+API_CALLS = 0  # 이번 실행에서 실제로 보낸 요청 수 (재시도 포함)
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 DATA_DIR = SCRIPTS_DIR.parent / "app" / "data"
@@ -95,6 +102,7 @@ _STATION_COLUMNS = {
     "lng": ["lng", "lon", "longitude", "경도"],
 }
 REVIEW_FIELDS = ["place_id", "name_ko", "lang", "reason", "candidates"]
+KOR_CLASS_KEYS = ("contenttypeid", "lclsSystm1", "lclsSystm2", "lclsSystm3")  # places_sources.json 의 kor_class
 
 
 class FetchError(Exception):
@@ -252,8 +260,8 @@ def find_foreign_name(lang: str, kor: dict, raw_dir: Path) -> tuple[dict | None,
     return None, reason, near, FALLBACK_RADIUS_M
 
 
-def pick_en_keyword(kor: dict, candidates: list[dict]) -> dict | None:
-    """영문 키워드 검색 결과 중 국문 좌표 MATCH_RADIUS_M 이내에서 가장 가까운 항목. 없으면 None.
+def pick_keyword(kor: dict, candidates: list[dict], lang: str = "en") -> dict | None:
+    """외국어 키워드 검색 결과 중 국문 좌표 MATCH_RADIUS_M 이내에서 가장 가까운 항목. 없으면 None.
 
     가장 가까운 거리에 이름이 다른 항목이 둘 이상이면(아울렛 입점 매장처럼 좌표가 같은 경우)
     어느 것이 그 장소인지 알 수 없으므로 고르지 않는다.
@@ -263,7 +271,7 @@ def pick_en_keyword(kor: dict, candidates: list[dict]) -> dict | None:
         dist = round(haversine_m(kor["lat"], kor["lng"], c["lat"], c["lng"]))
         name = strip_korean(c["title"])
         if dist <= MATCH_RADIUS_M and name:
-            near.append({**c, "dist_m": dist, "match": "keyword_en", "name": name})
+            near.append({**c, "dist_m": dist, "match": f"keyword_{lang}", "name": name})
     if not near:
         return None
     best = min(c["dist_m"] for c in near)
@@ -326,8 +334,10 @@ def request_json(service: str, operation: str, extra: dict) -> dict:
         **extra,
     }
     url = f"{BASE_URL}/{service}/{operation}?{urllib.parse.urlencode(params)}"
+    global API_CALLS
     reason = ""
     for _ in range(RETRIES + 1):
+        API_CALLS += 1
         try:
             with urllib.request.urlopen(url, timeout=TIMEOUT_SEC) as resp:
                 return json.loads(resp.read().decode("utf-8"))
@@ -344,13 +354,15 @@ def request_json(service: str, operation: str, extra: dict) -> dict:
 def _call_and_save(service: str, operation: str, extra: dict, raw_path: Path) -> list[dict]:
     """호출 후 원본 응답을 raw_path 에 저장하고 후보 목록을 돌려준다. serviceKey 는 저장하지 않는다.
 
-    OFFLINE 이면 호출하지 않고 raw_path 에 저장된 같은 요청의 응답을 다시 읽는다.
+    OFFLINE·REUSE_RAW 이면 raw_path 에 저장된 같은 요청의 응답을 다시 읽는다.
+    같은 요청이 없으면 OFFLINE 은 실패하고, REUSE_RAW 는 호출한다.
     """
-    if OFFLINE:
+    if OFFLINE or REUSE_RAW:
         saved = load_json(raw_path, {})
-        if (saved.get("service"), saved.get("operation"), saved.get("params")) != (service, operation, extra):
+        if (saved.get("service"), saved.get("operation"), saved.get("params")) == (service, operation, extra):
+            return parse_items(saved["response"])
+        if OFFLINE:
             raise FetchError(f"--offline: {raw_path.parent.name}/{raw_path.name} 에 같은 요청의 응답이 없습니다")
-        return parse_items(saved["response"])
     data = request_json(service, operation, extra)
     raw_path.parent.mkdir(parents=True, exist_ok=True)
     saved = {"service": service, "operation": operation, "params": extra, "response": data}
@@ -371,6 +383,17 @@ def search_nearby(service: str, lat: float, lng: float, raw_path: Path, radius: 
 
 def load_json(path: Path, default: Any) -> Any:
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else default
+
+
+def load_kor_item(place_id: str, contentid: str) -> dict:
+    """raw/<place_id>/ko.json 에 저장된 국문 검색 응답에서 그 contentid 의 원본 항목. 없으면 빈 dict.
+
+    parse_items 가 버리는 필드(contenttypeid, lclsSystm1~3)를 places_sources.json 의 kor_class 에 남길 때 쓴다.
+    """
+    saved = load_json(RAW_DIR / place_id / "ko.json", {})
+    items = (saved.get("response", {}).get("response", {}).get("body", {}).get("items") or {}).get("item", [])
+    items = [items] if isinstance(items, dict) else items
+    return next((it for it in items if str(it.get("contentid")) == str(contentid)), {})
 
 
 def load_stations(path: Path) -> list[dict]:
@@ -442,7 +465,7 @@ def build_place(seed: dict, existing: dict | None, stations: list[dict], reviews
     kinds: dict[str, str] = {}
     overrides = seed.get("names", {})
     old_names = (existing or {}).get("names", {})
-    en_keyword = seed.get("keywords", {}).get("en")
+    keywords = seed.get("keywords", {})
     for lang in NAME_LANGS:
         if lang in overrides:
             names[lang] = overrides[lang]
@@ -450,9 +473,10 @@ def build_place(seed: dict, existing: dict | None, stations: list[dict], reviews
         old = old_names.get(lang)
         try:
             item, reason, near, radius = find_foreign_name(lang, kor, raw_dir)
-            # 기존 값이 있으면 keyword_en 으로는 덮어쓰지 않으므로 호출하지 않는다
-            if item is None and lang == "en" and reason == "no_korean_match" and en_keyword and old is None:
-                item = pick_en_keyword(kor, search_keyword(en_keyword, raw_dir / "en_keyword.json", SERVICES["en"]))
+            # 기존 값이 있으면 keyword_* 로는 덮어쓰지 않으므로 호출하지 않는다
+            if item is None and reason == "no_korean_match" and keywords.get(lang) and old is None:
+                found = search_keyword(keywords[lang], raw_dir / f"{lang}_keyword.json", SERVICES[lang])
+                item = pick_keyword(kor, found, lang)
                 radius = MATCH_RADIUS_M
         except FetchError as e:
             review(lang, f"api_error: {e}", [])
@@ -499,10 +523,12 @@ def build_place(seed: dict, existing: dict | None, stations: list[dict], reviews
         "provider": "한국관광공사 TourAPI (공공데이터포털)",
         "apis": {lang: SERVICES[lang] for lang in content_ids},
         "contentids": content_ids,
+        # 국문 항목의 관광타입·분류. raw 는 git 에 올리지 않으므로 fetch_hours·build_curation 은 이 값을 읽는다
+        "kor_class": {key: load_kor_item(pid, kor["contentid"]).get(key) for key in KOR_CLASS_KEYS},
         "foreign_lookup": (f"locationBasedList2 radius={MATCH_RADIUS_M}m, 없으면 {FALLBACK_RADIUS_M}m. "
                            "title 의 한글·숫자 정규화 값이 국문과 같거나(exact), "
                            f"{MATCH_RADIUS_M}m 이내에서 {MIN_CONTAINS_LEN}글자 이상 포함(contains). "
-                           f"영문만 없으면 searchKeyword2(시드 keywords.en) {MATCH_RADIUS_M}m 이내 최근접(keyword_en)"),
+                           f"그래도 없으면 searchKeyword2(시드 keywords.<언어>) {MATCH_RADIUS_M}m 이내 최근접(keyword_<언어>)"),
         "match_radius_m": radii,
         "match_kind": kinds,
         "names_overridden": sorted(overrides),
@@ -522,9 +548,11 @@ def main(argv: list[str] | None = None) -> int:
                     help="기존 값 기준 파일. 여기 있는 이름은 exact 일치일 때만 덮어쓴다 (기본: places.json)")
     ap.add_argument("--offline", action="store_true",
                     help="API 를 부르지 않고 app/data/raw 에 저장된 응답으로 다시 만든다 (규칙만 바꿨을 때)")
+    ap.add_argument("--reuse-raw", action="store_true",
+                    help="raw 에 같은 요청의 응답이 있으면 다시 부르지 않고, 없는 요청만 호출한다")
     args = ap.parse_args(argv)
-    global OFFLINE
-    OFFLINE = args.offline
+    global OFFLINE, REUSE_RAW
+    OFFLINE, REUSE_RAW = args.offline, args.reuse_raw
 
     if not OFFLINE and not config.DATA_GO_KR_KEY:
         print("DATA_GO_KR_KEY_DECODING 이 비어 있습니다. backend/.env 를 확인하세요.", file=sys.stderr)
@@ -549,9 +577,13 @@ def main(argv: list[str] | None = None) -> int:
     sources: dict[str, dict] = {}
 
     for seed in seeds:
+        calls_before = API_CALLS
         place, source = build_place(seed, existing.get(seed["place_id"]), stations, reviews)
+        calls = API_CALLS - calls_before
+        if source and not calls and seed["place_id"] in old_sources:  # 새로 받은 것이 없으면 수집일을 바꾸지 않는다
+            source["fetched_at"] = old_sources[seed["place_id"]]["fetched_at"]
         status = "ok" if source else ("기존 유지" if place else "제외")
-        print(f"[{status}] {seed['place_id']}")
+        print(f"[{status}] {seed['place_id']}" + (f" (API {calls}회)" if calls else ""))
         if place:
             places.append(place)
         if source:
@@ -574,7 +606,7 @@ def main(argv: list[str] | None = None) -> int:
         w.writeheader()
         w.writerows(reviews)
 
-    print(f"places {len(places)}곳 저장, 검토 필요 {len(reviews)}건 ({REVIEW_PATH.name})")
+    print(f"places {len(places)}곳 저장, 검토 필요 {len(reviews)}건 ({REVIEW_PATH.name}), API 호출 {API_CALLS}회")
     return 0
 
 

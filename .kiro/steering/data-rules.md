@@ -15,9 +15,13 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - 어디가 붐비는지는 부산시 월 방문자 합계(실제 인원), 언제 붐비는지는 집중률로 판단합니다.
 - 일 단위 값입니다. 집중률로 시간대별 혼잡을 주장하지 마십시오.
 - 요일 효과(부산 평균): 평일 42~44, 금 49, 토 67, 일 61
-- 집중률에 없는 장소: 감천문화마을, 해동용궁사, 흰여울문화마을(터널만 존재), 해리단길, 블루라인파크. 요일 규칙으로 대체하십시오.
+- `uv run python -m scripts.build_congestion`이 팀원이 받은 원본(`backend/app/data/raw/congestion_busan.json`, git에 올리지 않음)에서 우리 장소만 뽑아 `backend/app/data/congestion.json`을 만듭니다. API를 부르지 않습니다.
+- 장소 연결은 `build_congestion.PLACE_NAMES` 표의 이름(`tAtsNm`)과 정확히 같은 항목만 씁니다. 비슷한 이름을 자동으로 찾지 않습니다.
+- 받아 둔 기간은 2026-11-18 ~ 2026-12-17(30일)입니다. 기간 밖 날짜는 집중률이 없는 것으로 처리합니다.
+- 집중률이 있는 장소(21곳): 해운대·광안리·송정해수욕장, 자갈치시장, 국제시장, 해운대시장, 태종대, 범어사, 동백섬, 더베이101, 청사포 다릿돌전망대, 씨라이프부산아쿠아리움, 부산시립미술관, 민락수변공원, 롯데월드 어드벤처 부산, 용두산공원, 송도해상케이블카, 국립해양박물관, 부산 차이나타운, 부산박물관, 부산시민공원.
+- 집중률에 없는 장소(12곳, 연결 표에 없음): 감천문화마을, 부산타워, 해동용궁사, 신세계백화점 센텀시티점, 해리단길, 블루라인파크, 부산엑스더스카이, 영화의전당, 롯데프리미엄아울렛 동부산점, 흰여울문화마을, 부산근현대역사관, 초량이바구길. 요일 규칙으로 대체하십시오.
 - 대형 행사는 집중률에 반영되지 않습니다. 행사일에는 행사 가중 규칙을 따로 적용하십시오.
-- 도구: `get_crowd(place_id, date)` (`backend/app/tools/lookup.py`)
+- 도구: `get_crowd(place_id, date)` (`backend/app/tools/lookup.py`). `congestion.json`에 값이 있으면 `ratio`=값, `source: "concentration"`. 없으면 `ratio: null`, `source: "weekday_rule"`.
 
 ## 날씨 (기상청 단기예보, 공공데이터포털)
 - API: `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst`
@@ -46,6 +50,26 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 - 파일 형식은 `get_weather` 반환값과 같습니다(`{"date", "hourly"}`, 설명용 `note`는 선택). 파일 이름은 소문자·숫자·하이픈만 씁니다.
 - `{YYYY-MM-DD}.json`: `USE_MOCK=1`일 때 `get_weather`가 그 날짜의 예보로 씁니다. 파일이 없는 날짜는 예보 없음(`hourly: []`)입니다.
 - 그 밖의 이름(`rain-afternoon.json` 등): 데모 스위치 `demo.weather_preset`으로만 씁니다.
+
+## 운영시간 (한국관광공사 소개정보)
+- API: `https://apis.data.go.kr/B551011/KorService2/detailIntro2` (`contentId`, `contentTypeId`). 장소당 1회 호출합니다.
+- `uv run --env-file .env python -m scripts.fetch_hours`가 `backend/app/data/hours.json`을 만듭니다. 저장된 응답이 있는 장소는 다시 부르지 않습니다. `--offline`은 호출 없이 다시 만듭니다.
+- 관광타입마다 필드 이름이 다릅니다: 관광지(12) `usetime`·`restdate`, 문화시설(14) `usetimeculture`·`restdateculture`, 쇼핑(38) `opentime`·`restdateshopping`.
+- `opens`·`closes`는 원문이 `HH:MM~HH:MM` 한 구간일 때만 넣습니다(뒤의 "(입장 마감 17:30)"은 무시). 계절·요일별 시간, 24:00 마감, "상시 개방"은 `null`입니다.
+- `closed_weekdays`는 "매주 ○요일"만 넣습니다. "월요일이 공휴일이면 다음 날 휴관" 같은 예외와 "1월 1일" 같은 날짜는 반영하지 않습니다(`closed_dates`는 빈 목록). "점포 별로 상이"·"일부" 같은 단서가 붙은 휴무(국제시장)도 넣지 않습니다.
+- `raw_text`는 API의 한국어 원문입니다. 위 값으로 바꾸지 못한 내용은 여기에만 있습니다.
+- 영화의전당은 국문 항목이 자료실이라 모르는 값으로 둡니다(`fetch_hours.NOT_THE_PLACE`).
+- 도구: `get_hours(place_id)`
+
+## 큐레이션 (규칙으로 만든 참고 값)
+- `uv run python -m scripts.build_curation`이 `backend/app/data/curation.json`을 만듭니다. API를 부르지 않습니다. `places.json`·`travel_times.json`이 바뀌면 다시 만드십시오.
+- `tags`: `category`와 TourAPI 분류 코드(`lclsSystm1`·`lclsSystm2`)에서 매핑한 값입니다. 매핑 표는 `build_curation.py`의 `CATEGORY_TAGS`·`LCLS_TAGS`입니다.
+- `foreigner_friendly`(0~3): 다국어 관광정보 제공 언어 수(영어·일본어·중국어 중 이름이 있는 언어 수)입니다. 현장의 외국어 안내 수준이 아닙니다.
+- `crowd_alternatives`: 이동 시간 30분 이내이고 `indoor`를 뺀 `tags`가 하나 이상 겹치는 장소, 가까운 순 최대 3곳.
+- `rain_alternatives`: 이동 시간 30분 이내의 실내(`indoor=true`) 장소, 가까운 순 최대 3곳.
+- 사람이 고친 항목은 `curation_overrides.json`에 두면 다시 만들 때 덮어쓰고 `source`가 `"manual"`이 됩니다.
+- 도구: `get_place_info(place_id)`. `Place` + `curation` + `hours`를 한 번에 돌려줍니다. `search_places` 결과에는 큐레이션을 넣지 않습니다.
+- 대체 후보는 후보일 뿐입니다. 그 장소의 실제 혼잡·날씨는 `get_crowd`·`get_weather`로 확인하십시오.
 
 ## 장소 정보
 - 한국관광공사 다국어 관광정보서비스(영문·일문·중문 번체, 중문 간체는 신청 후 사용)와 부산시 명소정보를 사용하십시오.
