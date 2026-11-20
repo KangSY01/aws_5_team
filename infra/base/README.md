@@ -9,7 +9,7 @@
 | S3 | `busan-guide-web-<계정ID>` | 프론트 정적 파일. CloudFront OAC로만 읽기 |
 | S3 | `busan-guide-uploads-<계정ID>` | 사진·녹음·Polly 음성. presigned PUT용 CORS, 1일 후 삭제 |
 | S3 | `busan-guide-data-<계정ID>` | 사전 수집 공공데이터 |
-| DynamoDB | `busan-guide-sessions`, `busan-guide-plans`, `busan-guide-cache` | 온디맨드, 키 `pk`(S) + `sk`(S), TTL 속성 `ttl` |
+| DynamoDB | `busan-guide-sessions`, `busan-guide-cache` | 온디맨드, 키 `pk`(S) + `sk`(S), TTL 속성 `ttl`. sessions 는 A 의 단일 테이블(`pk`=`PLAN#`/`SESSION#`)로 쓴다 |
 | Bedrock | `busan-guide-guardrail` + 버전 | 근거 검사(GROUNDING 0.7, RELEVANCE 0.5), 이메일·전화·카드번호 익명화 |
 | CloudFront | 배포 1개 | web 버킷 오리진(OAC), 루트 `index.html`, 403·404는 `/index.html`(200), PriceClass_200 |
 | IAM | `busan-guide-data-access` | 관리형 정책. 역할에는 붙이지 않고 ARN만 내보낸다 |
@@ -64,7 +64,6 @@ sam delete --stack-name busan-guide-base --region ap-northeast-2
 | `UploadsBucketName` | 업로드 버킷 이름 |
 | `DataBucketName` | 공공데이터 버킷 이름 |
 | `SessionsTableName` | sessions 테이블 이름 |
-| `PlansTableName` | plans 테이블 이름 |
 | `CacheTableName` | cache 테이블 이름 |
 | `GuardrailId` | Bedrock Guardrail ID |
 | `GuardrailVersion` | Guardrail 고정 버전 |
