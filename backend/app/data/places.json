@@ -313,5 +313,23 @@
     "category": "street",
     "indoor": false,
     "nearest_station": "Jeonpo"
+  },
+  {
+    "place_id": "haeundae-rodeo-street",
+    "names": { "ja": "海雲台ロデオ通り", "zh-Hans": "海云台罗德奥街", "zh-Hant": "海雲臺羅德奧街" },
+    "lat": 35.1633725822,
+    "lng": 129.1696136869,
+    "category": "street",
+    "indoor": false,
+    "nearest_station": "Jung-dong"
+  },
+  {
+    "place_id": "busan-cinema-street",
+    "names": { "en": "Busan Cine Road", "ja": "釜山映画の通り", "zh-Hans": "釜山电影街", "zh-Hant": "釜山電影街" },
+    "lat": 35.1549495207,
+    "lng": 129.1444371716,
+    "category": "street",
+    "indoor": false,
+    "nearest_station": "Dongbaek"
   }
 ]

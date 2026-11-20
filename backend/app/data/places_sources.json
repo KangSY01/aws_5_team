@@ -1223,5 +1223,79 @@
     "names_overridden": [],
     "station_source": "busan_stations.csv",
     "fetched_at": "2026-11-20"
+  },
+  "haeundae-rodeo-street": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "ja": "JpnService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "1304431",
+      "ja": "3099093",
+      "zh-Hans": "3099714",
+      "zh-Hant": "3100508"
+    },
+    "kor_class": {
+      "contenttypeid": "38",
+      "lclsSystm1": "SH",
+      "lclsSystm2": "SH07",
+      "lclsSystm3": "SH070100"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
+    "match_radius_m": {
+      "ja": 300,
+      "zh-Hans": 300,
+      "zh-Hant": 300
+    },
+    "match_kind": {
+      "ja": "exact",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
+  },
+  "busan-cinema-street": {
+    "provider": "한국관광공사 TourAPI (공공데이터포털)",
+    "apis": {
+      "ko": "KorService2",
+      "en": "EngService2",
+      "ja": "JpnService2",
+      "zh-Hans": "ChsService2",
+      "zh-Hant": "ChtService2"
+    },
+    "contentids": {
+      "ko": "2946508",
+      "en": "3047063",
+      "ja": "3047064",
+      "zh-Hans": "3047065",
+      "zh-Hant": "3047066"
+    },
+    "kor_class": {
+      "contenttypeid": "12",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE04",
+      "lclsSystm3": "VE040100"
+    },
+    "foreign_lookup": "locationBasedList2 radius=300m, 없으면 1000m. title 의 한글·숫자 정규화 값이 국문과 같거나(exact), 300m 이내에서 3글자 이상 포함(contains). 그래도 없으면 searchKeyword2(시드 keywords.<언어>) 300m 이내 최근접(keyword_<언어>)",
+    "match_radius_m": {
+      "en": 1000,
+      "ja": 1000,
+      "zh-Hans": 1000,
+      "zh-Hant": 1000
+    },
+    "match_kind": {
+      "en": "exact",
+      "ja": "exact",
+      "zh-Hans": "exact",
+      "zh-Hant": "exact"
+    },
+    "names_overridden": [],
+    "station_source": "busan_stations.csv",
+    "fetched_at": "2026-11-20"
   }
 }
