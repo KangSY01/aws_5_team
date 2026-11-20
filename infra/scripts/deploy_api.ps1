@@ -1,6 +1,6 @@
 ﻿# HTTPS API Lambda + Function URL 배포 (스택 busan-guide-api): zip 빌드 -> S3 업로드 -> sam deploy
 # 실행 (infra/ 에서): .\scripts\deploy_api.ps1 [-ReviewOnly] [-FakeLlm 0|1] [-UseMock 0|1] [-ModelId <id>]
-#                     [-AllowedOrigins <오리진,...>] [-AllowLocalhost] [-ReservedConcurrency <n>] [-DataGoKrKey <키>] [-DemoNow <ISO 시각>]
+#                     [-AllowedOrigins <오리진,...>] [-AllowLocalhost] [-ReservedConcurrency <n>] [-DataGoKrKey <키>] [-KakaoRestApiKey <키>] [-DemoNow <ISO 시각>]
 # -ReviewOnly: zip 업로드와 변경 세트 생성까지만 하고 스택은 바꾸지 않는다. Replacement·Remove 가 있는지 본 뒤 옵션 없이 다시 실행한다.
 # -FakeLlm 1: Bedrock 을 부르지 않는 고정 응답 (배포 경로만 확인). -UseMock 1: 날씨·음성 샘플 (저장소는 항상 DynamoDB).
 # -AllowedOrigins: CORS 허용 오리진. 기본값은 공용 스택(busan-guide-base)의 CloudFront 도메인 https://<도메인>.
@@ -8,6 +8,9 @@
 # -AllowLocalhost: Vite 개발 서버(http://localhost:5173, http://127.0.0.1:5173)도 허용한다.
 # -DataGoKrKey: 공공데이터포털 Decoding 키. 기본값은 환경 변수 DATA_GO_KR_KEY_DECODING. NoEcho 라 다시 읽을 수 없어서
 #               배포할 때마다 넘겨야 한다. 비어 있으면 날씨 도구가 missing_key 오류를 돌려준다 (대화는 계속된다).
+# -KakaoRestApiKey: 카카오 REST API 키 (귀가 경로 실시간 조회). 기본값은 환경 변수 KAKAO_REST_API_KEY.
+#               명령 기록에 남지 않도록 환경 변수로 넘기는 것을 권한다. 비어 있으면 넘기지 않으며, 그러면 SAM 이 스택의 기존 값을
+#               유지한다 (처음 배포 때는 빈 값 = 역 좌표 추정). 키 값은 출력하지 않는다.
 # 필요: uv, AWS CLI, SAM CLI, 자격 증명(ap-northeast-2 에 배포 권한). 공용 스택 busan-guide-base 가 있어야 한다.
 param(
     [ValidateSet("0", "1")] [string]$FakeLlm = "0",
@@ -17,6 +20,7 @@ param(
     [switch]$AllowLocalhost,
     [ValidateRange(0, 1000)] [int]$ReservedConcurrency = 0,
     [string]$DataGoKrKey = $env:DATA_GO_KR_KEY_DECODING,
+    [string]$KakaoRestApiKey = $env:KAKAO_REST_API_KEY,
     [string]$DemoNow = "",
     [ValidateSet("true", "false")] [string]$DemoCache = "false",
     [string]$StackName = "busan-guide-api",
@@ -56,6 +60,7 @@ Write-Host "사진 업로드 버킷: $UploadsBucket"
 Write-Host "CORS 허용 오리진: $OriginList"
 Write-Host "모델: $ModelId / FAKE_LLM=$FakeLlm / USE_MOCK=$UseMock (저장소는 DynamoDB) / 예약 동시성: $ReservedConcurrency (0=제한 없음)"
 Write-Host "데모 장면 1 캐시: $DemoCache (지정하지 않으면 false 로 배포된다)"
+Write-Host "카카오 REST API 키: $(if ($KakaoRestApiKey) { '전달함' } else { '전달 안 함 (스택의 기존 값 유지)' })"
 if ($UseMock -eq "0" -and -not $DataGoKrKey) { Write-Warning "DATA_GO_KR_KEY_DECODING 이 비어 있어 날씨 도구가 missing_key 오류를 돌려줍니다 (대화는 계속됩니다)." }
 
 # 1) zip 빌드
@@ -87,6 +92,7 @@ $Overrides = @(
     "DemoCacheEnabled=$DemoCache"
 )
 if ($DataGoKrKey) { $Overrides += "DataGoKrKey=$DataGoKrKey" }
+if ($KakaoRestApiKey) { $Overrides += "KakaoRestApiKey=$KakaoRestApiKey" }
 if ($DemoNow) { $Overrides += "DemoNow=$DemoNow" }
 $ExtraArgs = @()
 if ($ReviewOnly) { $ExtraArgs += "--no-execute-changeset" }
