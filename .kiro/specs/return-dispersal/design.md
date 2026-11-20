@@ -8,7 +8,7 @@
 | 혼잡 역 | 행사 `main_place_id`의 `nearest_station` 1개 |
 | 도보 대안 역 상한 | 걸어서 20분 |
 | 도착지 | `destination_station`(`busan_stations.csv`의 `name_en`), 기본값 `"Seomyeon"`(데모 숙소가 서면, 팀 확정). `destination_place_id`는 선택이며 주면 그 장소의 `nearest_station`을 도착역으로 쓴다. 둘 다 주면 `destination_station` 우선 |
-| 이동 시간 | 도착지가 역이라 역 사이 시간이 필요하다. 역 좌표 기반 추정(기존 `travel_times`와 같은 규칙: 경로 거리 = 직선거리 × 1.3, 지하철 25km/h + 10분)으로 계산하고 `basis`에 규칙 기반 가정임을 적는다 |
+| 이동 시간 | 도착지가 역이라 역 사이 시간이 필요하다. 카카오 대중교통 경로를 실시간으로 불러 쓰고(저장·캐시 금지), 실패하거나 `USE_MOCK=1`이면 역 좌표 기반 추정(기존 `travel_times`와 같은 규칙: 경로 거리 = 직선거리 × 1.3, 지하철 25km/h + 10분)으로 계산한다. 항목마다 `time_source`(`kakao`·`estimate`)로 밝히고 `basis`에도 적는다 |
 | `main_place_id` | `fetch_events.py`가 `events.json`에 저장. `event_name`만 받으면 이것을 출발 장소로 쓴다 |
 | 혼잡 시간대 | 종료 30분 전~60분 뒤. 규칙 기반 가정이며 `basis`와 docstring에 밝힌다. 막차는 경고만 |
 
@@ -17,17 +17,21 @@
 backend/
   app/
     tools/return_options.py   get_return_options(@tool)와 순수 계산 함수 (새로 추가, B)
+    tools/kakao_route.py      fetch_routes: 카카오 대중교통 경로 실시간 조회. 실패하면 None, 저장·캐시 없음
+    ranking/routes.py         rank_routes: 제안에 점수를 매겨 이름 붙은 2~3안을 고른다 (ranked)
     tools/lookup.py           get_events 반환에 main_place_id 추가 (B, 필드 추가만)
     data/stations.json        역 표 (새로 추가, B). busan_stations.csv에서 만든다
     data/events.json          행사마다 main_place_id 추가 (fetch_events.py가 만든다)
   scripts/build_stations.py   busan_stations.csv → app/data/stations.json (새로 추가)
   scripts/fetch_events.py     main_place_id 계산 추가 (B)
-  tests/test_return_options.py
+  tests/test_return_options.py        카카오 없이(전부 estimate) 동작하는 경우
+  tests/test_return_options_kakao.py  카카오 성공·일부 실패·전부 실패·USE_MOCK (fetch_routes 를 mock)
+  tests/conftest.py                   no_kakao: 모든 테스트에서 fetch_routes 를 None 으로 고정
   tests/test_lookup.py        get_events 반환의 main_place_id 검사 추가
 ```
 - `lookup.py`는 이미 커서 도구를 새 파일에 둡니다. `return_options.py`는 `lookup.py`의 `_safe`, `LookupFailure`, `_load_json`, `_load_places`, `_parse_date`와 `get_events`의 계산을 불러 씁니다.
 - `get_events`는 `@tool`로 감싸져 있으므로 내부 계산에서는 같은 결과를 주는 일반 함수를 부르는 방법을 구현 때 정합니다(작업 4.1).
-- 이동 시간은 `get_travel_time`(장소 사이 표)을 쓰지 않습니다. 도착지가 역이라 `return_options.py`가 `stations.json` 좌표와 `travel_times.json`의 `rule`로 직접 계산합니다.
+- 이동 시간은 `get_travel_time`(장소 사이 표)을 쓰지 않습니다. 도착지가 역이라 `return_options.py`가 역 좌표(`stations.json`)로 `kakao_route.fetch_routes`를 부르고, 결과가 없으면 같은 좌표와 `travel_times.json`의 `rule`로 직접 계산합니다.
 - `get_events`에 필드를 추가해도 Guardian은 영향이 없습니다. `guardian/context.py`의 `Event` 모델은 `name`, `start`, `end`, `place_ids`만 읽고 모르는 필드는 무시합니다(`extra` 설정 없음, 구현 때 테스트로 확인).
 - `guardian/`은 이 도구를 부르지 않습니다.
 
@@ -44,7 +48,7 @@ backend/
 {"note": "...", "stations": [{"station": "Haeundae", "name_ko": "해운대역", "lines": ["2"], "lat": 35.163672, "lng": 129.158908}]}
 ```
 - `station`은 CSV의 `name_en`이며 `places.json`의 `nearest_station`과 같은 문자열입니다. 연결은 정확히 같은 문자열일 때만 합니다.
-- 환승역(`name_en` 중복: Seomyeon, Yeonsan, Dongnae, Suyeong, Deokcheon, Minam)은 한 항목으로 합치고 `lines`에 노선을 모두 넣습니다. 좌표는 행들의 평균입니다. 도착역 기본값 `Seomyeon`은 1·2호선 두 행(좌표 평균 약 35.1580, 129.0593)이 한 항목이 됩니다. `lines`는 참고용이며 도구 출력으로 노선·환승을 말하지 않습니다.
+- 환승역(`name_en` 중복: Seomyeon, Yeonsan, Dongnae, Suyeong, Deokcheon, Minam)은 한 항목으로 합치고 `lines`에 노선을 모두 넣습니다. 좌표는 행들의 평균입니다. 도착역 기본값 `Seomyeon`은 1·2호선 두 행(좌표 평균 약 35.1580, 129.0593)이 한 항목이 됩니다. 역 표의 `lines`는 참고용이며 도구 출력에 넣지 않습니다. 노선·환승은 카카오 경로를 받은 항목의 `legs`·`transfers`로만 나옵니다.
 - 도착역 입력은 `station` 값과 대소문자·앞뒤 공백을 무시하고 비교합니다. 응답에는 표의 `station` 값을 돌려줍니다.
 - `places.json`의 `nearest_station` 중 표에 없는 값이 하나 있습니다(`OSIRIA`, 동해선). 스크립트가 경고로 출력합니다. `destination_place_id`로 정한 장소의 역이 이것이면 `no_station` 오류입니다.
 - `places.json`의 좌표·가까운 역은 검증 전 값입니다(`data-rules.md`). 역을 사실로 단정하지 않습니다.
@@ -76,10 +80,11 @@ get_return_options(date, place_id=None, event_name=None, destination_station=Non
 - `@tool` + `@_safe`. docstring은 영어로 쓰고(`team.md`, `tech.md`) 아래를 모두 적습니다.
   - 언제 쓰는지: 행사 종료 뒤 귀가 방법을 물을 때
   - 입력과 출력
-  - 규칙 기반 추정이며 실시간·실측 혼잡이 아니다
+  - 역 혼잡은 규칙 기반 추정이며 실시간·실측 혼잡이 아니다
   - 혼잡 시간대(종료 30분 전~60분 뒤)는 근거 데이터 없이 정한 가정이다
-  - 이동 시간은 역 좌표로 어림한 값이다(실제 경로·시간표 아님, 장소에서 역까지 걷는 시간 제외)
-  - 막차 시각은 모른다
+  - 이동 시간은 카카오 실시간 대중교통 경로를 우선하고, 없으면 역 좌표로 어림한 값이다(둘 다 장소에서 역까지 걷는 시간 제외). 카카오 결과는 저장·캐시하지 않는다
+  - `time_source`가 `kakao`이면 `route_type`, `transfers`, `fare`, `walk_meters`, `legs`는 카카오 값이다. `estimate`이면 노선·환승을 지어내지 않는다
+  - 막차 시각은 아직 반영하지 않음
   - 도착역 기본값은 `Seomyeon`(데모 숙소 기준)이다. 사용자가 다른 도착지를 말하면 `destination_station`(영문 역 이름) 또는 `destination_place_id`로 넘긴다
 - `place_id`·`event_name`이 둘 다 없으면 `missing_argument` 오류입니다.
 - 에이전트가 사용자의 도착역을 영문 이름(`name_en`)으로 알면 `destination_station`, 장소만 알면 `destination_place_id`(`places.json`에 있는 장소만)로 넘깁니다.
@@ -94,18 +99,30 @@ get_return_options(date, place_id=None, event_name=None, destination_station=Non
 7. 제안 만들기:
    - (a) 시각: 출발 역은 그대로, 출발 시각을 `end − 40분`, `end + 60분`으로.
    - (b) 걸어서 다른 역: 혼잡 역이 아니고, 혼잡 역에서 걸어서 20분 이내인 역(노선 무관), 가까운 순.
-8. (b)의 `extra_min` = (혼잡 역→이용 역 도보 + 이용 역→도착역 지하철) − (혼잡 역→도착역 지하철). 이용 역이 도착역이면 지하철 시간 0. 같은 규칙으로 계산한 차이만 씁니다.
-9. 정렬·상한 적용(요구사항 4.9).
+8. 역 사이 시간 정하기: 기준 출발 역과 제안의 이용 역마다 카카오 경로를 조회하고(아래 「카카오 실시간 경로」), 결과가 없는 역은 추정 시간을 씁니다.
+9. (b)의 `extra_min` = (혼잡 역→이용 역 도보 + 이용 역→도착역 시간) − `baseline.minutes`. 이용 역이 도착역이면 추정 시간 0. (a)는 출발 역이 같아 0입니다.
+10. 정렬·상한 적용(요구사항 4.9). 카카오 값으로 바뀐 `extra_min` 기준입니다.
+11. `ranked` = `rank_routes(결과)`(아래 「반환 형식」). `options`가 비면 `ranked`도 빈 목록입니다.
 
-### 이동 시간 계산 (역 좌표 기반 추정)
+### 이동 시간 계산
+역 사이 시간은 카카오 실시간 경로를 우선하고, 없으면 역 좌표 기반 추정을 씁니다. 걷는 시간(`walk_min`)은 항상 추정입니다.
+
+#### 카카오 실시간 경로 (`time_source: "kakao"`)
+- `kakao_route.fetch_routes(출발 역 좌표, 도착역 좌표)`가 돌려준 경로 중 첫 경로를 씁니다. 시간은 `total_minutes`이고, `route_type`, `transfers`, `distance_m`, `fare`, `walk_meters`, `legs`를 `baseline`·`options` 항목에 그대로 넣습니다.
+- 도구 호출 한 번에 출발 역마다 한 번씩만 조회합니다(기준 출발 역 + 이용 역, 같은 역은 한 번). 서로 다른 역은 스레드로 동시에 조회합니다. 조회마다 3초 제한, 재시도 없음이라 전체도 3초대에 끝납니다.
+- `USE_MOCK=1`이거나 `KAKAO_REST_API_KEY`가 없으면 조회하지 않습니다(네트워크 0회).
+- 조회 실패(`None`, 예외, 첫 경로 형식 오류)는 오류가 아닙니다. 그 역만 추정으로 대체하므로 한 응답에 `kakao`와 `estimate`가 섞일 수 있습니다.
+- 결과는 그 호출 안의 지역 변수로만 쓰고 파일·DB·전역 변수·메모리 캐시에 저장하지 않습니다.
+
+#### 역 좌표 기반 추정 (`time_source: "estimate"`)
 - 경로 거리 = 두 역 좌표의 직선거리 × `route_factor`(1.3).
 - 지하철 시간(분) = 올림(경로 거리 / `subway_kmh`(25) × 60 + `subway_overhead_min`(10)).
 - 도보 시간(분) = 올림(경로 거리 / `walk_kmh`(4.5) × 60).
 - 상수는 `travel_times.json`의 `rule`을 읽어 씁니다(기존 이동 시간 표와 어긋나지 않게). 파일을 못 읽으면 `data_unavailable`입니다.
-- `basis`에 이 규칙 값과 "역 좌표 기반 추정, 실제 경로·시간표 아님, 장소↔역 도보 제외"를 적습니다.
-- 환승역(서면)은 1·2호선 좌표 평균 한 점으로 계산합니다. 환승 시간은 규칙의 고정 10분에 들어 있다고 보며, 환승 여부는 단정하지 않습니다.
+- `basis`에 이 규칙 값과 "카카오 실시간 경로 우선, 없으면 역 좌표 기반 추정, 장소↔역 도보 제외, 카카오 결과 저장·캐시 없음"을 적습니다.
+- 환승역(서면)은 1·2호선 좌표 평균 한 점으로 계산합니다. 추정에서는 환승 시간이 규칙의 고정 10분에 들어 있다고 보며, 환승 여부는 단정하지 않습니다. 카카오 경로를 받은 경우에만 `transfers`·`legs`로 환승을 말합니다.
 
-### 장면 7 어림값 (역 좌표로 계산, 구현 때 확인)
+### 장면 7 어림값 (역 좌표로 계산한 추정. 카카오가 없을 때의 값)
 출발 해운대역, 도착 서면역:
 | 이용 역 | 도보 | 역→서면 지하철 | 기준(해운대→서면 39분) 대비 `extra_min` |
 |---|---|---|---|
@@ -122,27 +139,52 @@ Guardian·프론트가 필드를 그대로 쓰도록 평평한 dict로 돌려줍
   "basis": {"kind": "rule", "measured": false,
             "assumed_window": {"before_end_min": 30, "after_end_min": 60},
             "travel_time_rule": {"route_factor": 1.3, "subway_kmh": 25, "subway_overhead_min": 10, "walk_kmh": 4.5},
-            "note": "Rule-based estimate, not measured or real-time crowding. The crowded window (30 min before to 60 min after the event end) is an assumption. Travel times are estimated from station coordinates, not routes or timetables, and exclude walking to and from stations."},
+            "note": "Rule-based estimate, not measured or real-time crowding. The crowded window (30 min before to 60 min after the event end) is an assumption. Travel times use live Kakao public-transit routes when available and otherwise fall back to estimates from station coordinates; they exclude walking to and from places. Kakao route results are not stored or cached. Last-train warnings use the stored Busan Metro standard timetable when the requested station and direction are available; actual train times can differ."},
   "event": {"name": "해운대 빛축제", "start": "...T18:00:00+09:00", "end": "...T23:00:00+09:00", "main_place_id": "sea-life-busan"},
   "origin": {"place_id": "sea-life-busan", "station": "Haeundae"},
   "destination": {"station": "Seomyeon", "place_id": null, "is_default": true},
   "congested_station": {"station": "Haeundae", "main_place_id": "sea-life-busan",
                         "from": "...T22:30:00+09:00", "to": "2026-11-29T00:00:00+09:00"},
   "baseline": {"depart_at": "...T23:00:00+09:00", "station": "Haeundae", "congested": true,
-               "minutes": 39, "mode": "subway"},
+               "minutes": 39, "mode": "subway", "time_source": "estimate"},
   "options": [
     {"type": "shift_earlier", "depart_at": "...T22:20:00+09:00", "station": "Haeundae", "walk_min": 0,
-     "extra_min": 0, "avoids_congestion": true, "warnings": ["leaves_before_event_end"]},
+     "extra_min": 0, "avoids_congestion": true, "warnings": ["leaves_before_event_end"], "time_source": "estimate"},
     {"type": "shift_later", "depart_at": "2026-11-29T00:00:00+09:00", "station": "Haeundae", "walk_min": 0,
-     "extra_min": 0, "avoids_congestion": true, "warnings": ["last_train_unknown"]},
+     "extra_min": 0, "avoids_congestion": true, "warnings": ["last_train_unknown"], "time_source": "estimate"},
     {"type": "walk_to_station", "depart_at": "...T23:00:00+09:00", "station": "Dongbaek", "walk_min": 18,
-     "extra_min": 15, "avoids_congestion": true, "warnings": []},
+     "extra_min": 15, "avoids_congestion": true, "warnings": [], "time_source": "estimate"},
     {"type": "walk_to_station", "depart_at": "...T23:00:00+09:00", "station": "Jung-dong", "walk_min": 17,
-     "extra_min": 20, "avoids_congestion": true, "warnings": []}
+     "extra_min": 20, "avoids_congestion": true, "warnings": [], "time_source": "estimate"}
+  ],
+  "ranked": [
+    {"option": {"type": "walk_to_station", "station": "Dongbaek", ...}, "score": -63.0, "travel_min": 54,
+     "arrive_at": "...T23:54:00+09:00",
+     "breakdown": {"travel": 54.0, "early": 0.0, "wait": 0.0, "walk": 9.0, "penalty": 0.0},
+     "labels": ["best"], "excluded": null},
+    {"option": {"type": "walk_to_station", "station": "Jung-dong", ...}, "score": -67.5, "travel_min": 59,
+     "arrive_at": "...T23:59:00+09:00",
+     "breakdown": {"travel": 59.0, "early": 0.0, "wait": 0.0, "walk": 8.5, "penalty": 0.0},
+     "labels": [], "excluded": null},
+    {"option": {"type": "shift_earlier", "station": "Haeundae", ...}, "score": -79.0, "travel_min": 39,
+     "arrive_at": "...T22:59:00+09:00",
+     "breakdown": {"travel": 39.0, "early": 40.0, "wait": 0.0, "walk": 0.0, "penalty": 0.0},
+     "labels": ["earliest_arrival", "least_walking"], "excluded": null}
   ]
 }
 ```
-- 위 숫자는 「장면 7 어림값」과 같은 역 좌표 추정이며, 구현 후 계산 결과로 바꿉니다.
+- 위 숫자는 카카오가 없을 때(전부 `estimate`)의 값이며 「장면 7 어림값」과 같습니다. 카카오 경로를 받으면 `minutes`·`extra_min`·`ranked`가 그 값으로 바뀝니다.
+- `time_source`: `baseline`과 `options` 항목마다 `"kakao"` 또는 `"estimate"`. `"kakao"`인 항목에는 카카오 첫 경로의 요약이 더 붙습니다. `"estimate"`인 항목에는 이 필드들이 없습니다.
+  ```
+  "route_type": "SUBWAY" | "BUS" | "BUS_AND_SUBWAY", "transfers": 0, "distance_m": 16000, "fare": 1600 (없으면 null),
+  "walk_meters": 0,
+  "legs": [{"mode": "SUBWAY", "minutes": 40, "distance_m": 16000, "lines": ["2호선"], "from_name": "해운대", "to_name": "서면"}]
+  ```
+- `ranked`: `rank_routes`(`app/ranking/routes.py`)가 `options`를 채점해 점수 높은 순으로 돌려준 2~3안입니다. `options`는 그대로 두고(순서 없는 제안 목록, `extra_min` 순) 추천 순서는 `ranked`로 봅니다.
+  - 항목: `option`(`options` 항목 그대로), `score`(비용을 분으로 환산해 음수로 둔 값, 높을수록 좋음), `travel_min`(`baseline.minutes + extra_min`), `arrive_at`(`depart_at + travel_min`), `breakdown`(`travel`, `early`, `wait`, `walk`, `penalty`), `labels`, `excluded`.
+  - `labels`: `best`(점수 1위), `earliest_arrival`(도착역에 가장 빨리 닿는 안), `least_walking`(가장 덜 걷는 안). 한 안이 여러 이름을 가질 수 있고, 이름 붙은 안을 먼저 넣은 뒤 남은 자리(최대 3안)를 점수 순으로 채웁니다. 동점은 `options` 순서입니다.
+  - 막차를 놓치는 안(`warnings`에 `last_train_missed`)은 `ranked`에서 뺍니다. `options`에는 남습니다. `ranked`에 들어간 항목의 `excluded`는 `null`입니다.
+  - 가중치는 `app/ranking/weights.py`의 `ROUTE_*`입니다. `options`가 비면 `ranked`도 빈 목록입니다.
 - `destination.place_id`는 `destination_place_id`로 도착역을 정했을 때만 값이 있고, 그 밖에는 `null`입니다. `is_default`는 기본값을 썼을 때만 `true`입니다.
 - `type`: `shift_earlier`, `shift_later`, `walk_to_station`. `warnings`: `leaves_before_event_end`, `last_train_unknown`.
 - `ratio`, 혼잡 등급, 집중률 같은 필드는 두지 않습니다.
@@ -150,24 +192,28 @@ Guardian·프론트가 필드를 그대로 쓰도록 평평한 dict로 돌려줍
 - 출처 표기: 행사(한국관광공사 행사정보), 역 위치(부산교통공사 도시철도 역 정보)를 `sources`에 담는 형식은 다른 도구가 정하는 방식을 확인해 맞춥니다(작업 1).
 
 ## 에이전트·프론트에서 쓰는 방법
-- LLM은 `options`의 값(시각, 역 이름, 분)만 말합니다. 역 혼잡을 "붐빈다"고 단정하지 않고 "행사가 끝나는 시간대라 붐빌 것으로 예상된다"로 말합니다(프롬프트 문구는 D가 정합니다).
+- LLM은 `options`·`ranked`의 값(시각, 역 이름, 분)만 말합니다. 추천 순서와 이름(`labels`)은 `ranked`를 따릅니다. 역 혼잡을 "붐빈다"고 단정하지 않고 "행사가 끝나는 시간대라 붐빌 것으로 예상된다"로 말합니다(프롬프트 문구는 D가 정합니다).
 - `destination.is_default`가 `true`면 "서면역 기준으로 계산했다, 다른 곳이면 알려 달라"고 안내합니다.
-- 분은 "약 N분"으로 말하고, 장소에서 역까지 걷는 시간이 빠진 값이라는 점과 노선·환승을 단정하지 않습니다.
+- 분은 "약 N분"으로 말하고, 장소에서 역까지 걷는 시간이 빠진 값이라는 점을 알립니다. 노선·환승은 `time_source`가 `kakao`인 항목에서만 `legs`·`transfers` 값으로 말하고, `estimate`인 항목에서는 단정하지 않습니다.
 - 프론트는 `congested_station`과 `options`로 카드를 그릴 수 있습니다. 화면에 `basis.note`를 함께 보여 줍니다.
 
 ## 검증
-테스트는 `backend/tests/test_return_options.py`와 `tests/test_lookup.py`. 실행: `uv run pytest -q tests/test_return_options.py tests/test_lookup.py`.
+테스트는 `backend/tests/test_return_options.py`, `tests/test_return_options_kakao.py`, `tests/test_lookup.py`. 실행: `uv run pytest -q tests/test_return_options.py tests/test_return_options_kakao.py tests/test_lookup.py`.
+`tests/conftest.py`의 `no_kakao`가 모든 테스트에서 `return_options.fetch_routes`를 `None`으로 고정하므로, 셸에 키가 있어도 실제 호출이 나지 않습니다. 카카오 성공은 `test_return_options_kakao.py`가 `fetch_routes`를 직접 만든 경로로 바꿔 확인합니다(실제 응답을 복사하지 않음).
 - `main_place_id`: `events.json`의 모든 행사에서 `place_ids`가 비면 `null`, 아니면 `place_ids` 안에 있는 값인지. `get_events` 반환에 들어 있는지. Guardian `build_context` 테스트가 그대로 통과하는지.
 - 11/28 해운대 빛축제, `event_name`만 입력(출발 장소 = `main_place_id`)과 `place_id` 입력 두 경로.
 - 도착역 결정: 생략하면 `Seomyeon`과 `is_default: true`, `destination_station="seomyeon "`(대소문자·공백)이 `Seomyeon`으로 정규화, `destination_place_id`만 주면 그 장소의 `nearest_station`과 `place_id` 값, 둘 다 주면 `destination_station` 우선(`destination_place_id`가 잘못된 ID여도 오류 없음), 역 표에 없는 이름 → `station_not_found`, `nearest_station`이 `null`인 장소 → `no_station`, 혼잡 역과 같은 도착역 → `same_station`.
-- 이동 시간: `baseline.minutes`와 (b)의 `extra_min`이 「장면 7 어림값」과 같은지(해운대→서면 39분, 동백 +15, 중동 +20), 규칙 상수를 `travel_times.json`의 `rule`에서 읽는지, `basis`에 규칙 값이 들어 있는지. 이용 역이 도착역이면 지하철 0분.
+- 이동 시간(카카오 없음): `baseline.minutes`와 (b)의 `extra_min`이 「장면 7 어림값」과 같은지(해운대→서면 39분, 동백 +15, 중동 +20), 규칙 상수를 `travel_times.json`의 `rule`에서 읽는지, `basis`에 규칙 값이 들어 있는지. 이용 역이 도착역이면 지하철 0분.
 - 혼잡 역이 1개뿐인지(다른 행사 장소의 역은 혼잡 역이 아님). 출발 장소의 역이 혼잡 역이 아니면 `options: []`.
 - 도보 20분 상한: 후보가 상한 이내인 역뿐이고 혼잡 역이 빠지는지.
 - 혼잡 시간대 경계(22:30 포함, 24:00 제외), 자정 넘김.
 - 진행 시간을 모르는 행사 → `no_time_basis`. 행사 없는 날짜 → `event_not_found`. `place_ids`가 빈 행사 → `no_event_station`.
 - `other_line` 같은 제안 유형이 나오지 않는지. `basis.measured`가 `false`이고 `ratio` 필드가 없는지.
 - 응답에 있는 모든 장소 ID·역 이름이 `places.json`·`stations.json`에 있는지.
-- 카카오 금지 확인: `return_options.py`, `build_stations.py`, `stations.json`에 `kakao` 문자열·카카오 API 주소가 없는지 검사하고, 도구 호출 중 네트워크 접근이 없는지(`urllib`을 막은 상태에서 실행) 확인합니다.
+- 카카오 없음 확인: `fetch_routes`가 `None`이면 `baseline`·`options`·`ranked`의 `time_source`가 전부 `estimate`이고 `legs` 등 경로 상세 필드가 없는지, 네트워크(`urllib`, 소켓)와 현재 시각을 막은 상태에서 `USE_MOCK` 값과 무관하게 같은 결과가 나오는지(네트워크 0회), `USE_MOCK=1`이면 실제 `fetch_routes`를 끼워도 네트워크를 타지 않는지 확인합니다.
+- 저장 금지 확인: 저장하는 역 표와 스크립트(`build_stations.py`, `stations.json`)에 `kakao` 문자열·API 주소가 없는지 검사합니다.
+- 카카오 성공(`test_return_options_kakao.py`): 출발 역마다 한 번씩 동시에 조회하는지, `baseline`·`options`에 `time_source: "kakao"`와 `legs`가 붙고 `extra_min`이 카카오 분으로 계산되는지, 일부 역만 실패하면 그 역만 `estimate`인지, 전부 실패하면 추정값과 같은지, `USE_MOCK=1`이면 `fetch_routes`를 부르지 않는지.
+- `ranked`: 손으로 적은 기대 결과를 `rank_routes`에 넣은 값과 같은지, 순서와 `labels`(동백 `best` → 중동 → 해운대 `shift_earlier`가 `earliest_arrival`·`least_walking`), 막차를 놓치는 `shift_later`가 빠지는지, `options`가 비면 빈 목록인지.
 
 ## 연결 (이 spec의 범위 밖, 수정안만 제시)
 - 에이전트 도구 목록 등록: `agent.py`는 A 담당입니다("tools 목록에 `get_return_options` 추가").

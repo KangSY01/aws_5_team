@@ -16,8 +16,8 @@
 - [x] 3. 역 표
   - `build_stations.py`: `busan_stations.csv` → `stations.json`(환승역 합치기, 표에 없는 `nearest_station` 경고)
   - `uv run python -m scripts.build_stations`로 만들고 `stations.json`을 확인(115행에서 환승역 6곳을 합친 수, `Seomyeon` 한 항목에 `lines` 1·2호선)
-  - 카카오·외부 API 호출 없음
-  - _요구사항: 2.5, 4.5, 6.1, 6.3_
+  - 역 표를 만들 때 카카오·외부 API를 부르지 않는다. 저장하는 파일에 카카오에서 온 값이 없다
+  - _요구사항: 2.5, 4.5, 6.3_
 - [x] 4. 순수 계산 함수 (`return_options.py`, `@tool` 없이)
   - [x] 4.1 입력 검증과 행사 찾기(`event_name`·`place_id`), `get_events`의 일반 함수 호출 방식 정하기
   - [x] 4.2 도착역 결정: `destination_station`(정규화) → `destination_place_id`의 `nearest_station` → 기본값 `DEFAULT_DESTINATION_STATION`(`"Seomyeon"`), `is_default`·`destination.place_id` 채우기, `station_not_found`·`no_station`·`same_station`
@@ -30,13 +30,14 @@
   - `uv run pytest -q tests/test_return_options.py`
   - _요구사항: 2, 3, 4_
 - [x] 6. `@tool` 도구와 반환 형식
-  - `get_return_options` 작성(`@tool` + `@_safe`, 영어 docstring: 언제 쓰는지, 입력, 출력, 규칙 기반 추정, 혼잡 시간대는 가정, 이동 시간은 역 좌표 어림값, 막차 모름, 도착역 기본값 Seomyeon)
+  - `get_return_options` 작성(`@tool` + `@_safe`, 영어 docstring: 언제 쓰는지, 입력, 출력, 규칙 기반 추정, 혼잡 시간대는 가정, 이동 시간은 카카오 실시간 경로 우선·없으면 역 좌표 어림값, 막차 시각은 아직 반영하지 않음, 도착역 기본값 Seomyeon)
   - `destination_station` 기본값은 `None`(생략과 직접 지정을 구별), docstring에는 "기본값 Seomyeon"이라고 적는다
   - 반환 dict가 `design.md` 「반환 형식」과 같은지 확인, `ratio`·혼잡 등급 필드 없음, `basis`에 가정 시간대와 이동 시간 규칙 값 포함
   - 기존 `tests/test_lookup.py`의 도구 docstring 검사와 같은 방식의 검사를 추가
   - _요구사항: 3.5~3.7, 5.3~5.6, 7_
 - [x] 7. 금지 사항·무결성 테스트
-  - 카카오 문자열·API 주소 검사, 네트워크 차단 상태에서 실행, 응답의 장소 ID·역 이름이 데이터에 있는지
+  - 카카오가 없으면(`fetch_routes`가 `None`) `time_source`가 전부 `estimate`이고 `legs`가 없는지, 네트워크·현재 시각을 막은 상태에서 실행(네트워크 0회), `USE_MOCK=1`이면 `fetch_routes`가 네트워크를 타지 않는지
+  - 저장하는 역 표·스크립트(`build_stations.py`, `stations.json`)의 카카오 문자열·API 주소 검사, 응답의 장소 ID·역 이름이 데이터에 있는지
   - `uv run pytest -q`(전체)로 기존 테스트가 깨지지 않았는지 확인
   - _요구사항: 2.10, 6, 7.2, 7.4_
 - [x] 8. 데모 확인과 연결 안내
@@ -44,3 +45,10 @@
   - 수정안 정리(직접 고치지 않음): `agent.py` 도구 등록(A), `chat-agent/design.md` `get_events` 행, `data-rules.md` 「행사」·역 표 항목
   - 구현 후 확인한 값으로 `docs/demo-readiness.md` 장면 7 행 갱신을 제안한다
   - _요구사항: 범위 밖 항목_
+- [x] 9. 카카오 실시간 경로와 `rank_routes` 연결
+  - [x] 9.1 `return_options.py`: 기준 출발 역과 이용 역마다 `kakao_route.fetch_routes`를 한 번씩 동시에 조회, 실패한 역만 역 좌표 추정으로 대체, `time_source`와 카카오 경로 요약(`legs` 등) 추가, 결과 저장·캐시 없음
+  - [x] 9.2 `ranked` = `rank_routes(결과)`를 응답에 추가(`labels`, 막차 놓치는 안 제외). `app/ranking/`은 고치지 않는다
+  - [x] 9.3 `basis.note`와 docstring을 카카오 우선·추정 대체로 고침
+  - [x] 9.4 `tests/test_return_options_kakao.py`(성공·일부 실패·전부 실패·`USE_MOCK`), `tests/conftest.py`의 `no_kakao`(모든 테스트에서 실제 호출 차단), `tests/test_return_options.py` 기대값에 `time_source`·`ranked` 반영
+  - `uv run pytest -q`, `uv run python -m scripts.demo_offline_check`(12/12, 네트워크 0회)
+  - _요구사항: 4.6, 5.1~5.4, 6, 7.2~7.4_
