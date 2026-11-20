@@ -295,7 +295,7 @@
 .travel-preview[data-night="true"] { --stop-warning: #ffb3aa; }
 .stop-overlap, .stop-overlap-summary { color: var(--stop-warning, #a33129); }
 .stop-overlap-summary { margin: 4px 8px; }
-.stop-select :is(.stop-item__time, .stop-item__name, .stop-item__locked) { grid-column: 2; }
+.stop-select :is(.stop-item__time, .stop-item__name, .stop-item__event, .stop-item__locked) { grid-column: 2; }
 .stop-select .stop-item__time { font-size: .75rem; }
 .stop-select .stop-item__name { font-size: .93rem; font-weight: 700; line-height: 1.35; }
 .stop-actions {
@@ -1964,4 +1964,13 @@
     background: var(--panel-white);
     border-color: var(--panel-divider);
   }
+}
+
+/* 일정 칸이 행사 시간과 겹칠 때 장소 이름 아래 행사 이름 (예: 해운대해수욕장 · 해운대 빛축제) */
+.stop-item__event {
+  display: block;
+  margin-top: 2px;
+  color: var(--coast-coral, #a63822);
+  font-size: .85rem;
+  font-weight: 600;
 }

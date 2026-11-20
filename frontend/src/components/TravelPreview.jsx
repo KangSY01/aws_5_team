@@ -1330,7 +1330,7 @@ export default function TravelPreview({ night = false, demoMode = false, travele
                 </div>
               )}
               {course?.demo && <small>{plannerCopy.demoCourse}</small>}
-              {stops.length ? <PlanList plan={plan} places={places} displayLanguage={language}
+              {stops.length ? <PlanList plan={plan} places={places} displayLanguage={language} events={events}
                 selected={selected} tripStopId={nextStop?.stop_id} onSelect={selectStop} lockedLabel={copy.locked} onEdit={openEdit} editLabel={plannerCopy.editStop}
                 formatStopDate={(date) => formatDate(date, language)}
                 onSaveStops={saveStops} busy={Boolean(pending)}

@@ -1,3 +1,4 @@
+import { eventName, findStopEvent } from "../lib/stopEvent.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import L from "leaflet";
@@ -172,7 +173,8 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
 
     mappedStops.forEach(({ stop, coordinates }, index) => {
       if (!coordinates) return;
-      const placeName = resolvePlaceName(stop, placesById, language).name;
+      const stopEvent = findStopEvent(stop, events);
+      const placeName = stopEvent ? eventName(stopEvent, language) : resolvePlaceName(stop, placesById, language).name;
       const title = `${index + 1}. ${placeName}`;
       const marker = L.marker(coordinates, {
         title,
@@ -252,7 +254,7 @@ export default function BusanMap({ plan, places, events, onEventSelect, onLandma
       map.off("moveend zoomend resize", placeLabels);
       layer.remove();
     };
-  }, [plan, places, mappedStops, language, onSelect]);
+  }, [plan, places, mappedStops, language, onSelect, events]);
 
   useEffect(() => {
     if (!events?.length) return;
