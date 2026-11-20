@@ -56,6 +56,7 @@
   - [x] 10.1 `scripts/fetch_last_trains.py`: 부산교통공사 열차시각표(_GW)에서 해운대·동백·중동 → 서면, 서면 → 해운대 막차를 요일별로 골라 `app/data/last_trains.json`에 저장(원본은 `app/data/raw/_last_trains/`). `tests/test_fetch_last_trains.py`
   - [x] 10.2 `return_options.py`: `shift_later`의 출발 시각을 막차 표와 비교해 `last_train_missed`·경고 없음·`last_train_unknown`(파일·값이 없을 때만)을 정한다. `basis.note`와 docstring에 반영
   - [x] 10.3 `tests/test_return_options.py`: 막차 뒤, 막차 이전, 방향 불일치, 파일 없음
+  - [x] 10.4 `baseline`과 모든 제안에 `last_train`("HH:MM", 없으면 `null`)을 넣고, 막차 비교를 `baseline`·`shift_earlier`·`walk_to_station`(걸어서 역에 닿는 시각)에도 적용. docstring과 테스트(22:40 출발, 막차 뒤, 파일 없음)에 반영. `app/ranking/`은 고치지 않는다
   - _요구사항: 4.4, 5.3, 5.4, 7.2_
 - [x] 11. 카카오 `legs`의 언어별 승하차 이름
   - `return_options.py`: 구간마다 `from_names`·`to_names` 추가(`ko`는 항상, `en`은 지하철 구간의 역이 역 표에 있을 때만, 없는 언어는 만들지 않음). docstring에 반영
