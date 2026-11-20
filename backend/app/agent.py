@@ -29,11 +29,17 @@ from app import config, storage
 from app.chat import answer as chat_answer
 from app.chat.messages import message
 from app.chat.plan_rules import load_places, place_name, validate_plan
-from app.chat.prompt import Mode, build_system_prompt
-from app.chat.tools import LOOKUP_TOOLS, MAX_TOOL_CALLS, PlanCreator, ToolRecorder, place_ids_in
+from app.chat.tools import (
+    LOOKUP_TOOLS,
+    MAX_TOOL_CALLS,
+    PlanCreator,
+    ToolRecorder,
+    grounded_place_ids,
+)
 from app.guardian.context import resolve_now
 from app.models.api import ChatRequest, ChatResponse
 from app.models.plan import Language, Plan, StopChange
+from app.prompts import Mode, build_system_prompt
 from app.storage import SessionNotFoundError, SessionState
 from app.tools.plan_edit import PlanEditor
 
@@ -285,8 +291,7 @@ def _persist(chat: _Chat, plan: Plan | None) -> None:
 def _finish(chat: _Chat, model_text: str) -> ChatResponse:
     language = chat.language
     plan, notice, changes = _outcome(chat)
-    searched = {pid for out in chat.recorder.outputs if out.name == "search_places" for pid in place_ids_in(out.data)}
-    grounded = searched | {s.place_id for s in (chat.plan.stops if chat.plan else [])}
+    grounded = grounded_place_ids(chat.recorder.outputs) | {s.place_id for s in (chat.plan.stops if chat.plan else [])}
     grounded |= {s.place_id for s in plan.stops} if plan else set()
 
     if notice:  # 일정을 만들지 못한 사유를 사용자 언어로 안내한다. 모델의 문장은 쓰지 않는다

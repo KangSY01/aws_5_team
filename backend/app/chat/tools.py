@@ -21,7 +21,15 @@ from strands.hooks import AfterToolCallEvent, BeforeToolCallEvent, HookProvider,
 from app.chat.messages import BUILD_ERROR_KEYS
 from app.chat.plan_rules import load_places, place_name, validate_plan
 from app.models.plan import Plan, Profile
-from app.tools.lookup import get_crowd, get_events, get_hours, get_travel_time, get_weather, search_places
+from app.tools.lookup import (
+    get_crowd,
+    get_events,
+    get_hours,
+    get_place_info,
+    get_travel_time,
+    get_weather,
+    search_places,
+)
 from app.tools.schedule import PlanBuildError, build_plan
 
 logger = logging.getLogger(__name__)
@@ -29,8 +37,34 @@ logger = logging.getLogger(__name__)
 MAX_TOOL_CALLS = 5  # 한 요청에서 실행할 수 있는 도구 호출 총수 (team.md)
 MIN_PLACES, MAX_PLACES = 3, 5  # 새 일정의 장소 수 (요구사항 2.1)
 
-# B 가 구현한 조회 도구 전부. get_place_info 는 없다.
-LOOKUP_TOOLS = [search_places, get_crowd, get_weather, get_hours, get_travel_time, get_events]
+# B 가 구현한 조회 도구 전부.
+LOOKUP_TOOLS = [search_places, get_place_info, get_crowd, get_weather, get_hours, get_travel_time, get_events]
+
+# 도구 결과에서 장소 ID 가 들어 있는 키 (get_place_info 의 대안 장소, get_events 의 place_ids 등)
+_PLACE_ID_KEYS = {
+    "place_id", "place_ids", "from_place_id", "to_place_id", "crowd_alternatives", "rain_alternatives",
+}
+
+
+def grounded_place_ids(outputs: list["ToolOutput"]) -> set[str]:
+    """이번 요청의 성공한 도구 결과에 나온 place_id (places.json 에 있는 것만). 답변 근거 검사에 쓴다."""
+    known = load_places()
+    found: set[str] = set()
+
+    def walk(node: Any) -> None:
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key in _PLACE_ID_KEYS:
+                    values = [value] if isinstance(value, str) else (value if isinstance(value, list) else [])
+                    found.update(v for v in values if isinstance(v, str))
+                walk(value)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+
+    for out in outputs:
+        walk(out.data)
+    return found & known.keys()
 
 
 def place_ids_in(result: Any) -> list[str]:

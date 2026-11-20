@@ -257,5 +257,33 @@ def test_place_ids_in_ignores_errors_and_malformed_items():
 def test_tool_limit_is_five():
     assert MAX_TOOL_CALLS == 5
     assert json.dumps(sorted(t.tool_name for t in chat_tools.LOOKUP_TOOLS)) == json.dumps(
-        ["get_crowd", "get_events", "get_hours", "get_travel_time", "get_weather", "search_places"]
+        ["get_crowd", "get_events", "get_hours", "get_place_info", "get_travel_time", "get_weather", "search_places"]
     )
+
+
+def test_grounded_place_ids_collects_ids_from_every_tool_result():
+    outputs = [
+        out("search_places", [{"place_id": "busan-tower"}]),
+        out("get_place_info", {
+            "place_id": "gamcheon-village",
+            "curation": {"crowd_alternatives": ["haeundae-beach", "no-such-place"], "rain_alternatives": None},
+            "hours": {"opens": None, "raw_text": "원문"},
+        }),
+        out("get_events", {"date": "2026-11-28", "events": [{"name": "행사", "place_ids": ["jagalchi-market"]}]}),
+        out("get_travel_time", {"from_place_id": "busan-tower", "to_place_id": "haeundae-beach", "minutes": 40}),
+    ]
+    assert chat_tools.grounded_place_ids(outputs) == {
+        "busan-tower", "gamcheon-village", "haeundae-beach", "jagalchi-market",
+    }
+    assert chat_tools.grounded_place_ids([]) == set()
+
+
+def test_build_sources_counts_raw_text_hours_and_place_info():
+    outputs = [
+        out("get_hours", {"place_id": "busan-tower", "opens": None, "closes": None, "closed_weekdays": [],
+                          "closed_dates": [], "raw_text": "09:00~22:00"}),
+        out("get_place_info", {"place_id": "gamcheon-village", "curation": None, "hours": {}}),
+        out("get_place_info", {"place_id": "haeundae-beach", "curation": None, "hours": {}}),
+    ]
+    sources = chat_answer.build_sources(outputs, {"gamcheon-village"}, "en")
+    assert [(s.tool, s.id) for s in sources] == [("get_hours", "busan-tower"), ("get_place_info", "gamcheon-village")]

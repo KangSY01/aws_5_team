@@ -12,7 +12,7 @@ import pytest
 from chat_stubs import ScriptedModel, text_turn, tool_turn
 from strands import tool
 
-from app import agent, config, storage
+from app import agent, config, prompts, storage
 from app.chat import tools as chat_tools
 from app.chat.messages import BUILD_ERROR_KEYS, LANGUAGES, message
 from app.chat.plan_rules import load_places, place_name
@@ -23,7 +23,7 @@ from app.tools.schedule import PlanBuildError, build_plan
 from scripts.local_invoke import make_event
 
 PLAN_ID = "plan-1"  # 샘플 일정(conftest): s1 감천 · s2 자갈치(고정) · s3 부산타워 · s4 해운대
-LOOKUP = {"search_places", "get_crowd", "get_weather", "get_hours", "get_travel_time", "get_events"}
+LOOKUP = {"search_places", "get_place_info", "get_crowd", "get_weather", "get_hours", "get_travel_time", "get_events"}
 EDITING = {"replace_stop", "add_stop", "remove_stop", "move_stop"}
 IDS = ["gamcheon-village", "jagalchi-market", "busan-tower", "haeundae-beach"]
 NOW_1128 = {"now": "2026-11-28T09:00:00+09:00"}
@@ -86,7 +86,7 @@ def test_create_mode_registers_lookup_tools_and_create_plan(chat):
     model = ScriptedModel([text_turn("Hello!")])
     chat(model)
     assert model.tool_names == LOOKUP | {"create_plan"}
-    assert "get_place_info" not in model.tool_names  # B 가 만들지 않은 도구는 등록하지 않는다
+    assert "get_place_info" in model.tool_names  # B 의 PR #37 에서 추가된 Agent 전용 도구
 
 
 def test_edit_mode_registers_lookup_and_editing_tools_but_not_create_plan(chat, api_storage):
@@ -107,6 +107,47 @@ def test_system_prompt_carries_context_but_not_the_user_message(chat, api_storag
     chat(create)
     assert "MODE: NEW_ITINERARY" in create.system_prompt and "\nCURRENT_PLAN:" not in create.system_prompt  # 일정 데이터 줄이 없다
 
+
+def test_the_agent_uses_the_final_system_prompt_written_by_d(chat, api_storage):
+    assert agent.build_system_prompt is prompts.build_system_prompt  # 임시 프롬프트(app/chat/prompt.py)가 아니다
+    create, edit = ScriptedModel([text_turn("ok")]), ScriptedModel([text_turn("ok")])
+
+    chat(create, language="zh-Hant")
+    chat(edit, language="zh-Hant", session_id=linked_session(api_storage, "zh-Hant"), plan_id=PLAN_ID, demo=NOW_1128)
+
+    for prompt in (create.system_prompt, edit.system_prompt):  # 두 모드 모두 표식 규칙과 행사 이름 규칙이 들어 있다
+        assert "Traditional Chinese" in prompt and "Write every place as [place:PLACE_ID]" in prompt
+        assert 'never put a name next to the marker' in prompt
+        assert "Events are not places; do not put them in a marker." in prompt
+        assert "at most 5 tools" in prompt and "TODAY:" in prompt and "PROFILE:" in prompt
+    assert "MODE: NEW_ITINERARY" in create.system_prompt and "\nCURRENT_PLAN:" not in create.system_prompt
+    assert "MODE: EDIT_ITINERARY" in edit.system_prompt and "TODAY: 2026-11-28" in edit.system_prompt
+    line = next(line for line in edit.system_prompt.splitlines() if line.startswith("CURRENT_PLAN:"))
+    assert place_name(load_places()["gamcheon-village"], "zh-Hant") in line and '"locked": true' in line
+
+
+def test_markers_written_by_the_final_prompt_still_render_and_events_stay_plain_text(chat):
+    # D 의 프롬프트가 허용한 형태: 행사 이름은 한국어 원문 그대로, 장소는 표식으로만
+    model = ScriptedModel([
+        tool_turn(("search_places", {"query": "haeundae"}), ("get_events", {"date": "2026-11-28"})),
+        text_turn("The 부산불꽃축제 is on that day. For the beach, try [place:haeundae-beach]."),
+    ])
+
+    response = chat(model, demo=NOW_1128)
+
+    assert "부산불꽃축제" in response.answer and "Haeundae Beach" in response.answer and "[place:" not in response.answer
+
+
+def test_alternatives_from_get_place_info_count_as_grounded(chat):
+    # D 의 프롬프트 규칙: 이번 요청의 도구 결과에 나온 place_id 는 답변에 쓸 수 있다
+    model = ScriptedModel([
+        tool_turn(("get_place_info", {"place_id": "haeundae-beach"})),
+        text_turn("If [place:haeundae-beach] is crowded, [place:sea-life-busan] is an indoor option."),
+    ])
+
+    response = chat(model, demo=NOW_1128)
+
+    assert "[place:" not in response.answer and ("get_place_info", "haeundae-beach") in [(s.tool, s.id) for s in response.sources]
 
 # ---- 일정 생성 ----
 
@@ -230,7 +271,8 @@ def test_lookup_tools_become_sources_only_when_they_returned_data(chat, monkeypa
         ("search_places", "haeundae-beach"),
         ("get_crowd", "haeundae-beach"),
         ("get_travel_time", "haeundae-beach>busan-tower"),
-    ]  # get_hours 는 운영시간을 모르고, get_weather 는 예보가 없다 → 근거가 아니다
+        ("get_hours", "haeundae-beach"),  # opens/closes 는 null 이어도 raw_text(원문)가 있으면 근거다 (PR #37)
+    ]  # get_weather 는 예보가 없다 → 근거가 아니다
     assert all(s.title.strip() for s in response.sources)
 
 

@@ -32,7 +32,7 @@ def _all_names(place_id: str) -> list[str]:
 def render_answer(text: str, language: Language, grounded: set[str]) -> str:
     """[place:ID] 를 프로필 언어 이름으로 바꾼다. 근거 없는 장소가 있으면 InvalidAnswer.
 
-    grounded: 이번 요청에서 근거가 있는 place_id (search_places 결과, 현재 일정, 만든 일정).
+    grounded: 이번 요청에서 근거가 있는 place_id (성공한 도구 결과에 나온 장소, 현재 일정, 만든 일정).
     표식 없이 쓴 장소 이름도 검사한다: places.json 의 장소인데 grounded 가 아니면 모델이 기억에서 꺼낸 것으로 본다.
     """
     places = load_places()
@@ -73,12 +73,15 @@ def build_sources(outputs: list[ToolOutput], referenced: set[str], language: Lan
             for pid in place_ids_in(data):
                 if pid in referenced and pid in places:
                     add("search_places", pid, name_of(pid))
+        elif out.name == "get_place_info" and isinstance(data, dict) and data.get("place_id"):
+            if data["place_id"] in referenced and data["place_id"] in places:
+                add("get_place_info", data["place_id"], name_of(data["place_id"]))
         elif out.name == "get_weather" and isinstance(data, dict) and data.get("hourly"):
             add("get_weather", f"busan-{data.get('date', '')}", message("source_weather", language))
         elif out.name == "get_crowd" and isinstance(data, dict) and data.get("place_id"):
             add("get_crowd", data["place_id"], name_of(data["place_id"]))
         elif out.name == "get_hours" and isinstance(data, dict) and data.get("place_id"):
-            if data.get("opens") or data.get("closes") or data.get("closed_weekdays") or data.get("closed_dates"):
+            if any(data.get(k) for k in ("opens", "closes", "closed_weekdays", "closed_dates", "raw_text")):
                 add("get_hours", data["place_id"], name_of(data["place_id"]))
         elif out.name == "get_travel_time" and isinstance(data, dict) and data.get("from_place_id"):
             origin, destination = data["from_place_id"], data["to_place_id"]
