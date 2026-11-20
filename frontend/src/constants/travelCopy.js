@@ -87,6 +87,14 @@ const locationLabels = {
   "zh-Hant": ["尋找我的位置", "正在取得位置…", "位置權限已遭拒絕。", "無法取得目前位置。"],
 };
 
+const guardianLabels = {
+  ko: ["일정 점검", "확인된 문제가 없어요.", "적용", "시간 이동", "순서 변경", "장소 교체", "제외"],
+  en: ["Check itinerary", "No issues found.", "Apply", "Move time", "Reorder", "Replace", "Remove"],
+  ja: ["日程を確認", "問題は見つかりませんでした。", "適用", "時間変更", "順序変更", "場所変更", "除外"],
+  "zh-Hans": ["检查行程", "未发现问题。", "应用", "调整时间", "调整顺序", "替换地点", "移除"],
+  "zh-Hant": ["檢查行程", "未發現問題。", "套用", "調整時間", "調整順序", "替換地點", "移除"],
+};
+
 export function getTravelCopy(language) {
   const [intro, prompt, example, submit, title, edit, itinerary, map, schematic, locked, languageLabel, night, loading, empty, network, timeout, http, invalidResponse, retry] = copy[language];
   const [ask, send, close, expand, reduce, ready, messageLabel, sampleTitle, home, chat, navigation] = chatCopy[language];
@@ -94,9 +102,11 @@ export function getTravelCopy(language) {
   const [collapseItinerary, closeItinerary] = itineraryActions[language];
   const [profile, guest, account, accountUnavailable] = profileCopy[language];
   const [startTrip, endTrip, traveling, nextPlace, askForRoute] = tripCopy[language];
+  const [check, clear, apply, move_time, reorder, replace, remove] = guardianLabels[language];
   const [find, pending, denied, unavailable] = locationLabels[language];
   return {
     location: { find, pending, denied, unavailable },
+    guardian: { check, clear, apply, actions: { move_time, reorder, replace, remove } },
     emergency: emergencyCopy[language],
     startTrip, endTrip, traveling, nextPlace, askForRoute,
     profile, guest, account, accountUnavailable,

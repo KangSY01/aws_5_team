@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getTravelCopy, languages } from "../constants/travelCopy.js";
-import { getPlannerCopy, transportPreferenceIds } from "../constants/plannerCopy.js";
-import { hasConfiguredPlanApi, saveTravelPlan } from "../api/planClient.js";
+import { getPlannerCopy, transportPreferenceIds, durationIds, areaIds } from "../constants/plannerCopy.js";
+import { checkTravelPlan, fetchPlan, hasConfiguredPlanApi, PlanClientError, saveTravelPlan, sendTravelMessage } from "../api/planClient.js";
+import { translateText } from "../api/translationClient.js";
 import { recommendDemo, suggestDemo } from "../lib/demoPlanner.js";
 import { normalizeActivities } from "../lib/activityPreferences.js";
 import { localeFlags } from "../constants/localeFlags.js";
@@ -190,6 +191,7 @@ export default function TravelPreview({ night = false } = {}) {
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState([]);
+  const [guardian, setGuardian] = useState(null);
   const [scheduleSaveFailed, setScheduleSaveFailed] = useState(false);
   const liveApi = hasConfiguredPlanApi();
   const [selectedId, setSelectedId] = useState(() => course?.plan.stops[0]?.stop_id ?? null);
@@ -408,8 +410,39 @@ export default function TravelPreview({ night = false } = {}) {
     requestInProgress.current = true;
     setPending("recommend");
     setPlanError(null);
+    let stage = "generation";
     try {
-      const result = await recommendDemo(values, language);
+      let result;
+      if (liveApi) {
+        const english = getPlannerCopy("en");
+        const interests = values.activities.map((id) => english.activityCopy.keywords[id] ?? id).concat(values.customActivities);
+        const message = [
+          "Create and save a new Busan travel itinerary for today in Busan.",
+          "Duration (required): " + english.durations[durationIds.indexOf(values.duration)],
+          "Area, activity, cuisine, transport, and lodging preferences below are ranking hints.",
+          "Plan around mealtimes even when no cuisine is selected. Set aside 45–60 minutes for lunch when the itinerary spans midday, and for dinner if it spans the evening meal.",
+          "Prefer a verified food market or another catalog location where visitors can eat as a meal stop. If no verified food venue fits, leave an actual meal break between stops rather than filling that time with sightseeing. Never invent venues.",
+          "If the catalog has no match for an area, activity, or food preference, skip that preference and use nearby verified alternatives.",
+          "Use one broad catalog search to gather candidates. As soon as you have enough candidates, call the itinerary-building tool before making extra lookups.",
+          "Save a valid itinerary even if only some preferences can be met. Do not ask for a date or a new request if a valid itinerary can be built.",
+          values.regions.length && "Areas: " + values.regions.map((id) => english.areasList[areaIds.indexOf(id)] ?? id).join(", "),
+          interests.length && "Activities: " + interests.join(", "),
+          (foodTags.length || customFoods.length) && "Food preferences: " + [...foodTags.map((id) => english.foodLabels[id] ?? id), ...customFoods].join(", "),
+          values.transport && "Transport: " + (english.transportLabels[values.transport] ?? values.transport),
+          values.less_walking && "Prefer shorter walks.",
+          values.lodging && "Include lodging suggestions when available.",
+        ].filter(Boolean).join("\n");
+        const chat = await sendTravelMessage(message, language, null, { interests });
+        stage = "lookup";
+        const saved = await fetchPlan(chat.plan_id);
+        if (!saved.plan.stops.length) {
+          setPlanError(plannerCopy.emptyRecommendation);
+          return;
+        }
+        result = { ...saved, session_id: chat.session_id };
+      } else {
+        result = await recommendDemo(values, language);
+      }
       if (!result?.plan?.plan_id || !result.plan.stops?.length || !Array.isArray(result.places)) throw new Error();
       const next = { ...result, preferences: values };
       setCourse(next);
@@ -418,9 +451,21 @@ export default function TravelPreview({ night = false } = {}) {
       setSelectedId(result.plan.stops[0].stop_id);
       setMapFocus(null);
       setEditId(null);
+      setGuardian(null);
       setShowPreferences(false);
     } catch (error) {
-      setPlanError(error.message === "noPlaces" ? "noPlaces" : "requestFailed");
+      if (error instanceof PlanClientError) {
+        const title = copy.errorTitles[error.kind] ?? plannerCopy.requestFailed;
+        const diagnostic = [
+          stage === "generation" ? "POST /chat" : "GET /plan",
+          error.status && "HTTP " + error.status,
+          error.requestId && "AWS ID " + error.requestId,
+        ].filter(Boolean).join(" · ");
+        const message = error.status >= 500 ? plannerCopy.planServerError[stage] : title;
+        setPlanError(message + " (" + diagnostic + ")");
+      } else {
+        setPlanError(error.message === "noPlaces" ? plannerCopy.noPlaces : plannerCopy.requestFailed);
+      }
     } finally {
       requestInProgress.current = false;
       setPending(null);
@@ -443,6 +488,39 @@ export default function TravelPreview({ night = false } = {}) {
     setMessages((previous) => [...previous, { text: message, lang: language, role: "user" }]);
     setDraft("");
     try {
+      if (liveApi && course.session_id) {
+        const instruction = [
+          "Replace only this stop if possible. Keep its stop ID, start and end times, and preserve every other stop.",
+          "Stop: " + editStop.stop_id + " (" + resolvePlaceName(editStop, placesById, language).name + ")",
+          "Traveler request: " + message,
+        ].join("\n");
+        const chat = await sendTravelMessage(instruction, language, { session_id: course.session_id, plan_id: plan.plan_id }, plan.profile);
+        const result = await fetchPlan(chat.plan_id);
+        const next = { ...course, ...result, session_id: chat.session_id };
+        setCourse(next);
+        save(courseStorageKey, next);
+        setGuardian(null);
+        if (result.plan.stops.some((stop) => stop.stop_id === editId)) {
+          setSelectedId(editId);
+          setMapFocus({ id: editId });
+        }
+        let answer = chat.answer;
+        if (chat.language !== language) {
+          try {
+            answer = await translateText(chat.answer, chat.language, language, AbortSignal.timeout(8000));
+          } catch {
+            const updatedStop = result.plan.stops.find((stop) => stop.stop_id === editId);
+            const name = updatedStop && resolvePlaceName(updatedStop, buildPlacesById(result.places), language).name;
+            answer = chat.plan_changes?.length
+              ? name && updatedStop.place_id !== editStop.place_id
+                ? plannerCopy.chatStopReplaced(name)
+                : plannerCopy.chatPlanUpdated
+              : plannerCopy.chatPlanUnchanged;
+          }
+        }
+        setMessages((previous) => [...previous, { text: answer, lang: language, role: "assistant" }]);
+        return;
+      }
       const result = await suggestDemo({
         plan, stop_id: editId, preferences: course.preferences, message, language,
       });
@@ -463,6 +541,33 @@ export default function TravelPreview({ night = false } = {}) {
     }
   }
 
+  async function runGuardian(repair) {
+    if (!course?.session_id || requestInProgress.current) return;
+    requestInProgress.current = true;
+    setPending("guardian");
+    try {
+      if (repair) {
+        const latest = await fetchPlan(plan.plan_id);
+        if (JSON.stringify(latest.plan) !== JSON.stringify(plan)) throw new Error("stale");
+        const changes = new Map(repair.changes.map((change) => [change.stop_id, change.after]));
+        const stops = latest.plan.stops.flatMap((stop) => changes.has(stop.stop_id) ? changes.get(stop.stop_id) ?? [] : stop);
+        stops.sort((left, right) => Date.parse(left.start) - Date.parse(right.start));
+        const saved = await saveTravelPlan({ ...latest.plan, stops });
+        const next = { ...course, ...saved };
+        setCourse(next);
+        save(courseStorageKey, next);
+        setGuardian(null);
+      } else {
+        setGuardian(await checkTravelPlan(plan.plan_id));
+      }
+    } catch {
+      setGuardian({ error: true });
+    } finally {
+      requestInProgress.current = false;
+      setPending(null);
+    }
+  }
+
   async function saveStops(nextStops) {
     if (requestInProgress.current) return false;
     requestInProgress.current = true;
@@ -474,6 +579,7 @@ export default function TravelPreview({ night = false } = {}) {
       const next = { ...course, ...saved };
       setCourse(next);
       save(courseStorageKey, next);
+      setGuardian(null);
       return true;
     } catch {
       setScheduleSaveFailed(true);
@@ -624,7 +730,7 @@ export default function TravelPreview({ night = false } = {}) {
 
           {!showChat && (showPreferences ? (
             <TravelPreferences value={preferences} onChange={updatePreferences} onSubmit={recommendCourse} copy={plannerCopy} onShowRegions={showRegions}
-              busy={Boolean(pending)} error={plannerCopy[planError]} backLabel={copy.itinerary} onBack={() => setShowPreferences(false)} />
+              busy={Boolean(pending)} error={planError} backLabel={copy.itinerary} onBack={() => setShowPreferences(false)} />
           ) : (
             <section className="travel-panel" aria-label={copy.itinerary}>
               {course?.demo && <small>{plannerCopy.demoCourse}</small>}
@@ -641,7 +747,25 @@ export default function TravelPreview({ night = false } = {}) {
                   <ul>{course.unmatched_activities.map((activity) => <li key={activity}>{activity}</li>)}</ul>
                 </div>
               )}
-              {stops.length > 1 && <small>{plannerCopy.schematicRoute}</small>}
+              {liveApi && course?.session_id && (
+                <section className="guardian-review">
+                  <button type="button" disabled={Boolean(pending)} onClick={() => runGuardian()}>
+                    {pending === "guardian" ? copy.loading : copy.guardian.check}
+                  </button>
+                  {guardian?.error && <p role="alert">{plannerCopy.requestFailed}</p>}
+                  {guardian?.issues?.length === 0 && <p role="status">{copy.guardian.clear}</p>}
+                  {guardian?.issues?.map((issue) => (
+                    <div key={issue.issue_id}>
+                      <p>{issue.detail}</p>
+                      {guardian.repairs[issue.issue_id]?.map((repair, index) => (
+                        <button type="button" key={index} disabled={Boolean(pending)} onClick={() => runGuardian(repair)}>
+                          {copy.guardian.apply} · {copy.guardian.actions[repair.action]}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </section>
+              )}
             </section>
           ))}
         </div>

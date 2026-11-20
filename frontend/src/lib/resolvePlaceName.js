@@ -1,3 +1,5 @@
+import { koreanPlaceNames } from "../constants/koreanPlaceNames.js";
+
 // 장소명 결정 유틸리티: 표시 언어 → en → names 의 첫 유효 값 → place_id 순서
 
 const SUPPORTED = ['ko', 'en', 'ja', 'zh-Hans', 'zh-Hant'];
@@ -44,10 +46,13 @@ export function resolvePlaceName(stop, placesById, language) {
         : undefined;
     const names = place?.names;
 
-    if (isPlainObject(names)) {
-      const preferred = ownValue(names, lang);
-      if (isUsable(preferred)) return { name: preferred, isFallbackToId: false };
+    const preferred = isPlainObject(names) ? ownValue(names, lang) : undefined;
+    if (isUsable(preferred)) return { name: preferred, isFallbackToId: false };
 
+    const korean = lang === 'ko' ? ownValue(koreanPlaceNames, placeId) : undefined;
+    if (isUsable(korean)) return { name: korean, isFallbackToId: false };
+
+    if (isPlainObject(names)) {
       const english = ownValue(names, DEFAULT_LANGUAGE);
       if (isUsable(english)) return { name: english, isFallbackToId: false };
 

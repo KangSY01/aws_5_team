@@ -96,8 +96,33 @@ const foodTransportCopy = {
   "zh-Hant": [["韓式料理","中式料理","日式料理","西式料理","東南亞料理","印度料理","釜山鄉土美食","海鮮","市場小吃","甜點","素食"],["大眾運輸","汽車","以步行為主","無偏好"],["新增飲食偏好","輸入偏好或要避免的食物","新增","移除自訂飲食偏好","該偏好已在清單中。"]],
 };
 
+const emptyRecommendationCopy = {
+  ko: "지금 조건으로 일정을 만들지 못했어요. 지역이나 활동을 줄이거나, 기간만 남겨 다시 시도해 주세요.",
+  en: "We couldn't create an itinerary with these preferences. Try fewer areas or activities, or leave only the duration.",
+  ja: "この条件では旅程を作成できませんでした。エリアやアクティビティを減らすか、滞在期間だけでお試しください。",
+  "zh-Hans": "未能按当前偏好创建行程。请减少地区或活动，或仅保留停留时长后重试。",
+  "zh-Hant": "未能依目前偏好建立行程。請減少地區或活動，或只保留停留時間後再試。",
+};
+
+const planServerErrors = {
+  ko: { generation: "서버에서 일정을 만들지 못했어요. 잠시 후 다시 시도해 주세요.", lookup: "서버에서 저장된 일정을 불러오지 못했어요." },
+  en: { generation: "The server couldn't create the itinerary. Try again shortly.", lookup: "The server couldn't load the saved itinerary." },
+  ja: { generation: "サーバーで旅程を作成できませんでした。少し時間をおいてお試しください。", lookup: "保存された旅程を読み込めませんでした。" },
+  "zh-Hans": { generation: "服务器未能创建行程，请稍后重试。", lookup: "服务器未能读取已保存的行程。" },
+  "zh-Hant": { generation: "伺服器未能建立行程，請稍後再試。", lookup: "伺服器未能讀取已儲存的行程。" },
+};
+
+const chatOutcomeCopy = {
+  ko: ["요청한 변경을 반영하지 못했어요. 기존 일정은 그대로예요.", "일정에 변경 사항을 반영했어요. 일정 탭에서 확인할 수 있어요.", "{place}(으)로 방문 장소를 바꿨어요."],
+  en: ["The requested change couldn't be made. Your itinerary is unchanged.", "Your itinerary was updated. See the itinerary tab for details.", "The stop was replaced with {place}."],
+  ja: ["リクエストを反映できませんでした。旅程は変更されていません。", "旅程を更新しました。日程タブで確認できます。", "訪問先を{place}に変更しました。"],
+  "zh-Hans": ["无法完成请求的更改，原行程保持不变。", "已更新行程，请在行程页面查看。", "已将该地点更换为{place}。"],
+  "zh-Hant": ["無法完成要求的變更，原行程保持不變。", "已更新行程，請在行程頁面查看。", "已將該地點更換為{place}。"],
+};
+
 export function getPlannerCopy(language) {
   const [durations, areasList] = choices[language];
+  const [chatPlanUnchanged, chatPlanUpdated, chatStopReplaced] = chatOutcomeCopy[language];
   const [addArea, closeArea, removeArea, showAreas, doneAreas, cancelAreas, changeAreas, noAreaSelection] = areaActions[language];
   const [extraNames, extraDescriptions, limitedPlaces] = additionalAreas[language];
   const areaAdded = selectionStatus[language];
@@ -110,6 +135,9 @@ export function getPlannerCopy(language) {
   return { ...Object.fromEntries(keys.map((key, i) => [key, labels[language][i]])),
     durations, areasList: [...areasList, ...extraNames], areaDescriptions: [...areaDescriptions[language], ...extraDescriptions],
     activityCopy: getActivityCopy(language), addArea, areaAdded, closeArea, removeArea, showAreas, doneAreasLabel, cancelAreas, limitedPlaces,
+    planServerError: planServerErrors[language],
+    chatPlanUnchanged, chatPlanUpdated, chatStopReplaced: (place) => chatStopReplaced.replace("{place}", () => place),
+    emptyRecommendation: emptyRecommendationCopy[language],
     requiredAnswer, optionalAnswer, durationRequired, changeAreas, noAreaSelection,
     foodLabels: Object.fromEntries(foodPreferenceIds.map((id, index) => [id, food[index]])),
     transportLabels: Object.fromEntries(transportPreferenceIds.map((id, index) => [id, transport[index]])),

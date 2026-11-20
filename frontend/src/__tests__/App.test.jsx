@@ -1,10 +1,14 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import App from "../App.jsx";
+import { resolvePlaceName } from "../lib/resolvePlaceName.js";
 import { recommendDemo } from "../lib/demoPlanner.js";
 
+beforeEach(() => vi.stubEnv("VITE_API_BASE_URL", ""));
+
 afterEach(() => {
+  vi.unstubAllEnvs();
   localStorage.clear();
   vi.unstubAllGlobals();
 });
@@ -87,4 +91,49 @@ it("keeps the itinerary until an AI suggestion is applied and rejects stale sugg
   const stop = screen.getAllByRole("listitem")[1];
   expect(within(stop).getByRole("button", { pressed: true })).toHaveTextContent("Gukje Market");
   expect(fetchMock).not.toHaveBeenCalled();
+});
+
+it("identifies an API failure during itinerary creation and includes the AWS request ID", async () => {
+  vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+    error: { code: "internal_error", message: "Server error" },
+  }), { status: 500, headers: { "x-amzn-requestid": "test-request-id" } })));
+  render(<App />);
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: "Itinerary", exact: true }));
+  await user.click(screen.getByRole("button", { name: "Get an AI itinerary" }));
+  await user.click(screen.getByRole("button", { name: "Create itinerary" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("POST /chat · HTTP 500 · AWS ID test-request-id");
+  expect(screen.getByRole("button", { name: "Create itinerary" })).toBeEnabled();
+});
+
+it("shows Korean names for AWS places missing Korean and preserves other language names", () => {
+  const place = { place_id: "busan-citizens-park", names: { ja: "釜山市民公園" } };
+  const places = new Map([[place.place_id, place]]);
+  expect(resolvePlaceName(place, places, "ko").name).toBe("부산시민공원");
+  expect(resolvePlaceName(place, places, "ja").name).toBe("釜山市民公園");
+  place.names.ko = "서버가 제공한 한국어 이름";
+  expect(resolvePlaceName(place, places, "ko").name).toBe(place.names.ko);
+});
+
+it("shows a Korean edit outcome when the API replies in English and translation is unavailable", async () => {
+  vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+  vi.stubEnv("VITE_TRANSLATION_ENDPOINT", "");
+  vi.stubGlobal("Translator", undefined);
+  const [plan, places] = await Promise.all([
+    import("../mocks/sample_plan.json").then((module) => module.default),
+    import("../mocks/places.json").then((module) => module.default),
+  ]);
+  localStorage.setItem("busannow.language", "ko");
+  localStorage.setItem("busannow.course", JSON.stringify({ plan, places, session_id: "test-session" }));
+  vi.stubGlobal("fetch", vi.fn()
+    .mockResolvedValueOnce(Response.json({ plan_id: plan.plan_id, session_id: "test-session", language: "en", answer: "No escape room found.", plan_changes: [] }))
+    .mockResolvedValueOnce(Response.json({ plan, places })));
+  render(<App />);
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: "일정", exact: true }));
+  await user.click(screen.getAllByRole("button", { name: /AI로 수정/ })[0]);
+  await user.type(screen.getByRole("textbox"), "공포 방탈출로 바꿔줘");
+  await user.click(screen.getByRole("button", { name: "전송" }));
+  expect(await screen.findByText("요청한 변경을 반영하지 못했어요. 기존 일정은 그대로예요.")).toHaveAttribute("lang", "ko");
 });
