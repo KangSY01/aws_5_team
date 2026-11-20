@@ -50,7 +50,7 @@ fileMatchPattern: ["backend/app/tools/**", "backend/app/guardian/**", "backend/a
 ## 날씨 샘플 (`backend/app/data/weather/`)
 - 파일 형식은 `get_weather` 반환값과 같습니다(`{"date", "hourly"}`, 설명용 `note`는 선택). 파일 이름은 소문자·숫자·하이픈만 씁니다.
 - `{YYYY-MM-DD}.json`: `USE_MOCK=1`일 때 `get_weather`가 그 날짜의 예보로 씁니다. 파일이 없는 날짜는 예보 없음(`hourly: []`)입니다.
-- 그 밖의 이름(`rain-afternoon.json` 등): 데모 스위치 `demo.weather_preset`으로만 씁니다.
+- 그 밖의 이름(`rain-afternoon.json` 등): 데모 스위치 `demo.weather_preset`으로만 씁니다. `rain-afternoon.json`은 2026-11-28 13:00~15:00 비(13·14시 칸)입니다.
 
 ## 운영시간 (한국관광공사 소개정보)
 - API: `https://apis.data.go.kr/B551011/KorService2/detailIntro2` (`contentId`, `contentTypeId`). 장소당 1회 호출합니다.
